@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ESC 블로그 센터</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ═══════════ 게이트 ═══════════ -->
+<div class="gate" id="gate">
+
+  <!-- 불러오는 중 -->
+  <div class="gbox hide" id="g-loading">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+    <p class="lead">불러오는 중입니다…</p>
+  </div>
+
+  <!-- 로그인 -->
+  <div class="gbox hide" id="g-login">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+    <h2>로그인</h2>
+    <p class="lead">블로거로 활동하시는 분, 그리고 ESC 직원이 쓰는 곳입니다.</p>
+    <div id="loginMsg"></div>
+    <div class="fld"><label class="f">이메일</label>
+      <input class="inp" id="li_email" type="email" autocomplete="username" placeholder="you@example.com"></div>
+    <div class="fld"><label class="f">비밀번호</label>
+      <input class="inp" id="li_pw" type="password" autocomplete="current-password" placeholder="비밀번호"></div>
+    <button class="btn btn-p btn-w" id="btnLogin">로그인</button>
+    <div class="gfoot">
+      <span>블로거로 처음 오셨나요?</span>
+      <button class="link" data-gate="g-signup">블로거 신청하기 →</button>
+    </div>
+  </div>
+
+  <!-- 블로거 신청 -->
+  <div class="gbox wide hide" id="g-signup">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>블로거 신청</span></div></div>
+    <h2>블로거 신청</h2>
+    <p class="lead">신청하시면 담당자가 블로그를 확인한 뒤 승인해 드립니다.
+      승인되면 교육 안내를 보내드립니다.</p>
+    <div id="suMsg"></div>
+
+    <div class="grid g2" style="gap:0 13px">
+      <div class="fld"><label class="f">이름</label><input class="inp" id="su_name" placeholder="홍길동"></div>
+      <div class="fld"><label class="f">연락처</label><input class="inp" id="su_phone" placeholder="010-0000-0000"></div>
+    </div>
+    <div class="fld"><label class="f">소속 공동체</label>
+      <select class="inp" id="su_comm"><option value="">고르세요</option></select></div>
+
+    <div class="fld"><label class="f">내 블로그 주소</label>
+      <input class="inp" id="su_blog" placeholder="https://blog.naver.com/아이디">
+      <div class="mono" style="margin-top:5px">내 블로그에 들어가서 주소창을 그대로 복사해 붙여넣으시면 됩니다</div></div>
+    <div class="grid g2" style="gap:0 13px">
+      <div class="fld"><label class="f">이웃 수 (대략)</label><input class="inp" id="su_nb" type="number" placeholder="예: 300"></div>
+      <div class="fld"><label class="f">블로그 시작한 때</label><input class="inp" id="su_open" type="month"></div>
+    </div>
+
+    <div class="sec" style="margin-top:6px">로그인에 쓸 정보</div>
+    <div class="fld"><label class="f">이메일</label>
+      <input class="inp" id="su_email" type="email" autocomplete="username" placeholder="you@example.com"></div>
+    <div class="grid g2" style="gap:0 13px">
+      <div class="fld"><label class="f">비밀번호 (6자 이상)</label>
+        <input class="inp" id="su_pw" type="password" autocomplete="new-password"></div>
+      <div class="fld"><label class="f">비밀번호 확인</label>
+        <input class="inp" id="su_pw2" type="password" autocomplete="new-password"></div>
+    </div>
+
+    <button class="btn btn-a btn-w" id="btnSignup">신청하기</button>
+    <div class="gfoot">
+      <span>이미 신청하셨나요?</span>
+      <button class="link" data-gate="g-login">로그인 →</button>
+    </div>
+  </div>
+
+  <!-- 승인 대기 -->
+  <div class="gbox hide" id="g-pending">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+    <h2>확인 중입니다</h2>
+    <p class="lead">신청해 주셔서 감사합니다. 담당자가 블로그를 확인하고 있습니다.</p>
+    <div class="note">보통 <b>2~3일 안에</b> 결과를 알려드립니다.
+      승인되면 이 화면 대신 작업 화면이 열리고, 교육 일정을 안내해 드립니다.</div>
+    <div class="gfoot"><span id="pendWho" class="mono"></span>
+      <button class="link" id="btnOut1" style="margin-left:auto">로그아웃</button></div>
+  </div>
+
+  <!-- 거절 -->
+  <div class="gbox hide" id="g-rejected">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+    <h2>아쉽지만 이번에는 함께하지 못하게 되었습니다</h2>
+    <p class="lead">시간 내어 신청해 주셔서 감사합니다.</p>
+    <div class="note warn" id="rejReason"></div>
+    <div class="gfoot"><button class="link" id="btnOut2" style="margin-left:auto">로그아웃</button></div>
+  </div>
+
+  <!-- 정지 -->
+  <div class="gbox hide" id="g-paused">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+    <h2>지금은 쉬는 중으로 되어 있습니다</h2>
+    <p class="lead">다시 활동하고 싶으시면 담당자에게 알려 주세요.</p>
+    <div class="gfoot"><button class="link" id="btnOut3" style="margin-left:auto">로그아웃</button></div>
+  </div>
+</div>
+
+<!-- ═══════════ 앱 ═══════════ -->
+<div class="app hide" id="app">
+  <aside class="side">
+    <div class="brand"><div class="mk">ESC</div>
+      <div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+
+    <div id="navBox">
+      <button class="nav on" data-go="dash">오늘 할 일</button>
+      <div class="navlbl">사람을 모읍니다</div>
+      <button class="nav" data-go="staff"><span class="n">1</span>직원 관리
+        <span class="cnt hide" id="cWait">0</span></button>
+      <button class="nav soon" type="button"><span class="n">2</span>직원 교육</button>
+      <div class="navlbl">주문이 들어오면</div>
+      <button class="nav soon" type="button"><span class="n">3</span>주문 · 입금</button>
+      <button class="nav soon" type="button"><span class="n">4</span>키워드 만들기</button>
+      <button class="nav soon" type="button"><span class="n">5</span>글 나눠주기</button>
+      <div class="navlbl">일이 돌아가면</div>
+      <button class="nav soon" type="button"><span class="n">6</span>검수하기</button>
+      <button class="nav soon" type="button"><span class="n">7</span>진행 현황</button>
+      <button class="nav soon" type="button"><span class="n">8</span>정산하기</button>
+    </div>
+
+    <div class="sidefoot">
+      <b id="meName">-</b>
+      <span id="meRole">-</span>
+      <button class="nav" style="margin-top:8px" id="btnReload">↻ 새로고침</button>
+      <button class="nav" id="btnOut4">로그아웃</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="wrap">
+
+      <!-- 오늘 할 일 -->
+      <section class="screen on" data-screen="dash">
+        <div class="head"><h1>오늘 할 일</h1>
+          <p>지금은 <b>1번 직원 관리</b>만 실제로 동작합니다. 나머지는 순서대로 붙여 나갑니다.</p></div>
+
+        <div class="note ok" style="margin-bottom:18px">
+          <b>연결이 끝났습니다.</b> 이 화면에 보이는 숫자는 진짜 데이터입니다.
+          블로거가 신청하면 바로 여기에 잡힙니다.
+        </div>
+
+        <div class="grid g4">
+          <div class="stat"><b id="sWait">0</b><span>승인 기다리는 사람</span></div>
+          <div class="stat"><b id="sActive">0</b><span>일하고 있는 사람</span></div>
+          <div class="stat"><b id="sHold">0</b><span>보류함</span></div>
+          <div class="stat"><b id="sComm">0</b><span>공동체</span></div>
+        </div>
+
+        <div class="sec">지금 할 수 있는 것</div>
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div><b>블로거 모집을 시작하실 수 있습니다.</b>
+              <div class="mono" style="margin-top:4px">아래 주소를 공동체에 뿌리시면, 신청이 1번 직원 관리로 들어옵니다</div></div>
+            <button class="btn btn-a" id="btnCopyLink">모집 링크 복사</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 1 직원 관리 -->
+      <section class="screen" data-screen="staff">
+        <div class="head"><div class="step-of">1단계 · 사람을 모읍니다</div>
+          <h1>직원 관리</h1>
+          <p>신청 받기 · 직원 목록 · 공동체를 한 곳에서 합니다.</p></div>
+
+        <div class="tabs" id="staffTabs">
+          <button class="on" data-tab="t-apply">신청 받기 <span class="mono" id="tcWait">0</span></button>
+          <button data-tab="t-list">직원 목록 <span class="mono" id="tcList">0</span></button>
+          <button data-tab="t-comm">공동체</button>
+        </div>
+
+        <!-- 신청 받기 -->
+        <div id="t-apply">
+          <div class="tabs" id="applyTabs" style="margin-bottom:14px">
+            <button class="on" data-sub="pending">기다리는 중 <span class="mono" id="acWait">0</span></button>
+            <button data-sub="hold">보류함 <span class="mono" id="acHold">0</span></button>
+            <button data-sub="rejected">거절함 <span class="mono" id="acNo">0</span></button>
+          </div>
+          <div class="note warn" style="margin-bottom:16px">
+            <b>승인 전에 블로그를 꼭 열어보세요.</b> 네이버는 블로그마다 눈에 안 보이는 점수가 있어서,
+            점수가 낮은 블로그에 올린 글은 검색해도 안 나옵니다. 그런 사람에게 글을 맡기면
+            우리는 돈을 주는데 학원은 아무것도 못 받습니다. 아래 세 가지만 보시면 1분이면 됩니다.
+          </div>
+          <div id="applyList"></div>
+        </div>
+
+        <!-- 직원 목록 -->
+        <div id="t-list" class="hide">
+          <div class="row" style="margin-bottom:14px">
+            <select class="inp" id="fComm" style="width:auto"><option value="">전체 공동체</option></select>
+            <input class="inp" id="fName" style="width:auto;flex:1;min-width:140px" placeholder="이름으로 찾기">
+          </div>
+          <div id="listBox"></div>
+        </div>
+
+        <!-- 공동체 -->
+        <div id="t-comm" class="hide">
+          <div class="note" style="margin-bottom:16px">
+            공동체 이름을 실제 이름으로 바꿔 주세요. 신청 화면에서 이 목록이 그대로 보입니다.
+            정산은 공동체 단위로 나가기 때문에 <b>계좌도 여기에 적어두시면</b> 나중에 그대로 씁니다.
+          </div>
+          <div id="commBox"></div>
+          <div class="row" style="margin-top:14px">
+            <input class="inp" id="newComm" style="width:auto;min-width:180px" placeholder="새 공동체 이름">
+            <button class="btn btn-p" id="btnAddComm">공동체 추가</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 블로거 홈 (승인된 블로거가 보는 임시 화면) -->
+      <section class="screen" data-screen="bhome">
+        <div class="head"><h1>환영합니다</h1>
+          <p id="bhWho">승인되었습니다.</p></div>
+        <div class="note ok" style="margin-bottom:18px">
+          <b>승인되었습니다.</b> 곧 교육 일정을 안내해 드립니다.
+          교육을 마치면 이 화면에 맡으신 글이 나타납니다.
+        </div>
+        <div class="grid g3">
+          <div class="stat"><b id="bhLv">1</b><span>내 단계</span></div>
+          <div class="stat"><b id="bhRate">1,000</b><span>편당 지급 (원)</span></div>
+          <div class="stat"><b>0</b><span>맡은 글</span></div>
+        </div>
+        <div class="sec">내 정보</div>
+        <div class="card"><dl class="kv" id="bhInfo"></dl></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
