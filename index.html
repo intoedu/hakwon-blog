@@ -12,13 +12,11 @@
 <!-- ═══════════ 게이트 ═══════════ -->
 <div class="gate" id="gate">
 
-  <!-- 불러오는 중 -->
   <div class="gbox hide" id="g-loading">
     <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
     <p class="lead">불러오는 중입니다…</p>
   </div>
 
-  <!-- 로그인 -->
   <div class="gbox hide" id="g-login">
     <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
     <h2>로그인</h2>
@@ -29,39 +27,45 @@
     <div class="fld"><label class="f">비밀번호</label>
       <input class="inp" id="li_pw" type="password" autocomplete="current-password" placeholder="비밀번호"></div>
     <button class="btn btn-p btn-w" id="btnLogin">로그인</button>
-    <div class="gfoot">
-      <span>블로거로 처음 오셨나요?</span>
-      <button class="link" data-gate="g-signup">블로거 신청하기 →</button>
-    </div>
+    <div class="gfoot"><span>블로거로 처음 오셨나요?</span>
+      <button class="link" data-gate="g-signup">블로거 신청하기 →</button></div>
   </div>
 
-  <!-- 블로거 신청 -->
+  <!-- 블로거 신청 (구글 폼과 같은 항목) -->
   <div class="gbox wide hide" id="g-signup">
-    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>블로거 신청</span></div></div>
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>블로그 마케팅 신청서</span></div></div>
     <h2>블로거 신청</h2>
     <p class="lead">신청하시면 담당자가 블로그를 확인한 뒤 승인해 드립니다.
-      승인되면 교육 안내를 보내드립니다.</p>
+      승인되면 교육 일정을 안내해 드립니다.</p>
     <div id="suMsg"></div>
 
+    <div class="fld"><label class="f">공동체 이름</label>
+      <select class="inp" id="su_comm"><option value="">고르세요</option></select></div>
     <div class="grid g2" style="gap:0 13px">
       <div class="fld"><label class="f">이름</label><input class="inp" id="su_name" placeholder="홍길동"></div>
-      <div class="fld"><label class="f">연락처</label><input class="inp" id="su_phone" placeholder="010-0000-0000"></div>
+      <div class="fld"><label class="f">나이</label><input class="inp" id="su_age" type="number" placeholder="22"></div>
     </div>
-    <div class="fld"><label class="f">소속 공동체</label>
-      <select class="inp" id="su_comm"><option value="">고르세요</option></select></div>
-
-    <div class="fld"><label class="f">내 블로그 주소</label>
-      <input class="inp" id="su_blog" placeholder="https://blog.naver.com/아이디">
-      <div class="mono" style="margin-top:5px">내 블로그에 들어가서 주소창을 그대로 복사해 붙여넣으시면 됩니다</div></div>
     <div class="grid g2" style="gap:0 13px">
-      <div class="fld"><label class="f">이웃 수 (대략)</label><input class="inp" id="su_nb" type="number" placeholder="예: 300"></div>
-      <div class="fld"><label class="f">블로그 시작한 때</label><input class="inp" id="su_open" type="month"></div>
+      <div class="fld"><label class="f">블로그 네이버 아이디</label>
+        <input class="inp" id="su_nid" placeholder="myblogid">
+        <div class="mono" style="margin-top:5px">blog.naver.com/<b>여기에 들어가는 부분</b></div></div>
+      <div class="fld"><label class="f">블로그 별명</label><input class="inp" id="su_alias" placeholder="블로그 이름"></div>
     </div>
+    <div class="fld"><label class="f">블로그 이웃 수</label>
+      <select class="inp" id="su_band">
+        <option value="">고르세요</option>
+        <option value="0-100">0~100명</option>
+        <option value="100-500">100~500명</option>
+        <option value="500-1000">500~1000명</option>
+        <option value="1000+">1000명 이상</option>
+      </select></div>
+    <div class="fld"><label class="f">전화번호</label>
+      <input class="inp" id="su_phone" placeholder="010-0000-0000"></div>
 
     <div class="sec" style="margin-top:6px">로그인에 쓸 정보</div>
-    <div class="fld"><label class="f">이메일</label>
+    <div class="fld" id="su_emailWrap"><label class="f">이메일</label>
       <input class="inp" id="su_email" type="email" autocomplete="username" placeholder="you@example.com"></div>
-    <div class="grid g2" style="gap:0 13px">
+    <div class="grid g2" style="gap:0 13px" id="su_pwWrap">
       <div class="fld"><label class="f">비밀번호 (6자 이상)</label>
         <input class="inp" id="su_pw" type="password" autocomplete="new-password"></div>
       <div class="fld"><label class="f">비밀번호 확인</label>
@@ -69,13 +73,11 @@
     </div>
 
     <button class="btn btn-a btn-w" id="btnSignup">신청하기</button>
-    <div class="gfoot">
-      <span>이미 신청하셨나요?</span>
+    <div class="gfoot"><span>이미 신청하셨나요?</span>
       <button class="link" data-gate="g-login">로그인 →</button>
-    </div>
+      <button class="link hide" id="btnBackAdmin" style="margin-left:auto">관리자 화면으로 →</button></div>
   </div>
 
-  <!-- 승인 대기 -->
   <div class="gbox hide" id="g-pending">
     <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
     <h2>확인 중입니다</h2>
@@ -83,24 +85,22 @@
     <div class="note">보통 <b>2~3일 안에</b> 결과를 알려드립니다.
       승인되면 이 화면 대신 작업 화면이 열리고, 교육 일정을 안내해 드립니다.</div>
     <div class="gfoot"><span id="pendWho" class="mono"></span>
-      <button class="link" id="btnOut1" style="margin-left:auto">로그아웃</button></div>
+      <button class="link" data-out="1" style="margin-left:auto">로그아웃</button></div>
   </div>
 
-  <!-- 거절 -->
   <div class="gbox hide" id="g-rejected">
     <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
     <h2>아쉽지만 이번에는 함께하지 못하게 되었습니다</h2>
     <p class="lead">시간 내어 신청해 주셔서 감사합니다.</p>
     <div class="note warn" id="rejReason"></div>
-    <div class="gfoot"><button class="link" id="btnOut2" style="margin-left:auto">로그아웃</button></div>
+    <div class="gfoot"><button class="link" data-out="1" style="margin-left:auto">로그아웃</button></div>
   </div>
 
-  <!-- 정지 -->
   <div class="gbox hide" id="g-paused">
     <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
     <h2>지금은 쉬는 중으로 되어 있습니다</h2>
     <p class="lead">다시 활동하고 싶으시면 담당자에게 알려 주세요.</p>
-    <div class="gfoot"><button class="link" id="btnOut3" style="margin-left:auto">로그아웃</button></div>
+    <div class="gfoot"><button class="link" data-out="1" style="margin-left:auto">로그아웃</button></div>
   </div>
 </div>
 
@@ -110,134 +110,378 @@
     <div class="brand"><div class="mk">ESC</div>
       <div><b>블로그 센터</b><span>학원지원센터</span></div></div>
 
-    <div id="navBox">
+    <div id="navAdmin" class="hide">
       <button class="nav on" data-go="dash">오늘 할 일</button>
       <div class="navlbl">사람을 모읍니다</div>
-      <button class="nav" data-go="staff"><span class="n">1</span>직원 관리
-        <span class="cnt hide" id="cWait">0</span></button>
-      <button class="nav soon" type="button"><span class="n">2</span>직원 교육</button>
+      <button class="nav" data-go="staff"><span class="n">1</span>직원 관리 <span class="cnt hide" id="cWait">0</span></button>
+      <button class="nav" data-go="edu"><span class="n">2</span>직원 교육</button>
       <div class="navlbl">주문이 들어오면</div>
-      <button class="nav soon" type="button"><span class="n">3</span>주문 · 입금</button>
-      <button class="nav soon" type="button"><span class="n">4</span>키워드 만들기</button>
-      <button class="nav soon" type="button"><span class="n">5</span>글 나눠주기</button>
+      <button class="nav" data-go="orders"><span class="n">3</span>주문 · 입금</button>
+      <button class="nav" data-go="kw"><span class="n">4</span>키워드 만들기</button>
+      <button class="nav" data-go="assign"><span class="n">5</span>글 나눠주기 <span class="cnt hide" id="cUnassigned">0</span></button>
       <div class="navlbl">일이 돌아가면</div>
-      <button class="nav soon" type="button"><span class="n">6</span>검수하기</button>
-      <button class="nav soon" type="button"><span class="n">7</span>진행 현황</button>
-      <button class="nav soon" type="button"><span class="n">8</span>정산하기</button>
+      <button class="nav" data-go="review"><span class="n">6</span>검수하기 <span class="cnt hot hide" id="cReview">0</span></button>
+      <button class="nav" data-go="posts"><span class="n">7</span>진행 현황</button>
+      <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
+    </div>
+
+    <div id="navBlogger" class="hide">
+      <button class="nav on" data-go="b-inbox">내 작업함</button>
+      <div class="navlbl">이 순서로 하시면 됩니다</div>
+      <button class="nav" data-go="b-edu"><span class="n">1</span>교육 받기</button>
+      <button class="nav" data-go="b-work"><span class="n">2</span>글 쓰기</button>
+      <button class="nav" data-go="b-pay"><span class="n">3</span>내 정산</button>
     </div>
 
     <div class="sidefoot">
-      <b id="meName">-</b>
-      <span id="meRole">-</span>
+      <b id="meName">-</b><span id="meRole">-</span>
       <button class="nav" style="margin-top:8px" id="btnReload">↻ 새로고침</button>
-      <button class="nav" id="btnOut4">로그아웃</button>
+      <button class="nav" data-out="1">로그아웃</button>
     </div>
   </aside>
 
-  <main class="main">
-    <div class="wrap">
+  <main class="main"><div class="wrap">
 
-      <!-- 오늘 할 일 -->
-      <section class="screen on" data-screen="dash">
-        <div class="head"><h1>오늘 할 일</h1>
-          <p>지금은 <b>1번 직원 관리</b>만 실제로 동작합니다. 나머지는 순서대로 붙여 나갑니다.</p></div>
+    <!-- 오늘 할 일 -->
+    <section class="screen on" data-screen="dash">
+      <div class="head"><h1>오늘 할 일</h1>
+        <p>매일 들어와서 이 화면만 보면 됩니다. 급한 것부터 위에 뜹니다.</p></div>
+      <div class="flow" id="flowMap"></div>
+      <div class="grid g4" id="dashStats"></div>
+      <div class="sec">지금 손대야 할 것</div>
+      <div id="dashTodo"></div>
+      <div class="sec">학원별 진행</div>
+      <div id="dashOrders"></div>
+    </section>
 
-        <div class="note ok" style="margin-bottom:18px">
-          <b>연결이 끝났습니다.</b> 이 화면에 보이는 숫자는 진짜 데이터입니다.
-          블로거가 신청하면 바로 여기에 잡힙니다.
+    <!-- 1 직원 관리 -->
+    <section class="screen" data-screen="staff">
+      <div class="head"><div class="step-of">1단계 · 사람을 모읍니다</div>
+        <h1>직원 관리</h1><p>신청 받기 · 직원 목록 · 단계 관리 · 공동체</p></div>
+      <div class="tabs" data-tabs="staff">
+        <button class="on" data-pane="t-apply">신청 받기 <span class="mono" id="tcWait">0</span></button>
+        <button data-pane="t-list">직원 목록 <span class="mono" id="tcList">0</span></button>
+        <button data-pane="t-level">단계 관리 <span class="mono" id="tcCand">0</span></button>
+        <button data-pane="t-comm">공동체</button>
+      </div>
+      <div class="pane on" data-pane="t-apply">
+        <div class="tabs" data-tabs="apply" style="margin-bottom:14px">
+          <button class="on" data-sub="pending">기다리는 중 <span class="mono" id="acWait">0</span></button>
+          <button data-sub="hold">보류함 <span class="mono" id="acHold">0</span></button>
+          <button data-sub="rejected">거절함 <span class="mono" id="acNo">0</span></button>
         </div>
-
-        <div class="grid g4">
-          <div class="stat"><b id="sWait">0</b><span>승인 기다리는 사람</span></div>
-          <div class="stat"><b id="sActive">0</b><span>일하고 있는 사람</span></div>
-          <div class="stat"><b id="sHold">0</b><span>보류함</span></div>
-          <div class="stat"><b id="sComm">0</b><span>공동체</span></div>
+        <div class="note warn" style="margin-bottom:16px">
+          <b>승인 전에 블로그를 꼭 열어보세요.</b> 점수가 낮은 블로그(저품질)에 올린 글은 검색해도 안 나옵니다.
+          그런 사람에게 글을 맡기면 우리는 돈을 주는데 학원은 아무것도 못 받습니다.
+          <b>이웃 수는 본인이 고른 구간일 뿐이니, 열어보시고 실제 숫자를 적어 주세요.</b>
         </div>
+        <div id="applyList"></div>
+      </div>
+      <div class="pane hide" data-pane="t-list">
+        <div class="row" style="margin-bottom:14px">
+          <select class="inp" id="fComm" style="width:auto"><option value="">전체 공동체</option></select>
+          <input class="inp" id="fName" style="width:auto;flex:1;min-width:140px" placeholder="이름으로 찾기">
+        </div>
+        <div id="listBox"></div>
+      </div>
+      <div class="pane hide" data-pane="t-level">
+        <div class="note" style="margin-bottom:16px">
+          <b>다 1단계로 시작해서 올라갑니다.</b> 아래 기준을 넘으면 후보로 뜨고,
+          확인하신 뒤 직접 올려주시는 방식입니다. 자동으로는 안 올라갑니다.
+        </div>
+        <div class="sec">단계 설정 <small>이름과 편당 지급액을 바꿀 수 있습니다</small></div>
+        <div id="levelBox"></div>
+        <div class="sec">승급 후보 <small>기준을 넘은 사람입니다</small></div>
+        <div id="candBox"></div>
+      </div>
+      <div class="pane hide" data-pane="t-comm">
+        <div class="note" style="margin-bottom:16px">
+          정산은 공동체 단위로 나갑니다. <b>계좌를 여기에 적어두시면</b> 8번 정산에서 그대로 씁니다.
+        </div>
+        <div id="commBox"></div>
+        <div class="row" style="margin-top:14px">
+          <input class="inp" id="newComm" style="width:auto;min-width:180px" placeholder="새 공동체 이름">
+          <button class="btn btn-p" id="btnAddComm">공동체 추가</button>
+        </div>
+      </div>
+    </section>
 
-        <div class="sec">지금 할 수 있는 것</div>
-        <div class="card">
-          <div class="row" style="justify-content:space-between">
-            <div><b>블로거 모집을 시작하실 수 있습니다.</b>
-              <div class="mono" style="margin-top:4px">아래 주소를 공동체에 뿌리시면, 신청이 1번 직원 관리로 들어옵니다</div></div>
-            <button class="btn btn-a" id="btnCopyLink">모집 링크 복사</button>
+    <!-- 2 직원 교육 -->
+    <section class="screen" data-screen="edu">
+      <div class="head"><div class="step-of">2단계 · 사람을 모읍니다</div>
+        <h1>직원 교육</h1><p>줌 두 번과 영상 자료로 굴러갑니다. 1차와 영상을 마쳐야 글이 배정됩니다.</p></div>
+      <div class="sec">줌 일정</div>
+      <div id="eduSessions"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="row">
+          <select class="inp" id="ns_kind" style="width:auto">
+            <option value="t1">1차 교육</option><option value="t2">2차 교육</option></select>
+          <input class="inp" id="ns_at" type="datetime-local" style="width:auto">
+          <input class="inp" id="ns_url" style="width:auto;flex:1;min-width:160px" placeholder="줌 링크">
+          <button class="btn btn-p" id="btnAddSession">일정 추가</button>
+        </div>
+      </div>
+      <div class="note warn" style="margin-top:12px">
+        <b>줌에 못 온 사람은 녹화본을 끝까지 봐야 이수됩니다.</b>
+        영상 마지막 30초에 네 자리 숫자를 띄우고, 그 숫자를 넣어야 완료로 잡히게 해뒀습니다.
+        끝까지 봐야만 알 수 있는 숫자라 건너뛰면 못 넣습니다.
+      </div>
+      <div class="sec">영상 자료</div>
+      <div id="eduMaterials"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="row">
+          <input class="inp" id="nm_title" style="width:auto;flex:1;min-width:140px" placeholder="자료 제목">
+          <input class="inp" id="nm_url" style="width:auto;flex:1;min-width:160px" placeholder="유튜브 주소">
+          <input class="inp" id="nm_min" type="number" style="width:90px" placeholder="분">
+          <input class="inp" id="nm_code" style="width:110px" placeholder="이수 코드">
+          <label class="row" style="gap:6px"><input type="checkbox" id="nm_req" checked> 필수</label>
+          <button class="btn btn-p" id="btnAddMat">자료 올리기</button>
+        </div>
+      </div>
+      <div class="sec">누가 어디까지 왔나</div>
+      <div id="eduProgress"></div>
+    </section>
+
+    <!-- 3 주문 · 입금 -->
+    <section class="screen" data-screen="orders">
+      <div class="head"><div class="step-of">3단계 · 주문이 들어오면</div>
+        <h1>주문 · 입금</h1><p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p></div>
+      <div class="sec">새 주문 만들기</div>
+      <div class="card">
+        <div class="grid g4" style="gap:12px">
+          <div><label class="f">학원 이름</label><input class="inp" id="no_name" placeholder="성수영어학원"></div>
+          <div><label class="f">지역</label><input class="inp" id="no_region" placeholder="성수동"></div>
+          <div><label class="f">주문 편수</label><input class="inp" id="no_qty" type="number" placeholder="100"></div>
+          <div><label class="f">편당 받는 돈</label><input class="inp" id="no_price" type="number" value="6000"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <label class="f" style="margin:0">마감일</label>
+          <input class="inp" id="no_deadline" type="date" style="width:auto">
+          <button class="btn btn-p" id="btnAddOrder">주문 만들기</button>
+          <span class="mono">홈페이지 의뢰에서 넘어온 건도 여기 나옵니다</span>
+        </div>
+      </div>
+      <div class="sec">주문 목록</div>
+      <div id="orderList"></div>
+    </section>
+
+    <!-- 4 키워드 만들기 -->
+    <section class="screen" data-screen="kw">
+      <div class="head"><div class="step-of">4단계 · 주문이 들어오면</div>
+        <h1>키워드 만들기</h1><p>글마다 <b>다른 검색어</b>를 하나씩 붙입니다.</p></div>
+      <div class="note warn" style="margin-bottom:16px">
+        같은 학원 글이 서로 비슷하면 네이버가 걸러내서 <b>대부분 검색에 안 나옵니다.</b>
+        "성수동 영어학원"으로는 못 이기지만 <b>"성수동 초등 영어 내신"</b> 같은 긴 검색어는
+        경쟁이 없어서 글 1편으로도 1페이지에 갑니다.
+      </div>
+      <div class="card">
+        <div class="row" style="margin-bottom:12px">
+          <label class="f" style="margin:0">주문</label>
+          <select class="inp" id="kwOrder" style="width:auto;flex:1;min-width:200px"></select>
+        </div>
+        <div class="grid g4" style="gap:12px">
+          <div><label class="f">지역 (쉼표로 구분)</label><input class="inp" id="k1" placeholder="성수동, 성수역, 뚝섬"></div>
+          <div><label class="f">과목</label><input class="inp" id="k2" placeholder="영어, 영어회화"></div>
+          <div><label class="f">학년 · 대상</label><input class="inp" id="k3" placeholder="초등, 예비중, 중등, 고등"></div>
+          <div><label class="f">목적</label><input class="inp" id="k4" placeholder="내신, 학원 추천, 레벨테스트"></div>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn btn-a" id="kwGo">키워드 만들기</button>
+          <label class="f" style="margin:0">몇 편이요</label>
+          <input class="inp" id="kwN" type="number" value="100" style="width:88px">
+          <label class="f" style="margin:0">몇 주에 나눠서</label>
+          <input class="inp" id="kwW" type="number" value="4" style="width:70px">
+          <span class="mono" id="kwInfo">아직 안 만들었습니다</span>
+        </div>
+      </div>
+      <div class="sec">만들어진 키워드</div>
+      <div id="kwOut" class="empty">위에서 [키워드 만들기]를 눌러 보세요.</div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-p" id="kwSave" disabled>이대로 글 만들기</button>
+        <span class="mono">만들면 5번 글 나눠주기로 넘어갑니다</span>
+      </div>
+    </section>
+
+    <!-- 5 글 나눠주기 -->
+    <section class="screen" data-screen="assign">
+      <div class="head"><div class="step-of">5단계 · 주문이 들어오면</div>
+        <h1>글 나눠주기</h1><p>한 번에 여러 편을 여러 명에게 나눠줍니다.</p></div>
+      <div class="note" style="margin-bottom:16px">
+        왼쪽에서 글을 여러 개 고르고(맨 위 네모로 전체 선택), 오른쪽에서 사람을 여러 명 고른 다음
+        아래 버튼을 누르면 <b>한 번에 짝지어집니다.</b> 25편을 25명에게 주면 한 명당 한 편씩 갑니다.
+      </div>
+      <div class="row" style="margin-bottom:14px">
+        <select class="inp" id="asOrder" style="width:auto;flex:1;min-width:200px"></select>
+        <select class="inp" id="asWeek" style="width:auto"><option value="">전체 주차</option></select>
+      </div>
+      <div class="pickwrap">
+        <div class="picklist">
+          <div class="pickhead">
+            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPosts"> <b>안 나눠준 글</b></label>
+            <span class="cntx"><span id="cPosts">0</span>편 선택</span></div>
+          <div class="pickbody" id="postList"></div>
+        </div>
+        <div class="picklist">
+          <div class="pickhead">
+            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPeople"> <b>글 받을 수 있는 사람</b></label>
+            <span class="cntx"><span id="cPeople">0</span>명 선택</span></div>
+          <div class="pickbody" id="peopleList"></div>
+        </div>
+      </div>
+      <div class="pickbar">
+        <button class="btn btn-p" id="doAssign" disabled>선택한 글을 선택한 사람에게 나눠주기</button>
+        <span class="mono" id="assignHint">양쪽에서 하나 이상씩 골라 주세요</span>
+      </div>
+      <div class="note" style="margin-top:14px">
+        <b>회색으로 죽어 있는 사람은 못 고릅니다.</b> 교육을 다 안 받았거나 저품질로 표시된 경우입니다.
+        옆 숫자는 막는 게 아니라 참고용입니다 — 한 사람에게 몰리면 그 블로그가 광고 블로그로 찍힙니다.
+      </div>
+    </section>
+
+    <!-- 6 검수하기 -->
+    <section class="screen" data-screen="review">
+      <div class="head"><div class="step-of">6단계 · 일이 돌아가면</div>
+        <h1>검수하기</h1><p>학원별로 묶어서 봅니다. 학원 이름을 누르면 그 학원 글들이 열립니다.</p></div>
+      <div class="tabs" data-tabs="rv">
+        <button class="on" data-pane="rv-draft">① 원고 검수 <span class="mono" id="rcDraft">0</span></button>
+        <button data-pane="rv-live">② 올라간 글 확인 <span class="mono" id="rcLive">0</span></button>
+      </div>
+      <div class="pane on" data-pane="rv-draft">
+        <div class="dv on" data-view="acad-list">
+          <div class="note" style="margin-bottom:14px">
+            빨간 숫자가 지금 봐야 할 원고, 초록 숫자가 이미 끝낸 원고입니다.
+          </div>
+          <div id="rvAcadList"></div>
+        </div>
+        <div class="dv" data-view="acad-posts">
+          <div class="crumb"><button data-back="acad-list">← 학원 목록</button><span>/</span>
+            <b style="color:var(--ink)" id="rvAcadName"></b><span class="mono" id="rvAcadMeta"></span></div>
+          <div class="note warn" style="margin-bottom:14px">
+            <b style="background:var(--hl);padding:1px 5px;border-radius:3px">노란 줄이 그어진 글</b>
+            은 전에 수정 요청했던 글입니다. 왜 돌려보냈는지가 옆에 적혀 있습니다.
+          </div>
+          <div id="rvPosts"></div>
+        </div>
+        <div class="dv" data-view="reject">
+          <div class="crumb"><button data-back="acad-posts">← 글 목록</button><span>/</span>
+            <b style="color:var(--ink)">수정 요청</b></div>
+          <div class="card">
+            <div style="font-size:14px;margin-bottom:12px" id="rjWho"></div>
+            <div class="checks">
+              <p>고쳐야 할 것을 모두 고르세요 — 여러 개 선택할 수 있습니다</p>
+              <label><input type="checkbox" class="rj" value="다른 글과 내용이 겹칩니다"> 다른 글과 내용이 겹칩니다 <span class="mono">— 제일 많습니다</span></label>
+              <label><input type="checkbox" class="rj" value="분량이 모자랍니다 (1,200자 미만)"> 분량이 모자랍니다 (1,200자 미만)</label>
+              <label><input type="checkbox" class="rj" value="사진이 모자랍니다 (5장 미만)"> 사진이 모자랍니다 (5장 미만)</label>
+              <label><input type="checkbox" class="rj" value="제목에 정해준 검색어가 없습니다"> 제목에 정해준 검색어가 없습니다</label>
+              <label><input type="checkbox" class="rj" value="전화번호·주소가 틀렸습니다"> 전화번호 · 주소가 틀렸습니다</label>
+              <label><input type="checkbox" class="rj" value="광고 표기가 빠졌습니다"> 광고 표기가 빠졌습니다</label>
+              <label><input type="checkbox" class="rj" value="가보지 않았는데 가본 것처럼 썼습니다"> 가보지 않았는데 가본 것처럼 썼습니다</label>
+            </div>
+            <label class="f">더 할 말 (안 쓰셔도 됩니다)</label>
+            <textarea class="inp" id="rjNote" placeholder="예: 세 번째 문단이 다른 분 글과 거의 같습니다"></textarea>
+            <div class="row" style="margin-top:14px">
+              <button class="btn btn-p" id="btnReject">수정 요청 보내기</button>
+              <button class="btn" data-back="acad-posts">취소</button>
+            </div>
           </div>
         </div>
-      </section>
-
-      <!-- 1 직원 관리 -->
-      <section class="screen" data-screen="staff">
-        <div class="head"><div class="step-of">1단계 · 사람을 모읍니다</div>
-          <h1>직원 관리</h1>
-          <p>신청 받기 · 직원 목록 · 공동체를 한 곳에서 합니다.</p></div>
-
-        <div class="tabs" id="staffTabs">
-          <button class="on" data-tab="t-apply">신청 받기 <span class="mono" id="tcWait">0</span></button>
-          <button data-tab="t-list">직원 목록 <span class="mono" id="tcList">0</span></button>
-          <button data-tab="t-comm">공동체</button>
+      </div>
+      <div class="pane hide" data-pane="rv-live">
+        <div class="note" style="margin-bottom:14px">
+          원고가 통과된 뒤 블로거가 올린 글을 확인합니다. <b>여기서 확인이 끝나야 정산에 잡힙니다.</b>
         </div>
+        <div id="rvLive"></div>
+      </div>
+    </section>
 
-        <!-- 신청 받기 -->
-        <div id="t-apply">
-          <div class="tabs" id="applyTabs" style="margin-bottom:14px">
-            <button class="on" data-sub="pending">기다리는 중 <span class="mono" id="acWait">0</span></button>
-            <button data-sub="hold">보류함 <span class="mono" id="acHold">0</span></button>
-            <button data-sub="rejected">거절함 <span class="mono" id="acNo">0</span></button>
-          </div>
-          <div class="note warn" style="margin-bottom:16px">
-            <b>승인 전에 블로그를 꼭 열어보세요.</b> 네이버는 블로그마다 눈에 안 보이는 점수가 있어서,
-            점수가 낮은 블로그에 올린 글은 검색해도 안 나옵니다. 그런 사람에게 글을 맡기면
-            우리는 돈을 주는데 학원은 아무것도 못 받습니다. 아래 세 가지만 보시면 1분이면 됩니다.
-          </div>
-          <div id="applyList"></div>
-        </div>
+    <!-- 7 진행 현황 -->
+    <section class="screen" data-screen="posts">
+      <div class="head"><div class="step-of">7단계 · 일이 돌아가면</div>
+        <h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p></div>
+      <div class="row" style="margin-bottom:14px">
+        <select class="inp" id="pgOrder" style="width:auto;flex:1;min-width:180px"></select>
+        <select class="inp" id="pgStatus" style="width:auto">
+          <option value="">전체 상태</option><option value="pending">사람 못 붙임</option>
+          <option value="assigned">배정됨</option><option value="writing">쓰는 중</option>
+          <option value="submitted">원고 냄</option><option value="rework">수정 요청</option>
+          <option value="approved">원고 통과</option><option value="published">올림 · 확인 전</option>
+          <option value="verified">확인 끝</option><option value="paid">정산 완료</option>
+        </select>
+        <input class="inp" id="pgQ" style="width:auto;flex:1;min-width:140px" placeholder="검색어나 이름으로 찾기">
+      </div>
+      <div class="grid g5" id="pgStats" style="margin-bottom:16px"></div>
+      <div id="pgList"></div>
+    </section>
 
-        <!-- 직원 목록 -->
-        <div id="t-list" class="hide">
-          <div class="row" style="margin-bottom:14px">
-            <select class="inp" id="fComm" style="width:auto"><option value="">전체 공동체</option></select>
-            <input class="inp" id="fName" style="width:auto;flex:1;min-width:140px" placeholder="이름으로 찾기">
-          </div>
-          <div id="listBox"></div>
-        </div>
+    <!-- 8 정산하기 -->
+    <section class="screen" data-screen="pay">
+      <div class="head"><div class="step-of">8단계 · 일이 돌아가면</div>
+        <h1>정산하기</h1><p>공동체별로 한 번에 보냅니다. 개인에게 따로 보내지 않습니다.</p></div>
+      <div class="row" style="margin-bottom:16px">
+        <input class="inp" id="payMonth" type="month" style="width:auto">
+        <button class="btn btn-p" id="btnClose">이 달 마감하기</button>
+        <span class="mono">확인까지 끝난 글만 잡힙니다. 마감하면 금액이 고정됩니다</span>
+      </div>
+      <div class="grid g4" id="payStats" style="margin-bottom:16px"></div>
+      <div class="sec">공동체별로 보낼 돈 <small>이름을 누르면 안에 누가 얼마인지 펼쳐집니다</small></div>
+      <div id="payList"></div>
+      <div id="payDetail" style="margin-top:14px"></div>
+      <div class="note" style="margin-top:16px">
+        <b>세무 주의</b> — 공동체에 한 번에 보내면 그 돈이 <b>누구 소득으로 잡히느냐</b>가 문제가 됩니다.
+        리더 개인 계좌로 여러 명분이 들어가면 그 리더 한 사람의 소득으로 잡힐 수 있습니다.
+        세무사와 꼭 확인하세요. 원천징수 3.3%·지급명세서는 다음 단계에서 붙입니다.
+      </div>
+    </section>
 
-        <!-- 공동체 -->
-        <div id="t-comm" class="hide">
-          <div class="note" style="margin-bottom:16px">
-            공동체 이름을 실제 이름으로 바꿔 주세요. 신청 화면에서 이 목록이 그대로 보입니다.
-            정산은 공동체 단위로 나가기 때문에 <b>계좌도 여기에 적어두시면</b> 나중에 그대로 씁니다.
-          </div>
-          <div id="commBox"></div>
-          <div class="row" style="margin-top:14px">
-            <input class="inp" id="newComm" style="width:auto;min-width:180px" placeholder="새 공동체 이름">
-            <button class="btn btn-p" id="btnAddComm">공동체 추가</button>
-          </div>
-        </div>
-      </section>
+    <!-- ═══ 블로거 화면 ═══ -->
+    <section class="screen" data-screen="b-inbox">
+      <div class="head"><h1>내 작업함</h1><p id="bhWho"></p></div>
+      <div class="grid g4" id="bStats" style="margin-bottom:18px"></div>
+      <div id="bGate"></div>
+      <div class="sec">할 일</div>
+      <div id="bTodo"></div>
+      <div class="sec">내 단계</div>
+      <div id="bLevel"></div>
+    </section>
 
-      <!-- 블로거 홈 (승인된 블로거가 보는 임시 화면) -->
-      <section class="screen" data-screen="bhome">
-        <div class="head"><h1>환영합니다</h1>
-          <p id="bhWho">승인되었습니다.</p></div>
-        <div class="note ok" style="margin-bottom:18px">
-          <b>승인되었습니다.</b> 곧 교육 일정을 안내해 드립니다.
-          교육을 마치면 이 화면에 맡으신 글이 나타납니다.
-        </div>
-        <div class="grid g3">
-          <div class="stat"><b id="bhLv">1</b><span>내 단계</span></div>
-          <div class="stat"><b id="bhRate">1,000</b><span>편당 지급 (원)</span></div>
-          <div class="stat"><b>0</b><span>맡은 글</span></div>
-        </div>
-        <div class="sec">내 정보</div>
-        <div class="card"><dl class="kv" id="bhInfo"></dl></div>
-      </section>
+    <section class="screen" data-screen="b-edu">
+      <div class="head"><div class="step-of">1단계</div><h1>교육 받기</h1>
+        <p>줌 두 번을 들으시면 됩니다. 되도록 실시간으로 들어와 주세요.</p></div>
+      <div id="bEduState"></div>
+      <div class="sec">다음 일정</div>
+      <div id="bEduSessions"></div>
+      <div class="sec">봐야 할 영상 <small>다 보고 이수 코드를 넣어야 완료됩니다</small></div>
+      <div id="bEduMats"></div>
+      <div class="note warn" style="margin-top:12px">
+        <b>영상 마지막 30초에 네 자리 숫자가 나옵니다.</b> 그 숫자를 넣어야 완료 처리됩니다.
+        끝까지 봐야 알 수 있는 숫자라 건너뛰면 못 넣습니다.
+      </div>
+    </section>
 
-    </div>
-  </main>
+    <section class="screen" data-screen="b-work">
+      <div class="head"><div class="step-of">2단계</div><h1>글 쓰기</h1>
+        <p>아래 폼대로 구글 문서에 쓰시고, 링크만 붙여넣으면 끝입니다.</p></div>
+      <div id="bWork"></div>
+    </section>
+
+    <section class="screen" data-screen="b-pay">
+      <div class="head"><div class="step-of">3단계</div><h1>내 정산</h1>
+        <p>확인까지 끝난 글만 돈이 됩니다. 공동체를 통해 들어옵니다.</p></div>
+      <div class="grid g4" id="bPayStats" style="margin-bottom:18px"></div>
+      <div class="sec">내역</div>
+      <div id="bPayList"></div>
+    </section>
+
+  </div></main>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js"></script>
+<script src="js/core.js"></script>
+<script src="js/gate.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/blogger.js"></script>
+<script>ESC.boot();</script>
 </body>
 </html>
