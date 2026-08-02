@@ -78,7 +78,8 @@
 
     var s = await sb.auth.getSession();
     var session = s.data ? s.data.session : null;
-    if (!session) { gate('g-login'); return; }
+    // 모집 링크(#signup)로 들어오면 바로 신청 화면
+    if (!session) { gate(location.hash === '#signup' ? 'g-signup' : 'g-login'); return; }
 
     var a = await sb.rpc('blog_admin');
     IS_ADMIN = a.data === true;
@@ -438,9 +439,9 @@
   $('fComm').onchange = renderList;
 
   $('btnCopyLink').onclick = function () {
-    var url = location.href.split('#')[0];
+    var url = location.href.split('#')[0] + '#signup';
     navigator.clipboard.writeText(url).then(function () {
-      toast('모집 링크를 복사했습니다');
+      toast('모집 링크를 복사했습니다 — 누르면 바로 신청 화면이 열립니다');
     }, function () { prompt('이 주소를 복사해 주세요', url); });
   };
 
