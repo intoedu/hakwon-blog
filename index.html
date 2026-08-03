@@ -246,8 +246,25 @@
     <section class="screen" data-screen="orders">
       <div class="head"><div class="step-of">3단계 · 주문이 들어오면</div>
         <h1>주문 · 입금</h1><p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p></div>
-      <div class="sec">새 주문 만들기</div>
-      <div class="card">
+      <div class="note ok" style="margin-bottom:18px">
+        <b>주문은 보통 홈페이지에서 저절로 들어옵니다.</b>
+        학원이 신청하면 관리자페이지 의뢰 상세에 <b>[🖊 블로그 주문 만들기]</b> 버튼이 생기고,
+        그걸 누르면 지역·과목·대상·목적·정보팩·사진까지 여기로 그대로 넘어옵니다.
+        <b>손으로 만드실 일은 거의 없습니다.</b>
+      </div>
+
+      <div class="sec">주문 목록</div>
+      <div id="orderList"></div>
+
+      <details class="card" style="margin-top:22px">
+        <summary style="cursor:pointer;font-weight:700;font-size:13.5px">
+          직접 주문 만들기 <span class="mono">— 눌러서 펼치기</span></summary>
+        <div class="note warn" style="margin:14px 0">
+          <b>이럴 때만 쓰세요.</b> 학원이 전화·카톡으로 바로 주문했을 때,
+          이미 거래하던 학원이 신청서 없이 재주문할 때, 우리가 먼저 제안해서 성사됐을 때.<br>
+          <b>손으로 만들면 글감(지역·과목·대상·목적)과 사진이 비어 있습니다.</b>
+          아래 주문 카드에서 직접 채워 넣으셔야 합니다.
+        </div>
         <div class="grid g4" style="gap:12px">
           <div><label class="f">학원 이름</label><input class="inp" id="no_name" placeholder="성수영어학원"></div>
           <div><label class="f">지역</label><input class="inp" id="no_region" placeholder="성수동"></div>
@@ -258,11 +275,8 @@
           <label class="f" style="margin:0">마감일</label>
           <input class="inp" id="no_deadline" type="date" style="width:auto">
           <button class="btn btn-p" id="btnAddOrder">주문 만들기</button>
-          <span class="mono">홈페이지 의뢰에서 넘어온 건도 여기 나옵니다</span>
         </div>
-      </div>
-      <div class="sec">주문 목록</div>
-      <div id="orderList"></div>
+      </details>
     </section>
 
     <!-- 4 키워드 만들기 -->

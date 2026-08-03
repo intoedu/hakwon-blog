@@ -33,11 +33,24 @@
     var opts = A.ORDERS.map(function (o) {
       return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)</option>';
     }).join('');
-    ['kwOrder', 'asOrder'].forEach(function (id) {
-      var el = $(id); if (!el) return;
-      var keep = el.value; el.innerHTML = opts || '<option value="">주문이 없습니다</option>';
-      if (keep) el.value = keep;
-    });
+    var el0 = $('kwOrder');
+    if (el0) { var k0 = el0.value; el0.innerHTML = opts || '<option value="">주문이 없습니다</option>'; if (k0) el0.value = k0; }
+
+    /* 5번은 "나눠줄 글이 남은 주문"을 먼저 보여줍니다 */
+    var left = function (id) {
+      return POSTS.filter(function (p) { return p.order_id === id && p.status === 'pending'; }).length;
+    };
+    var sorted = A.ORDERS.slice().sort(function (a, b) { return left(b.id) - left(a.id); });
+    var el1 = $('asOrder');
+    if (el1) {
+      var k1 = el1.value;
+      el1.innerHTML = sorted.map(function (o) {
+        var n = left(o.id);
+        return '<option value="' + o.id + '">' + esc(o.academy_name)
+          + (n ? ' — 나눠줄 글 ' + n + '편' : ' — 남은 글 없음') + '</option>';
+      }).join('') || '<option value="">주문이 없습니다</option>';
+      if (k1 && A.ORDERS.some(function (o) { return o.id === k1; })) el1.value = k1;
+    }
     $('pgOrder').innerHTML = '<option value="">전체 주문</option>' + opts;
     $('fComm').innerHTML = '<option value="">전체 공동체</option>' + A.COMMS.map(function (c) {
       return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
@@ -410,7 +423,16 @@
               + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
             : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>'
         + '<div class="row" style="margin-top:12px"><button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>'
-        + '<button class="btn btn-s" data-gokw="' + o.id + '">4 키워드 만들기 →</button></div>'
+        + '<button class="btn btn-s" data-gokw="' + o.id + '">4 키워드 만들기 →</button>'
+        + '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
+        + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-ostatus="' + o.id + '">'
+        + ['active', 'paused', 'done', 'ended'].map(function (s) {
+          var ko = { active: '진행 중', paused: '잠시 멈춤', done: '다 끝냄', ended: '종료' }[s];
+          return '<option value="' + s + '"' + (o.status === s ? ' selected' : '') + '>' + ko + '</option>';
+        }).join('') + '</select>'
+        + '<button class="btn btn-s" data-delorder="' + o.id + '" '
+        + 'title="최고관리자만 지울 수 있습니다">🗑 주문 삭제</button>'
+        + '</span></div>'
         + '</div>';
     }).join('') : A.empty('아직 주문이 없습니다. 위에서 만드시면 됩니다.');
   }
@@ -879,6 +901,21 @@
       A.toast('글감을 저장했습니다'); await A.loadAdmin(); return;
     }
 
+    if ((t = e.target.closest('[data-delorder]'))) {
+      var o0 = A.ORDERS.filter(function (x) { return x.id === t.dataset.delorder; })[0] || {};
+      var made = (prog(o0.id).made || 0);
+      if (!confirm('「' + (o0.academy_name || '') + '」 주문을 지울까요?\n\n'
+        + '만들어둔 글 ' + made + '편도 같이 지워집니다. 되돌릴 수 없습니다.\n'
+        + '기록을 남기고 싶으시면 취소하고 상태를 「종료」로 바꿔 주세요.')) return;
+      t.disabled = true;
+      try {
+        var res = await A.rpc('order_delete', { p_order: t.dataset.delorder });
+        A.toast((res.academy || '') + ' 주문과 글 ' + (res.posts || 0) + '편을 지웠습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast(err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-send]'))) {
       if (!confirm('이 공동체에 돈을 보낸 것으로 표시할까요?\n표시하면 해당 글들이 정산 완료로 바뀝니다.')) return;
       t.disabled = true;
@@ -981,6 +1018,12 @@
       document.querySelectorAll('.pk-ppl').forEach(function (c) { c.checked = e.target.checked; });
     if (e.target.classList.contains('pk-post') || e.target.classList.contains('pk-ppl')
       || e.target.id === 'allPosts' || e.target.id === 'allPeople') refreshPick();
+
+    if (e.target.dataset && e.target.dataset.ostatus) {
+      try { await A.rpc('order_close', { p_order: e.target.dataset.ostatus, p_status: e.target.value });
+        A.toast('주문 상태를 바꿨습니다'); await A.loadAdmin(); }
+      catch (err) { A.toast('실패: ' + err.message); }
+    }
 
     if (e.target.dataset && e.target.dataset.lv) {
       try { await A.rpc('blogger_set_level', { p_id: e.target.dataset.lv, p_level: Number(e.target.value) });
