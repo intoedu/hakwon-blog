@@ -373,9 +373,10 @@
   function renderOrders() {
     $('orderList').innerHTML = A.ORDERS.length ? A.ORDERS.map(function (o) {
       var p = prog(o.id);
-      return '<div class="card" style="margin-bottom:12px">'
+      return '<div class="card" style="margin-bottom:12px" data-ordercard="' + o.id + '">'
         + '<div class="row" style="justify-content:space-between"><div>'
-        + '<h3 style="font-size:16.5px">' + esc(o.academy_name) + '</h3>'
+        + '<h3 style="font-size:16.5px">' + esc(o.academy_name)
+        + (o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '') + '</h3>'
         + '<div class="mono" style="margin-top:3px">' + esc(o.region || '지역 미입력') + ' · '
         + (o.is_premium ? '프리미엄 회원' : '일반 회원') + '</div></div>'
         + (o.paid_at ? '<span class="chip c-ok">입금 확인됨</span>' : '<span class="chip c-wait">입금 기다리는 중</span>')

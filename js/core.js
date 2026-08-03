@@ -189,6 +189,7 @@ window.ESC = (function () {
       A.$('meRole').textContent = '블로그 센터 관리자';
       A.openApp('dash');
       await A.loadAdmin();
+      A.applyHash();
       return;
     }
 
@@ -216,6 +217,27 @@ window.ESC = (function () {
     A.openApp('b-inbox');
     await A.loadBlogger();
   };
+
+  /* 기존 관리자페이지에서 #order=<id> 로 바로 들어올 수 있게 */
+  A.applyHash = function () {
+    var h = location.hash.replace(/^#/, '');
+    if (!h) return;
+    var m = h.match(/^order=(.+)$/);
+    if (m) {
+      A.show('orders');
+      setTimeout(function () {
+        var el = document.querySelector('[data-ordercard="' + m[1] + '"]');
+        if (el) {
+          el.scrollIntoView({ block: 'center' });
+          el.style.outline = '2px solid var(--amber)';
+          el.style.outlineOffset = '3px';
+        }
+      }, 300);
+      return;
+    }
+    if (document.querySelector('.screen[data-screen="' + h + '"]')) A.show(h);
+  };
+  window.addEventListener('hashchange', function () { if (A.IS_ADMIN) A.applyHash(); });
 
   A.loadCommsPublic = async function () {
     var list = await A.sel('communities_public');
