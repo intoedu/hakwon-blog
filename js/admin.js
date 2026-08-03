@@ -36,7 +36,7 @@
     var el0 = $('kwOrder');
     if (el0) { var k0 = el0.value; el0.innerHTML = opts || '<option value="">주문이 없습니다</option>'; if (k0) el0.value = k0; }
 
-    /* 5번은 "나눠줄 글이 남은 주문"을 먼저 보여줍니다 */
+    /* 5번은 "맡길 글이 남은 주문"을 먼저 보여줍니다 */
     var left = function (id) {
       return POSTS.filter(function (p) { return p.order_id === id && p.status === 'pending'; }).length;
     };
@@ -47,7 +47,7 @@
       el1.innerHTML = sorted.map(function (o) {
         var n = left(o.id);
         return '<option value="' + o.id + '">' + esc(o.academy_name)
-          + (n ? ' — 나눠줄 글 ' + n + '편' : ' — 남은 글 없음') + '</option>';
+          + (n ? ' — 맡길 글 ' + n + '편' : ' — 다 맡김') + '</option>';
       }).join('') || '<option value="">주문이 없습니다</option>';
       if (k1 && A.ORDERS.some(function (o) { return o.id === k1; })) el1.value = k1;
     }
@@ -81,7 +81,7 @@
 
     $('dashStats').innerHTML =
       st(toReview + toVerify, '검수해야 할 글', toReview + toVerify > 0)
-      + st(unass, '사람을 못 붙인 글') + st(late, '마감 지난 글', late > 0)
+      + st(unass, '담당자 미정') + st(late, '마감 지난 글', late > 0)
       + st(wait, '승인 기다리는 사람', wait > 0);
 
     var badge = function (id, n, hot) {
@@ -94,8 +94,8 @@
     var todo = [];
     if (toReview + toVerify) todo.push(job('검수해야 할 글 ' + (toReview + toVerify) + '편',
       '원고 ' + toReview + '편 · 올라간 글 확인 ' + toVerify + '편', 'review', '6 검수하기 →', true));
-    if (unass) todo.push(job('사람을 못 붙인 글 ' + unass + '편',
-      '한 번에 나눠줄 수 있습니다', 'assign', '5 글 나눠주기 →'));
+    if (unass) todo.push(job('담당자 미정 ' + unass + '편',
+      '한 번에 맡길 수 있습니다', 'assign', '5 글 나눠주기 →'));
     if (wait) todo.push(job('승인 기다리는 사람 ' + wait + '명',
       '블로그를 열어보고 판단하세요 · 1명당 1분', 'staff', '1 직원 관리 →'));
     var cand = candidates();
@@ -237,12 +237,19 @@
   }
 
   /* 승급 후보 — 이웃 수보다 우리가 직접 잰 값(통과율·노출 순위)을 먼저 봅니다 */
+  /* 실력은 우리가 직접 잰 값(누적·통과율·검색 노출)으로 보고,
+     이웃 수는 "최소 이만큼은 되어야 한다"는 문턱으로만 씁니다. */
   var RULES = [
-    { lv: 2, done: 5, pass: 70, rank: null },
-    { lv: 3, done: 20, pass: 80, rank: 20 },
-    { lv: 4, done: 60, pass: 90, rank: 10 },
-    { lv: 5, done: 150, pass: 95, rank: 7 }
+    { lv: 2, done: 5, pass: 70, rank: null, nb: 100 },
+    { lv: 3, done: 20, pass: 80, rank: 20, nb: 300 },
+    { lv: 4, done: 60, pass: 90, rank: 10, nb: 800 },
+    { lv: 5, done: 150, pass: 95, rank: 7, nb: 1500 }
   ];
+  function nbOf(p) {
+    if (p.neighbors != null) return p.neighbors;          /* 관리자가 확인한 숫자가 우선 */
+    var m = { '0-100': 50, '100-500': 300, '500-1000': 750, '1000+': 1200 };
+    return m[p.neighbors_band] != null ? m[p.neighbors_band] : null;  /* 없으면 본인 신고 구간의 중간값 */
+  }
   function candidates() {
     var out = [];
     A.PEOPLE.forEach(function (p) {
@@ -254,7 +261,9 @@
       if ((s.done_total || 0) < r.done) return;
       if (pass < r.pass) return;
       if (r.rank && (s.avg_rank == null || s.avg_rank > r.rank)) return;
-      out.push({ p: p, s: s, pass: pass, next: r.lv });
+      var nb = nbOf(p);
+      if (nb == null || nb < r.nb) return;                /* 이웃 수 문턱 */
+      out.push({ p: p, s: s, pass: pass, next: r.lv, nb: nb });
     });
     return out;
   }
@@ -269,7 +278,8 @@
           + '<td><input class="inp" style="width:110px;padding:5px 8px" data-lf="name" data-llv="' + l.lv + '" value="' + esc(l.name) + '"></td>'
           + '<td><input class="inp" style="width:95px;padding:5px 8px" type="number" data-lf="rate" data-llv="' + l.lv + '" value="' + l.rate + '"></td>'
           + '<td class="mono">' + (r ? '누적 ' + r.done + '편 · 통과율 ' + r.pass + '%'
-            + (r.rank ? ' · 평균 노출 ' + r.rank + '위 안' : '') : '모두 여기서 시작') + '</td>'
+            + (r.rank ? ' · 평균 노출 ' + r.rank + '위 안' : '')
+            + ' · 이웃 ' + won(r.nb) + '명 이상' : '모두 여기서 시작') + '</td>'
           + '<td class="num">' + n + '명</td></tr>';
       }).join('') + '</tbody></table></div>'
       + '<div class="row" style="margin-top:12px"><button class="btn btn-p" id="btnSaveLevels">단계 설정 저장</button>'
@@ -319,10 +329,24 @@
           return '<td><input class="inp" style="padding:5px 8px;font-size:13px;min-width:100px" '
             + 'data-cf="' + f + '" data-cid="' + c.id + '" value="' + esc(c[f] || '') + '" placeholder="' + ph + '"></td>';
         }
+        var mem = A.PEOPLE.filter(function (p) {
+          return p.community_id === c.id && ['approved', 'paused', 'pending', 'hold'].indexOf(p.status) >= 0;
+        });
         return '<tr>' + cell('name', '이름') + cell('leader_name', '리더') + cell('leader_phone', '연락처')
           + cell('bank_name', '국민') + cell('bank_no', '000-00-0000') + cell('bank_holder', '예금주')
           + '<td class="num">' + n + '명</td>'
-          + '<td><button class="btn btn-s" data-savec="' + c.id + '">저장</button></td></tr>';
+          + '<td><div class="row"><button class="btn btn-s" data-savec="' + c.id + '">저장</button>'
+          + (mem.length ? '<button class="btn btn-s" data-mem="' + c.id + '">멤버 보기</button>' : '') + '</div></td></tr>'
+          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="8"><div class="memlist">'
+            + mem.map(function (p) {
+              var s2 = stat(p.id);
+              return '<span class="m">' + A.lvBadge(p.level) + ' <b>' + esc(p.name) + '</b>'
+                + (p.status === 'approved'
+                  ? ' <span class="mono">이번 달 ' + (s2.done_month || 0) + '편 · 누적 ' + (s2.done_total || 0) + '편</span>'
+                  : ' ' + { pending: '<span class="chip c-wait">대기</span>', hold: '<span class="chip c-off">보류</span>',
+                    paused: '<span class="chip c-off">쉬는 중</span>' }[p.status])
+                + '</span>';
+            }).join('') + '</div></td></tr>' : '');
       }).join('') + '</tbody></table></div>' : A.empty('공동체가 없습니다.');
   }
 
@@ -517,10 +541,12 @@
       }).join('');
 
     $('postList').innerHTML = mine.length ? mine.map(function (p, i) {
-      return '<label class="pickrow"><input type="checkbox" class="pk-post" value="' + p.id + '">'
+      return '<label class="pickrow" draggable="true" data-post="' + p.id + '">'
+        + '<span class="grip" title="끌어서 오른쪽 직원에게 놓으세요">⠿</span>'
+        + '<input type="checkbox" class="pk-post" value="' + p.id + '">'
         + '<span><b>' + esc(p.keyword || '(제목 없음)') + '</b></span>'
         + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span></label>';
-    }).join('') : '<div class="empty">나눠줄 글이 없습니다.</div>';
+    }).join('') : '<div class="empty">맡길 글이 없습니다.</div>';
 
     var ppl = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
     $('peopleList').innerHTML = ppl.length ? ppl.map(function (p) {
@@ -531,7 +557,8 @@
           + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id)) + '</span></span>'
           + '<span class="sub" style="color:var(--bad)">' + (p.quality === 'low' ? '저품질' : '교육 미완') + '</span></label>';
       }
-      return '<label class="pickrow"><input type="checkbox" class="pk-ppl" value="' + p.id + '">'
+      return '<label class="pickrow drop" data-drop="' + p.id + '">'
+        + '<input type="checkbox" class="pk-ppl" value="' + p.id + '">'
         + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id))
         + ' · ' + p.level + '단계</span></span>'
         + '<span class="sub">이번 달 ' + (s.done_month || 0) + '편 · 이 학원 ' + here + '편</span></label>';
@@ -547,11 +574,42 @@
     var a = picked('pk-post').length, b = picked('pk-ppl').length;
     $('cPosts').textContent = a; $('cPeople').textContent = b;
     $('doAssign').disabled = !(a && b);
-    $('assignHint').textContent = (!a || !b) ? '양쪽에서 하나 이상씩 골라 주세요'
+    $('assignHint').textContent = (!a || !b) ? '왼쪽에서 글, 오른쪽에서 직원을 골라 주세요'
       : a === b ? a + '편을 ' + b + '명에게 한 편씩 줍니다'
         : a > b ? a + '편을 ' + b + '명에게 골고루 나눕니다 (한 명당 최대 ' + Math.ceil(a / b) + '편)'
           : a + '편을 ' + b + '명 중 앞에서 ' + a + '명에게 한 편씩 줍니다';
   }
+  /* 끌어서 맡기기 — 체크한 글이 있으면 그것들을, 없으면 끌고 온 글 하나를 맡깁니다 */
+  var DRAG = [];
+  document.addEventListener('dragstart', function (e) {
+    var row = e.target.closest('[data-post]'); if (!row) return;
+    var checked = picked('pk-post');
+    DRAG = checked.indexOf(row.dataset.post) >= 0 ? checked : [row.dataset.post];
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', DRAG.join(',')); } catch (x) { }
+    document.querySelectorAll('.drop').forEach(function (d) { d.classList.add('canhit'); });
+  });
+  document.addEventListener('dragend', function () {
+    document.querySelectorAll('.drop').forEach(function (d) { d.classList.remove('canhit', 'over'); });
+  });
+  document.addEventListener('dragover', function (e) {
+    var d = e.target.closest('.drop'); if (!d || !DRAG.length) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move'; d.classList.add('over');
+  });
+  document.addEventListener('dragleave', function (e) {
+    var d = e.target.closest('.drop'); if (d) d.classList.remove('over');
+  });
+  document.addEventListener('drop', async function (e) {
+    var d = e.target.closest('.drop'); if (!d || !DRAG.length) return;
+    e.preventDefault(); d.classList.remove('over');
+    var posts = DRAG.slice(); DRAG = [];
+    try {
+      var n = await A.rpc('posts_assign', { p_posts: posts, p_bloggers: [d.dataset.drop] });
+      A.toast(n + '편을 맡겼습니다');
+      await A.loadAdmin();
+    } catch (err) { A.toast('실패: ' + err.message); }
+  });
+
   $('asOrder').onchange = function () { $('asWeek').value = ''; renderAssign(); };
   $('asWeek').onchange = renderAssign;
   $('doAssign').onclick = async function () {
@@ -591,52 +649,84 @@
           + '<td class="mono">' + (d == null ? '-' : d >= 0 ? d + '일' : '지남') + '</td></tr>';
       }).join('') + '</tbody></table></div>' : A.empty('주문이 없습니다.');
 
-    $('rvLive').innerHTML = live.length ? live.map(function (p) {
-      var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
-      return '<div class="card" style="margin-bottom:10px"><div class="row" style="gap:14px;align-items:flex-start">'
-        + '<div style="flex:1;min-width:200px"><h4 style="font-size:14.5px">' + esc(p.keyword || '')
-        + ' <span class="mono">' + esc(orderName(p.order_id)) + '</span></h4>'
-        + '<div class="mono" style="margin:5px 0 10px">' + esc(b.name || '') + ' · '
-        + esc(A.commName(b.community_id)) + ' · ' + esc((p.published_url || '').slice(0, 46)) + '</div>'
-        + '<div class="row"><a class="btn btn-s" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 열어보기 ↗</a>'
-        + '<a class="btn btn-s" href="https://search.naver.com/search.naver?query=' + encodeURIComponent(p.keyword || '')
-        + '" target="_blank" rel="noopener">"' + esc(p.keyword || '') + '" 검색 ↗</a></div></div>'
-        + '<div style="min-width:170px"><label class="f">검색해서 몇 번째에 나왔나요</label>'
-        + '<input class="inp" type="number" data-rank="' + p.id + '" placeholder="예: 4">'
-        + '<div class="mono" style="margin-top:5px">안 적으셔도 됩니다</div></div>'
-        + '<button class="btn btn-a" data-verify="' + p.id + '">확인 완료</button>'
-        + '<button class="btn btn-s" data-unverify="' + p.id + '">문제 있음</button>'
-        + '</div></div>';
-    }).join('') : A.empty('확인할 글이 없습니다.');
+    renderLive();
   }
 
   function openAcad(oid) {
     RV_ORDER = oid;
     var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0] || {};
-    var rows = POSTS.filter(function (p) { return p.order_id === oid && p.status === 'submitted'; });
+    var all = POSTS.filter(function (p) { return p.order_id === oid && p.status !== 'cancelled'; });
+    var todo = all.filter(function (p) { return p.status === 'submitted'; });
+    var rest = all.filter(function (p) { return p.status !== 'submitted'; });
+    var d = A.dday(o.deadline);
+
     $('rvAcadName').textContent = o.academy_name || '';
-    $('rvAcadMeta').textContent = o.total_qty + '편 주문 · 마감 ' + (o.deadline || '-') + ' · 봐야 할 원고 ' + rows.length + '편';
-    $('rvPosts').innerHTML = rows.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>공동체</th><th>누가</th><th>블로그 제목</th><th>원고 낸 날</th>'
-      + '<th>수정 요청했던 글</th><th>처리</th></tr></thead><tbody>'
-      + rows.map(function (p) {
-        var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
-        var again = p.rework_count > 0;
-        return '<tr' + (again ? ' class="sent"' : '') + '>'
-          + '<td>' + esc(A.commName(b.community_id)) + '</td>'
-          + '<td><b>' + esc(b.name || '-') + '</b> ' + A.lvBadge(b.level || 1) + '</td>'
-          + '<td><b>' + esc(p.keyword || '') + '</b></td>'
-          + '<td class="mono">' + A.fdate(p.submitted_at) + '</td>'
-          + '<td>' + (again ? '<b style="color:var(--bad)">' + p.rework_count + '번 · '
+    $('rvAcadMeta').innerHTML = o.total_qty + '편 주문 · <b style="color:var(--amber)">마감 '
+      + (o.deadline || '-') + (d == null ? '' : d >= 0 ? ' (' + d + '일 남음)' : ' (지났습니다)')
+      + '</b> · 봐야 할 원고 ' + todo.length + '편 · 만든 글 ' + all.length + '편';
+
+    function row(p, dim) {
+      var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
+      var again = p.rework_count > 0;
+      var cls = dim ? ' style="opacity:.5"' : (again ? ' class="sent"' : '');
+      return '<tr' + cls + '>'
+        + '<td>' + (b.name ? esc(A.commName(b.community_id)) : '<span class="mono">—</span>') + '</td>'
+        + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b> ' + A.lvBadge(b.level || 1)
+          : '<span class="mono">담당자 미정</span>') + '</td>'
+        + '<td><b>' + esc(p.keyword || '') + '</b></td>'
+        + '<td class="mono">' + (p.submitted_at ? A.fdate(p.submitted_at) : '아직') + '</td>'
+        + '<td>' + (dim ? A.stChip(p.status)
+          : again ? '<b style="color:var(--bad)">' + p.rework_count + '번 · '
             + esc((p.reject_reasons || []).join(', ') || p.review_note || '') + '</b>'
             : '<span class="chip c-off">처음</span>') + '</td>'
-          + '<td><div class="row">'
-          + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">원고 열기 ↗</a>' : '')
-          + '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
-          + '<button class="btn btn-s" data-openrj="' + p.id + '">수정 요청</button>'
-          + '</div></td></tr>';
-      }).join('') + '</tbody></table></div>' : A.empty('볼 원고가 없습니다.');
+        + '<td><div class="row">'
+        + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">원고 열기 ↗</a>' : '')
+        + (dim ? '' : '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
+          + '<button class="btn btn-s" data-openrj="' + p.id + '">수정 요청</button>')
+        + '</div></td></tr>';
+    }
+    var head = '<thead><tr><th>공동체</th><th>누가</th><th>블로그 제목</th><th>원고 낸 날</th>'
+      + '<th>수정 요청했던 글</th><th>처리</th></tr></thead>';
+
+    $('rvPosts').innerHTML =
+      (todo.length ? '<div class="tblbox tblscroll"><table>' + head + '<tbody>'
+        + todo.map(function (p) { return row(p, false); }).join('') + '</tbody></table></div>'
+        : A.empty('지금 볼 원고가 없습니다.'))
+      + (rest.length ? '<div class="sec">아직 원고가 안 온 글 · 이미 끝난 글 <small>'
+        + rest.length + '편 — 회색은 아직 손댈 게 없다는 뜻입니다</small></div>'
+        + '<div class="tblbox tblscroll"><table>' + head + '<tbody>'
+        + rest.map(function (p) { return row(p, true); }).join('') + '</tbody></table></div>' : '');
     A.view('acad-posts');
+  }
+
+  /* 올라간 글 확인 — 학원별로 묶고, 블로거 실명·공동체는 빼둡니다 */
+  function renderLive() {
+    var live = POSTS.filter(function (p) { return p.status === 'published'; });
+    if (!live.length) { $('rvLive').innerHTML = A.empty('확인할 글이 없습니다.'); return; }
+    var byOrder = {};
+    live.forEach(function (p) { (byOrder[p.order_id] = byOrder[p.order_id] || []).push(p); });
+
+    $('rvLive').innerHTML = Object.keys(byOrder).map(function (oid) {
+      var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0] || {};
+      var d = A.dday(o.deadline);
+      return '<div class="sec">' + esc(o.academy_name) + ' <small>'
+        + byOrder[oid].length + '편 확인 대기 · 마감 ' + (o.deadline || '-')
+        + (d == null ? '' : d >= 0 ? ' (' + d + '일 남음)' : ' (지났습니다)') + '</small></div>'
+        + byOrder[oid].map(function (p) {
+          return '<div class="card" style="margin-bottom:10px"><div class="row" style="gap:14px;align-items:flex-start">'
+            + '<div style="flex:1;min-width:200px"><h4 style="font-size:14.5px">' + esc(p.keyword || '') + '</h4>'
+            + '<div class="mono" style="margin:5px 0 10px">' + esc((p.published_url || '').slice(0, 52)) + '</div>'
+            + '<div class="row"><a class="btn btn-s" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 열어보기 ↗</a>'
+            + '<a class="btn btn-s" href="https://search.naver.com/search.naver?query=' + encodeURIComponent(p.keyword || '')
+            + '" target="_blank" rel="noopener">이 검색어로 검색해보기 ↗</a></div></div>'
+            + '<div style="min-width:180px"><label class="f">몇 번째에 나왔나요</label>'
+            + '<input class="inp" type="number" data-rank="' + p.id + '" placeholder="예: 4">'
+            + '<div class="mono" style="margin-top:5px">위 [검색해보기] 로 나온 순서<br>안 적으셔도 됩니다</div></div>'
+            + '<button class="btn btn-a" data-verify="' + p.id + '">확인 완료</button>'
+            + '<button class="btn btn-s" data-unverify="' + p.id + '">문제 있음</button>'
+            + '</div></div>';
+        }).join('');
+    }).join('');
   }
 
   $('btnReject').onclick = async function () {
@@ -656,19 +746,24 @@
   };
 
   /* ═══ 7 진행 현황 ═══ */
+  function pgPicked() {
+    return [].map.call(document.querySelectorAll('#pgStatus input:checked'), function (c) { return c.value; });
+  }
+  var PG_ROWS = [];
   function renderProgress() {
-    var oid = $('pgOrder').value, stt = $('pgStatus').value, q = ($('pgQ').value || '').trim();
+    var oid = $('pgOrder').value, sel = pgPicked(), q = ($('pgQ').value || '').trim();
     var rows = POSTS.filter(function (p) {
       if (oid && p.order_id !== oid) return false;
-      if (stt && p.status !== stt) return false;
+      if (sel.length && sel.indexOf(p.status) < 0) return false;
       if (q) {
         var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
         if ((p.keyword || '').indexOf(q) < 0 && (!b || b.name.indexOf(q) < 0)) return false;
       }
       return true;
     });
+    PG_ROWS = rows;
     var c = function (s) { return POSTS.filter(function (p) { return (!oid || p.order_id === oid) && p.status === s; }).length; };
-    $('pgStats').innerHTML = st(c('pending'), '사람 못 붙임')
+    $('pgStats').innerHTML = st(c('pending'), '담당자 미정')
       + st(c('writing') + c('assigned'), '쓰는 중') + st(c('rework'), '수정 요청', c('rework') > 0)
       + st(c('submitted') + c('published'), '검수 대기')
       + st(c('verified') + c('paid'), '확인 끝');
@@ -693,8 +788,37 @@
       + (rows.length > 300 ? '<div class="mono" style="margin-top:8px">앞의 300개만 보여드립니다. 필터를 좁혀 주세요.</div>' : '')
       : A.empty('해당하는 글이 없습니다.');
   }
-  ['pgOrder', 'pgStatus'].forEach(function (id) { $(id).onchange = renderProgress; });
+  $('pgOrder').onchange = renderProgress;
+  $('pgStatus').addEventListener('change', renderProgress);
+  $('pgClear').onclick = function () {
+    document.querySelectorAll('#pgStatus input').forEach(function (c) { c.checked = false; });
+    renderProgress();
+  };
   $('pgQ').oninput = renderProgress;
+
+  /* 지금 보이는 목록을 파일로 — 구글 시트·엑셀에서 바로 열립니다 */
+  $('btnExport').onclick = function () {
+    if (!PG_ROWS.length) { A.toast('내보낼 글이 없습니다'); return; }
+    var head = ['학원', '번호', '노리는 검색어', '주차', '공동체', '담당', '상태',
+      '마감일', '올린 날', '올린 글 주소', '검색 노출'];
+    var body = PG_ROWS.map(function (p) {
+      var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
+      return [orderName(p.order_id), p.seq || '', p.keyword || '', p.week ? p.week + '주차' : '',
+        b ? A.commName(b.community_id) : '', b ? b.name : '',
+        (A.ST[p.status] || [p.status])[0], p.due_date || '',
+        p.published_at ? A.fdate(p.published_at) : '', p.published_url || '',
+        p.keyword_rank ? p.keyword_rank + '위' : ''];
+    });
+    var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+    var csv = [head].concat(body).map(function (r) { return r.map(q).join(','); }).join('\r\n');
+    var oid = $('pgOrder').value;
+    var name = 'ESC 블로그 진행현황 ' + (oid ? orderName(oid) + ' ' : '') + A.today() + '.csv';
+    var url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }));
+    var a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    A.toast(PG_ROWS.length + '편을 파일로 저장했습니다');
+  };
 
   /* ═══ 8 정산 ═══ */
   async function loadPay() {
@@ -768,6 +892,7 @@
     if (name === 'edu') loadEdu();
     if (name === 'pay') loadPay();
     if (name === 'review') A.view('acad-list');
+    if (name === 'kw' && $('kwOrder').value) $('kwOrder').onchange();  /* 주문 글감을 자동으로 채웁니다 */
   };
 
   /* ═══ 동작 ═══ */
@@ -776,6 +901,11 @@
 
     if ((t = e.target.closest('[data-openacad]'))) { openAcad(t.dataset.openacad); return; }
     if ((t = e.target.closest('[data-opencp]'))) { openCP(t.dataset.opencp); return; }
+    if ((t = e.target.closest('[data-mem]'))) {
+      var mr = document.querySelector('[data-memrow="' + t.dataset.mem + '"]');
+      if (mr) { mr.classList.toggle('hide'); t.textContent = mr.classList.contains('hide') ? '멤버 보기' : '접기'; }
+      return;
+    }
     if ((t = e.target.closest('[data-gokw]'))) {
       $('kwOrder').value = t.dataset.gokw; $('kwOrder').onchange(); A.show('kw'); return;
     }

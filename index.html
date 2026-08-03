@@ -331,20 +331,20 @@
       <div class="pickwrap">
         <div class="picklist">
           <div class="pickhead">
-            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPosts"> <b>안 나눠준 글</b></label>
+            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPosts"> <b>아직 맡은 사람이 없는 글</b></label>
             <span class="cntx"><span id="cPosts">0</span>편 선택</span></div>
           <div class="pickbody" id="postList"></div>
         </div>
         <div class="picklist">
           <div class="pickhead">
-            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPeople"> <b>글 받을 수 있는 사람</b></label>
+            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPeople"> <b>지금 맡길 수 있는 직원</b></label>
             <span class="cntx"><span id="cPeople">0</span>명 선택</span></div>
           <div class="pickbody" id="peopleList"></div>
         </div>
       </div>
       <div class="pickbar">
         <button class="btn btn-p" id="doAssign" disabled>선택한 글을 선택한 사람에게 나눠주기</button>
-        <span class="mono" id="assignHint">양쪽에서 하나 이상씩 골라 주세요</span>
+        <span class="mono" id="assignHint">왼쪽에서 글, 오른쪽에서 직원을 골라 주세요</span>
       </div>
       <div class="note" style="margin-top:14px">
         <b>회색으로 죽어 있는 사람은 못 고릅니다.</b> 교육을 다 안 받았거나 저품질로 표시된 경우입니다.
@@ -412,16 +412,28 @@
     <section class="screen" data-screen="posts">
       <div class="head"><div class="step-of">7단계 · 일이 돌아가면</div>
         <h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p></div>
-      <div class="row" style="margin-bottom:14px">
+      <div class="row" style="margin-bottom:10px">
         <select class="inp" id="pgOrder" style="width:auto;flex:1;min-width:180px"></select>
-        <select class="inp" id="pgStatus" style="width:auto">
-          <option value="">전체 상태</option><option value="pending">사람 못 붙임</option>
-          <option value="assigned">배정됨</option><option value="writing">쓰는 중</option>
-          <option value="submitted">원고 냄</option><option value="rework">수정 요청</option>
-          <option value="approved">원고 통과</option><option value="published">올림 · 확인 전</option>
-          <option value="verified">확인 끝</option><option value="paid">정산 완료</option>
-        </select>
         <input class="inp" id="pgQ" style="width:auto;flex:1;min-width:140px" placeholder="검색어나 이름으로 찾기">
+        <button class="btn btn-a" id="btnExport">📄 자료로 내보내기</button>
+      </div>
+      <div class="chipbar" id="pgStatus">
+        <span class="mono">상태 (여러 개 고를 수 있습니다)</span>
+        <label class="ck"><input type="checkbox" value="pending"> 담당자 미정</label>
+        <label class="ck"><input type="checkbox" value="assigned"> 배정됨</label>
+        <label class="ck"><input type="checkbox" value="writing"> 쓰는 중</label>
+        <label class="ck"><input type="checkbox" value="submitted"> 원고 냄</label>
+        <label class="ck"><input type="checkbox" value="rework"> 수정 요청</label>
+        <label class="ck"><input type="checkbox" value="approved"> 원고 통과</label>
+        <label class="ck"><input type="checkbox" value="published"> 올림 · 확인 전</label>
+        <label class="ck"><input type="checkbox" value="verified"> 확인 끝</label>
+        <label class="ck"><input type="checkbox" value="paid"> 정산 완료</label>
+        <button class="btn btn-s" id="pgClear">전체 보기</button>
+      </div>
+      <div class="note" style="margin-bottom:14px">
+        <b>[자료로 내보내기]</b> 를 누르면 지금 보이는 목록이 그대로 파일로 저장됩니다.
+        구글 스프레드시트에서 <b>파일 → 가져오기</b> 로 열면 표가 됩니다. 엑셀에서도 바로 열립니다.
+        학원에 보여드릴 때 이 파일을 쓰시면 됩니다.
       </div>
       <div class="grid g5" id="pgStats" style="margin-bottom:16px"></div>
       <div id="pgList"></div>

@@ -288,3 +288,21 @@ tr.clickme{cursor:pointer}
 
 @media (max-width:1000px){ .g5{grid-template-columns:repeat(2,1fr)} .pickwrap{grid-template-columns:1fr} }
 @media (max-width:820px){ .g5{grid-template-columns:repeat(2,1fr)} .formline{grid-template-columns:1fr;gap:2px} }
+
+/* 상태 여러 개 고르기 */
+.chipbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.chipbar .ck{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+  border:1px solid var(--line);background:var(--surface);padding:5px 11px;border-radius:20px;cursor:pointer}
+.chipbar .ck:has(input:checked){background:var(--amber);border-color:var(--amber);color:#1A1206}
+.chipbar .ck input{accent-color:var(--brand);margin:0}
+/* 공동체 멤버 펼치기 */
+.memlist{padding:10px 14px;background:var(--surface-2);border-top:1px solid var(--line)}
+.memlist .m{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;
+  background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:3px 10px;margin:3px 4px 3px 0}
+
+/* 끌어서 맡기기 */
+.pickrow .grip{color:var(--muted);cursor:grab;font-size:13px;user-select:none}
+.pickrow[draggable="true"]:active{opacity:.6}
+.drop.canhit{outline:1px dashed var(--amber);outline-offset:-3px}
+.drop.over{background:var(--amber);color:#1A1206}
+.drop.over .mono,.drop.over .sub{color:#1A1206}
