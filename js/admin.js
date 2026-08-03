@@ -29,6 +29,11 @@
   }
   function cnt(st) { return A.PEOPLE.filter(function (x) { return x.status === st; }).length; }
 
+  /* 학원에 보내는 진행현황 주소 — 같은 학원 이름이면 주소도 같습니다 */
+  function statusUrl(o) {
+    return location.origin + location.pathname.replace(/[^/]*$/, '') + 'status.html?k=' + (o.share_key || '');
+  }
+
   function fillSelects() {
     var opts = A.ORDERS.map(function (o) {
       return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)</option>';
@@ -446,6 +451,14 @@
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
               + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
             : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>'
+        + '<div class="sec" style="margin-top:16px">학원에 보낼 진행현황 주소 '
+        + '<small>로그인 없이 열립니다 · 이 학원 것만 보입니다 · 블로거 이름·단가는 안 보입니다</small></div>'
+        + '<div class="row">'
+        + '<input class="inp" style="flex:1;min-width:240px;font-family:var(--mono);font-size:12px" readonly '
+        + 'value="' + esc(statusUrl(o)) + '" onclick="this.select()">'
+        + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '">📋 주소 복사</button>'
+        + '<a class="btn btn-s" href="' + esc(statusUrl(o)) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
+        + '</div>'
         + '<div class="row" style="margin-top:12px"><button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>'
         + '<button class="btn btn-s" data-gokw="' + o.id + '">4 키워드 만들기 →</button>'
         + '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
@@ -1029,6 +1042,13 @@
       t.disabled = false;
       if (r2.error || !r2.data || !r2.data.length) { A.toast('저장 실패'); return; }
       A.toast('글감을 저장했습니다'); await A.loadAdmin(); return;
+    }
+
+    if ((t = e.target.closest('[data-copystatus]'))) {
+      var url0 = t.dataset.copystatus;
+      try { await navigator.clipboard.writeText(url0); A.toast('주소를 복사했습니다. 학원에 보내주세요'); }
+      catch (err) { window.prompt('아래 주소를 복사해 학원에 보내주세요', url0); }
+      return;
     }
 
     if ((t = e.target.closest('[data-delorder]'))) {
