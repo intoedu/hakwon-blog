@@ -142,6 +142,7 @@
       + '<dt>이 글이 다룰 것</dt><dd>' + esc(p.brief || '-') + '</dd>'
       + '<dt>지역</dt><dd>' + esc(p.region || '-') + '</dd>'
       + '</dl>'
+      + photoBlock(p)
       + (p.info_pack ? '<label class="f">정보 박스 — 글에 그대로 붙여넣으세요</label>'
         + '<textarea class="inp" id="ipk" readonly>' + esc(p.info_pack) + '</textarea>'
         + '<div class="row" style="margin-top:8px"><button class="btn btn-s" id="btnCopyPack">정보팩 복사</button>'
@@ -234,6 +235,33 @@
       } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }
     };
   }
+  /* 글마다 다른 사진이 가도록 순번으로 잘라 줍니다 (같은 사진이 여러 블로그에 겹치면
+     중복으로 감지될 수 있어서 조합을 달리합니다) */
+  function myPhotos(p) {
+    var all = p.photo_paths || [];
+    if (!all.length) return [];
+    var per = Math.min(8, Math.max(5, Math.floor(all.length / 6) || 5));
+    var start = ((p.seq || 1) - 1) * per % all.length;
+    var out = [];
+    for (var i = 0; i < Math.min(per, all.length); i++) out.push(all[(start + i) % all.length]);
+    return out;
+  }
+  function photoBlock(p) {
+    var mine = myPhotos(p);
+    if (!mine.length) {
+      return p.photo_note
+        ? '<div class="note" style="margin:12px 0"><b>사진</b> — 학원이 링크로 주셨습니다.<br>'
+        + '<a href="' + esc(p.photo_note) + '" target="_blank" rel="noopener">' + esc(p.photo_note) + ' ↗</a></div>'
+        : '<div class="note warn" style="margin:12px 0"><b>사진이 아직 없습니다.</b> '
+        + '직접 찍으신 사진(교재·시간표·안내문 등)을 5장 이상 넣어 주세요.</div>';
+    }
+    return '<div style="margin:12px 0"><label class="f">이 글에 쓸 사진 ' + mine.length + '장</label>'
+      + '<div class="mono" style="margin-bottom:8px">글마다 다른 사진이 가도록 나눠 뒀습니다. '
+      + '다른 분과 같은 사진을 쓰면 검색에 안 걸릴 수 있으니 받으신 것만 쓰세요.</div>'
+      + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 ' + mine.length + '장 받기</button>'
+      + '<div id="picBox" style="margin-top:10px"></div></div>';
+  }
+
   function fl(label, desc, mine) {
     return '<div class="formline"><div class="lb' + (mine ? ' me' : '') + '">' + label
       + (mine ? ' <span class="mine">직접</span>' : '') + '</div><div class="ds">' + desc + '</div></div>';
@@ -278,6 +306,27 @@
     if (t && !A.IS_ADMIN) {
       CUR = MY.filter(function (x) { return x.id === t.dataset.open; })[0];
       renderWork(); A.show('b-work'); return;
+    }
+    var g = e.target.closest('[data-getpics]');
+    if (g) {
+      var post = MY.filter(function (x) { return x.id === g.dataset.getpics; })[0];
+      if (!post) return;
+      g.disabled = true; g.textContent = '불러오는 중…';
+      var paths = myPhotos(post);
+      var r = await A.sb.storage.from('request-photos').createSignedUrls(paths, 3600);
+      g.disabled = false; g.textContent = '사진 ' + paths.length + '장 받기';
+      if (r.error) { A.toast('사진을 불러오지 못했습니다: ' + r.error.message); return; }
+      var box = A.$('picBox');
+      box.innerHTML = '<div class="row" style="gap:10px">'
+        + r.data.map(function (x, i) {
+          if (!x.signedUrl) return '';
+          return '<a href="' + x.signedUrl + '" target="_blank" rel="noopener" download '
+            + 'style="display:block;width:96px"><img src="' + x.signedUrl
+            + '" style="width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">'
+            + '<span class="mono">' + (i + 1) + '번</span></a>';
+        }).join('') + '</div>'
+        + '<div class="mono" style="margin-top:8px">사진을 눌러 저장하세요. 링크는 1시간 동안 유효합니다.</div>';
+      return;
     }
     var w = e.target.closest('[data-watch]');
     if (w) {

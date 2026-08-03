@@ -401,6 +401,14 @@
         + '</div>'
         + '<div style="margin-top:12px"><label class="f">정보팩 — 모든 글에 똑같이 들어갑니다</label>'
         + '<textarea class="inp" data-of="info_pack" data-oid="' + o.id + '">' + esc(o.info_pack || '') + '</textarea></div>'
+        + '<div class="row" style="margin-top:10px">'
+        + ((o.photo_paths || []).length
+          ? '<span class="chip c-ok">신청서 사진 ' + o.photo_paths.length + '장 들어옴</span>'
+            + '<span class="mono">글마다 다른 조합으로 5~8장씩 나눠 줍니다</span>'
+          : o.photo_note
+            ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
+              + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
+            : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>'
         + '<div class="row" style="margin-top:12px"><button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>'
         + '<button class="btn btn-s" data-gokw="' + o.id + '">4 키워드 만들기 →</button></div>'
         + '</div>';
