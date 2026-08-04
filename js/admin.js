@@ -19,6 +19,7 @@
     fillSelects();
     renderDash(); renderStaffAll();
     renderOrders(); renderAssign(); renderReview(); renderProgress();
+    loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
 
   function stat(id) { return STATS.filter(function (s) { return s.id === id; })[0] || {}; }
@@ -983,9 +984,104 @@
     this.disabled = false;
   };
 
+  /* ═══ 🔔 알림 보내기 ═══ */
+  var NOTI = [], NOTI_TAB = 'blogger';
+
+  async function loadNoti(scan) {
+    if (scan) {
+      try {
+        var made = await A.rpc('notify_scan');
+        A.toast(made ? made + '건을 새로 찾았습니다' : '새로 챙길 것은 없습니다');
+      } catch (e) { A.toast('실패: ' + e.message); }
+    }
+    NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
+    renderNoti();
+    var un = NOTI.filter(function (n) { return !n.sent_at; }).length;
+    var b = $('cNoti');
+    if (b) { b.textContent = un; b.classList.toggle('hide', !un); }
+  }
+
+  /* 누구에게 보내는지 — 이름과 연락처를 같이 보여줘야 카톡에서 찾습니다 */
+  function notiWho(n) {
+    if (n.audience === 'blogger') {
+      var p = A.PEOPLE.filter(function (x) { return x.id === n.blogger_id; })[0];
+      return p ? { name: p.name, sub: [A.commName(p.community_id), p.phone].filter(Boolean).join(' · ') }
+        : { name: '(지워진 직원)', sub: '' };
+    }
+    if (n.audience === 'academy') {
+      var o = A.ORDERS.filter(function (x) { return x.id === n.order_id; })[0];
+      return o ? { name: o.academy_name, sub: [o.contact_name, o.contact_phone].filter(Boolean).join(' · ') }
+        : { name: '(지워진 주문)', sub: '' };
+    }
+    return { name: '우리 팀', sub: '보낼 곳 없음 — 확인만 하시면 됩니다' };
+  }
+
+  function notiRows() {
+    var showSent = $('notiShowSent').checked;
+    return NOTI.filter(function (n) {
+      return n.audience === NOTI_TAB && (showSent || !n.sent_at);
+    });
+  }
+
+  function renderNoti() {
+    var rows = notiRows();
+    if (!rows.length) {
+      $('notiList').innerHTML = A.empty(NOTI_TAB === 'staff'
+        ? '지금 챙길 것이 없습니다.'
+        : '보낼 것이 없습니다. 위 [지금 챙길 것 찾기]를 눌러보세요.');
+      return;
+    }
+    $('notiList').innerHTML = rows.map(function (n) {
+      var w = notiWho(n);
+      return '<div class="card" style="margin-bottom:10px"'
+        + (n.sent_at ? ' data-sentcard="1"' : '') + '>'
+        + '<div class="row" style="justify-content:space-between;align-items:flex-start">'
+        + '<div><b style="font-size:14.5px">' + esc(w.name) + '</b> '
+        + '<span class="chip c-info">' + esc(n.title) + '</span>'
+        + (n.sent_at ? ' <span class="chip c-ok">보냄 ' + A.fdate(n.sent_at) + '</span>' : '')
+        + '<div class="mono" style="margin-top:3px">' + esc(w.sub || '') + '</div></div>'
+        + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
+        + (n.audience === 'staff' ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '">📋 복사</button>')
+        + (n.sent_at ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
+          + (n.audience === 'staff' ? '확인함' : '보냄') + '</button>')
+        + '</span></div>'
+        + '<pre style="white-space:pre-wrap;font:inherit;margin:11px 0 0;padding:11px 13px;'
+        + 'background:var(--surface-2);border:1px solid var(--line);border-radius:8px;'
+        + 'font-size:13px;line-height:1.65">' + esc(n.body) + '</pre>'
+        + '</div>';
+    }).join('');
+  }
+
+  A.onSubTabNoti = function (t) { NOTI_TAB = t; renderNoti(); };
+  $('notiShowSent').onchange = renderNoti;
+  $('notiScan').onclick = function () { loadNoti(true); };
+
+  $('notiCopyAll').onclick = async function () {
+    var rows = notiRows();
+    if (!rows.length) { A.toast('복사할 것이 없습니다'); return; }
+    var text = rows.map(function (n) {
+      var w = notiWho(n);
+      return '── ' + w.name + (w.sub ? ' (' + w.sub + ')' : '') + ' ──\n' + n.body;
+    }).join('\n\n');
+    try { await navigator.clipboard.writeText(text); A.toast(rows.length + '건을 복사했습니다'); }
+    catch (e) { A.toast('복사에 실패했습니다'); }
+  };
+
+  $('notiSentAll').onclick = async function () {
+    var rows = notiRows().filter(function (n) { return !n.sent_at; });
+    if (!rows.length) { A.toast('표시할 것이 없습니다'); return; }
+    if (!confirm(rows.length + '건을 모두 보낸 것으로 표시할까요?')) return;
+    try {
+      await A.rpc('notify_sent', { p_ids: rows.map(function (n) { return n.id; }) });
+      A.toast(rows.length + '건을 보냄으로 표시했습니다');
+      await loadNoti(false);
+    } catch (e) { A.toast('실패: ' + e.message); }
+  };
+
   /* ═══ 화면 진입 시 ═══ */
   A.onShow = function (name) {
     if (!A.IS_ADMIN) return;
+    if (name === 'noti') loadNoti(true);
     if (name === 'edu') loadEdu();
     if (name === 'pay') loadPay();
     if (name === 'review') A.view('acad-list');
@@ -1126,6 +1222,23 @@
       t.disabled = false;
       if (r2.error || !r2.data || !r2.data.length) { A.toast('저장 실패'); return; }
       A.toast('글감을 저장했습니다'); await A.loadAdmin(); return;
+    }
+
+    if ((t = e.target.closest('[data-noti]'))) { NOTI_TAB = t.dataset.noti; renderNoti(); return; }
+
+    if ((t = e.target.closest('[data-noticopy]'))) {
+      var nn = NOTI.filter(function (x) { return x.id === t.dataset.noticopy; })[0];
+      if (!nn) return;
+      try { await navigator.clipboard.writeText(nn.body); A.toast('문구를 복사했습니다'); }
+      catch (err) { window.prompt('아래 내용을 복사해 보내주세요', nn.body); }
+      return;
+    }
+
+    if ((t = e.target.closest('[data-notisent]'))) {
+      t.disabled = true;
+      try { await A.rpc('notify_sent', { p_ids: [t.dataset.notisent] }); await loadNoti(false); }
+      catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
     }
 
     if ((t = e.target.closest('[data-copystatus]'))) {

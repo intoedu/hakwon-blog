@@ -123,6 +123,8 @@
       <button class="nav" data-go="review"><span class="n">6</span>검수하기 <span class="cnt hot hide" id="cReview">0</span></button>
       <button class="nav" data-go="posts"><span class="n">7</span>진행 현황</button>
       <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
+      <div class="navlbl">챙길 것</div>
+      <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
     </div>
 
     <div id="navBlogger" class="hide">
@@ -472,10 +474,36 @@
       </div>
     </section>
 
+    <section class="screen" data-screen="noti">
+      <div class="head"><div class="step-of">챙길 것</div>
+        <h1>알림 보내기</h1>
+        <p>보낼 문구가 이미 다 만들어져 있습니다. <b>[복사]</b>를 누르고 카톡에 붙여넣으신 뒤
+          <b>[보냄]</b>으로 표시하시면 목록에서 사라집니다.</p></div>
+      <div class="row" style="margin-bottom:16px">
+        <button class="btn btn-p" id="notiScan">🔄 지금 챙길 것 찾기</button>
+        <button class="btn" id="notiCopyAll">📋 보이는 것 전부 복사</button>
+        <button class="btn" id="notiSentAll">✅ 보이는 것 전부 보냄 표시</button>
+        <label class="row" style="gap:6px;margin-left:auto;font-size:13px">
+          <input type="checkbox" id="notiShowSent"> 이미 보낸 것도 보기</label>
+      </div>
+      <div class="tabs" id="notiTabs" style="margin-bottom:14px">
+        <button class="on" data-noti="blogger">직원(블로거)에게</button>
+        <button data-noti="academy">학원에게</button>
+        <button data-noti="staff">우리끼리 챙길 것</button>
+      </div>
+      <div id="notiList"></div>
+      <div class="note" style="margin-top:16px">
+        <b>왜 자동으로 안 보내나요?</b> — 카카오 알림톡은 사업자등록과 발신프로필 심사가 필요하고,
+        이메일은 도메인이 있어야 스팸함을 면합니다. 둘 다 정리되면 <b>이 목록을 그대로 읽어 자동으로 나가게</b>
+        붙일 수 있습니다. 지금은 문구까지만 만들어 두고 보내는 것은 사람이 합니다.
+      </div>
+    </section>
+
     <!-- ═══ 블로거 화면 ═══ -->
     <section class="screen" data-screen="b-inbox">
       <div class="head"><h1>내 작업함</h1><p id="bhWho"></p></div>
       <div class="grid g4" id="bStats" style="margin-bottom:18px"></div>
+      <div id="bNoti"></div>
       <div id="bGate"></div>
       <div class="sec">할 일</div>
       <div id="bTodo"></div>

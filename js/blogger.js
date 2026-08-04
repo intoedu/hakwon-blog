@@ -2,7 +2,7 @@
 (function (A) {
   'use strict';
   var $ = A.$, esc = A.esc, won = A.won;
-  var MY = [], SESS = [], MATS = [], MINE = [], ATT = [], PAY = [], CUR = null;
+  var MY = [], SESS = [], MATS = [], MINE = [], ATT = [], PAY = [], NOTI = [], CUR = null;
 
   A.loadBlogger = async function () {
     MY = await A.sel('my_posts', { order: 'due_date' });
@@ -11,8 +11,35 @@
     MINE = await A.sel('training_progress');
     ATT = await A.sel('training_attendance');
     PAY = await A.sel('blog_payouts', { order: 'month', asc: false });
+    NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
     renderInbox(); renderEdu(); renderWork(); renderPay();
   };
+
+  /* 안 읽은 알림 — 작업함 맨 위에 뜹니다 */
+  function renderNoti() {
+    var box = $('bNoti'); if (!box) return;
+    var unread = NOTI.filter(function (n) { return !n.read_at; });
+    if (!unread.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="sec">새 소식 <small>' + unread.length + '건</small>'
+      + '<button class="link" style="float:right" id="bNotiRead">모두 읽음</button></div>'
+      + unread.slice(0, 8).map(function (n) {
+        return '<div class="card" style="margin-bottom:8px">'
+          + '<b style="font-size:14px">' + esc(n.title) + '</b>'
+          + '<span class="mono" style="margin-left:8px">' + A.fdt(n.created_at) + '</span>'
+          + '<pre style="white-space:pre-wrap;font:inherit;font-size:13px;line-height:1.65;'
+          + 'margin:8px 0 0;color:var(--ink-2)">' + esc(n.body) + '</pre>'
+          + (n.link ? '<div style="margin-top:9px"><button class="btn btn-s" data-go="'
+            + esc(n.link) + '">바로 가기 →</button></div>' : '')
+          + '</div>';
+      }).join('')
+      + (unread.length > 8 ? '<div class="mono">앞의 8건만 보여드립니다.</div>' : '');
+
+    $('bNotiRead').onclick = async function () {
+      this.disabled = true;
+      try { await A.rpc('notify_read'); NOTI.forEach(function (n) { n.read_at = 'x'; }); renderNoti(); }
+      catch (e) { A.toast('실패: ' + e.message); }
+    };
+  }
 
   function ready() {
     var req = MATS.filter(function (m) { return m.required; });
@@ -34,6 +61,7 @@
       return ['verified', 'paid'].indexOf(p.status) >= 0 && p.cycle_month === A.thisMonth() + '-01';
     });
 
+    renderNoti();
     $('bhWho').textContent = A.ME.name + ' 님, 반갑습니다.';
     $('bStats').innerHTML =
       s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 글')
