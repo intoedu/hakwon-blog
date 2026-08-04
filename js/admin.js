@@ -5,7 +5,7 @@
 
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
   var CPAY = [], BPAY = [];
-  var SUBTAB = 'pending', RV_ORDER = null, RJ_POST = null, KWDRAFT = [];
+  var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
 
   /* ═══ 데이터 ═══ */
   A.loadAdmin = async function () {
@@ -248,11 +248,7 @@
           + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>' : '<span class="chip c-wait">미완</span>') + '</td>'
           + '<td><div class="row">'
           + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-lv="' + p.id + '">' + opts + '</select>'
-          + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-promote="' + p.id + '">'
-          + [['none', '블로거'], ['review', '검수자로 ↑'], ['admin', '관리자로 ↑']].map(function (o) {
-            return '<option value="' + o[0] + '"' + (blogRoleOf(p.id) === o[0] ? ' selected' : '') + '>'
-              + o[1] + '</option>';
-          }).join('') + '</select>'
+          + '<button class="btn btn-s" data-openpm="' + p.id + '">검수자·관리자로 ↑</button>'
           + '<button class="btn btn-s" data-act="' + (p.status === 'approved' ? 'paused' : 'approved')
           + '" data-id="' + p.id + '">' + (p.status === 'approved' ? '쉬게 하기' : '다시 활동') + '</button>'
           + '</div></td></tr>';
@@ -265,29 +261,71 @@
     return s ? s.role : null;             /* 'admin' | 'review' | 'owner' | null */
   }
   var ROLE_KO = { owner: '최고관리자', admin: '관리자', review: '검수자' };
+  var STAFF_FILTER = [];                  /* 비어 있으면 전부 */
+
+  /* 한 사람의 '상태' — 거르기와 표시에 같이 씁니다 */
+  function staffKind(s) {
+    if (s.role === 'owner') return 'owner';
+    var p = A.PEOPLE.filter(function (x) { return x.id === s.id; })[0];
+    var also = p && p.also_blogging;
+    return (also ? 'both_' : '') + s.role;   /* admin / review / both_admin / both_review */
+  }
+  var KIND_KO2 = {
+    owner: '최고관리자', admin: '관리자', review: '검수자',
+    both_admin: '블로거 병행 관리자', both_review: '블로거 병행 검수자'
+  };
 
   async function loadBlogStaff() {
     var rows = await A.sel('staff');
+    A.ALLSTAFF = rows;                    /* 검수 기록에서 이름을 찾을 때 씁니다 */
     A.BLOGSTAFF = rows.filter(function (s) {
       return s.status === 'approved' &&
         (s.role === 'owner' || (s.perms && (s.perms.blog_admin || s.perms.blog_review)));
     }).map(function (s) {
       var role = s.role === 'owner' ? 'owner' : (s.perms && s.perms.blog_admin) ? 'admin' : 'review';
       return { id: s.id, name: s.name, email: s.email, phone: s.phone,
-               role: role, blogRole: ROLE_KO[role], escRole: s.role, perms: s.perms || {} };
+               role: role, blogRole: ROLE_KO[role], escRole: s.role, perms: s.perms || {},
+               comms: (s.perms && s.perms.blog_comms) || [] };
     });
     var b = $('tcStaff'); if (b) b.textContent = A.BLOGSTAFF.length;
+    /* 지금 보고 있는 사람이 맡은 공동체 (검수 화면 형광펜에 씁니다) */
+    var meId = A.PREVIEW_STAFF || (A.SESSION && A.SESSION.user.id);
+    var mine = A.BLOGSTAFF.filter(function (s) { return s.id === meId; })[0];
+    A.MY_COMMS = mine ? mine.comms : [];
+  }
+
+  function staffName(id) {
+    if (!id) return null;
+    var s = (A.ALLSTAFF || []).filter(function (x) { return x.id === id; })[0];
+    return s ? (s.name || s.email) : '(지워진 계정)';
+  }
+
+  function renderStaffFilter() {
+    var counts = {};
+    A.BLOGSTAFF.forEach(function (s) { var k = staffKind(s); counts[k] = (counts[k] || 0) + 1; });
+    $('staffFilter').innerHTML = Object.keys(KIND_KO2).filter(function (k) { return counts[k]; })
+      .map(function (k) {
+        return '<button data-staffk="' + k + '"' + (STAFF_FILTER.indexOf(k) >= 0 ? ' class="on"' : '') + '>'
+          + KIND_KO2[k] + ' ' + counts[k] + '</button>';
+      }).join('')
+      + (STAFF_FILTER.length ? '<button data-staffk="">거르기 지우기</button>' : '');
   }
 
   function renderBlogStaff() {
-    if (!A.BLOGSTAFF.length) {
-      $('blogStaffBox').innerHTML = A.empty('아직 검수자·관리자가 없습니다. 블로거 목록에서 올려 주세요.');
+    renderStaffFilter();
+    var rows = A.BLOGSTAFF.filter(function (s) {
+      return !STAFF_FILTER.length || STAFF_FILTER.indexOf(staffKind(s)) >= 0;
+    });
+    if (!rows.length) {
+      $('blogStaffBox').innerHTML = A.empty(A.BLOGSTAFF.length
+        ? '고르신 조건에 맞는 사람이 없습니다.'
+        : '아직 검수자·관리자가 없습니다. 블로거 목록에서 올려 주세요.');
       return;
     }
     $('blogStaffBox').innerHTML = '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>이름</th><th>직분</th><th>연락처</th><th>블로거 병행</th>'
-      + '<th>이번 달 쓴 글</th><th></th></tr></thead><tbody>'
-      + A.BLOGSTAFF.map(function (s) {
+      + '<th style="min-width:220px">담당 공동체</th><th>이번 달 쓴 글</th><th></th></tr></thead><tbody>'
+      + rows.map(function (s) {
         var p = A.PEOPLE.filter(function (x) { return x.id === s.id; })[0];
         var st = p ? stat(p.id) : {};
         var locked = s.role === 'owner' || !p;   /* 최고관리자·블로거가 아닌 ESC 직원은 여기서 못 바꿈 */
@@ -298,19 +336,58 @@
           + '<td class="mono">' + esc(s.phone || '-') + '</td>'
           + '<td>' + (!p ? '<span class="mono">블로거 아님</span>'
             : '<label class="row" style="gap:6px;cursor:pointer"><input type="checkbox" data-also="' + s.id + '"'
-              + (p.also_blogging ? ' checked' : '') + '> <span class="mono">'
-              + (p.also_blogging ? '글도 받음' : '글 안 받음') + '</span></label>') + '</td>'
+              + (p.also_blogging ? ' checked' : '') + '> <span>블로거 병행</span></label>') + '</td>'
+          + '<td>' + (s.role === 'admin' || s.role === 'owner'
+            ? '<span class="mono">관리자는 전부 봅니다</span>'
+            : '<div class="chips" data-commsfor="' + s.id + '">'
+              + A.COMMS.map(function (c) {
+                return '<button data-setcomm="' + c.id + '"'
+                  + (s.comms.indexOf(c.id) >= 0 ? ' class="on"' : '') + '>' + esc(c.name) + '</button>';
+              }).join('') + '</div>') + '</td>'
           + '<td class="num">' + (st.done_month || 0) + '</td>'
           + '<td><div class="row">'
           + '<button class="btn btn-s" data-seeas="' + s.id + '">이 사람 화면 보기</button>'
-          + (locked ? '' :
-            '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-promote="' + s.id + '">'
-            + [['review', '검수자'], ['admin', '관리자'], ['none', '블로거로 내리기']].map(function (o) {
-              return '<option value="' + o[0] + '"' + (s.role === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
-            }).join('') + '</select>')
+          + (locked ? '' : '<button class="btn btn-s" data-openpm="' + s.id + '">직분 바꾸기</button>')
           + '</div></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
+
+  /* ── 검수자·관리자로 올릴 때 뜨는 확인 창 ── */
+  var PM = { id: null, role: null };
+  function openPromote(id) {
+    var p = A.PEOPLE.filter(function (x) { return x.id === id; })[0] || {};
+    PM = { id: id, role: blogRoleOf(id) === 'admin' ? 'admin' : blogRoleOf(id) === 'review' ? 'review' : 'review' };
+    $('pmTitle').textContent = (p.name || '') + ' 님';
+    $('pmAlso').checked = !!p.also_blogging;
+    $('promoteBox').classList.remove('hide');
+    pmPaint();
+  }
+  function pmPaint() {
+    document.querySelectorAll('[data-pmrole]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.pmrole === PM.role);
+    });
+    $('pmLead').innerHTML = PM.role === 'none'
+      ? '검수·관리 권한이 사라지고 <b>글을 다시 받게</b> 됩니다.'
+      : PM.role === 'admin'
+        ? '주문·배정·정산까지 <b>전부</b> 하실 수 있게 됩니다.'
+        : '원고를 보고 <b>통과·수정요청</b>을 하실 수 있게 됩니다. 담당 공동체는 올린 뒤에 정하시면 됩니다.';
+    $('pmAlsoRow').classList.toggle('hide', PM.role === 'none');
+  }
+  $('pmCancel').onclick = function () { $('promoteBox').classList.add('hide'); };
+  $('promoteBox').onclick = function (e) { if (e.target === this) this.classList.add('hide'); };
+  $('pmOk').onclick = async function () {
+    this.disabled = true;
+    try {
+      await A.rpc('blogger_promote', {
+        p_id: PM.id, p_role: PM.role,
+        p_also: PM.role === 'none' ? false : $('pmAlso').checked
+      });
+      $('promoteBox').classList.add('hide');
+      A.toast(PM.role === 'none' ? '블로거로 되돌렸습니다' : '올렸습니다');
+      await A.loadAdmin();
+    } catch (e) { A.toast('실패: ' + e.message); }
+    this.disabled = false;
+  };
 
   /* 승급 후보 — 이웃 수보다 우리가 직접 잰 값(통과율·노출 순위)을 먼저 봅니다 */
   /* 실력은 우리가 직접 잰 값(누적·통과율·검색 노출)으로 보고,
@@ -707,10 +784,27 @@
   };
 
   /* ═══ 6 검수 ═══ */
+  var RV_BY = 'acad';        /* 'acad' 학원별 · 'comm' 공동체별 */
+
+  function commOf(p) {
+    var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
+    return b ? b.community_id : null;
+  }
+  function isMineComm(cid) { return cid && (A.MY_COMMS || []).indexOf(cid) >= 0; }
+
   function renderReview() {
     var draft = POSTS.filter(function (p) { return p.status === 'submitted'; });
     var live = POSTS.filter(function (p) { return p.status === 'published'; });
     $('rcDraft').textContent = draft.length; $('rcLive').textContent = live.length;
+
+    document.querySelectorAll('[data-rvby]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.rvby === RV_BY);
+    });
+    $('rvByHint').textContent = (A.MY_COMMS || []).length
+      ? '보라색으로 칠해진 줄이 내가 맡은 공동체입니다'
+      : (RV_BY === 'comm' ? '글을 쓴 사람의 공동체로 묶었습니다' : '');
+
+    if (RV_BY === 'comm') { renderReviewByComm(draft); return; }
 
     $('rvAcadList').innerHTML = A.ORDERS.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>학원</th><th>주문한 글</th><th>원고 상황</th><th>올라간 글</th><th>마감일</th><th>남은 기간</th></tr></thead><tbody>'
@@ -736,50 +830,156 @@
     renderLive();
   }
 
+  /* 공동체별로 보기 — 글을 쓴 사람이 속한 공동체로 묶습니다 */
+  function renderReviewByComm(draft) {
+    var mine = A.COMMS.filter(function (c) { return isMineComm(c.id); });
+    var rest = A.COMMS.filter(function (c) { return !isMineComm(c.id); });
+    var list = mine.concat(rest);                 /* 내가 맡은 곳을 위로 */
+
+    var none = POSTS.filter(function (p) {
+      return p.status === 'submitted' && !commOf(p);
+    }).length;
+
+    $('rvAcadList').innerHTML = '<div class="tblbox tblscroll"><table>'
+      + '<thead><tr><th>공동체</th><th>사람</th><th>원고 상황</th><th>올라간 글</th>'
+      + '<th>이번 달 끝낸 글</th></tr></thead><tbody>'
+      + list.map(function (c) {
+        var todo = draft.filter(function (p) { return commOf(p) === c.id; }).length;
+        var doneR = POSTS.filter(function (p) {
+          return commOf(p) === c.id && ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
+        }).length;
+        var up = POSTS.filter(function (p) {
+          return commOf(p) === c.id && ['published', 'verified', 'paid'].indexOf(p.status) >= 0;
+        }).length;
+        var ppl = A.PEOPLE.filter(function (b) {
+          return b.community_id === c.id && b.status === 'approved';
+        }).length;
+        return '<tr class="' + (isMineComm(c.id) ? 'mycomm ' : '') + (todo ? 'clickme' : '') + '"'
+          + (todo ? ' data-opencomm="' + c.id + '"' : '') + '>'
+          + '<td><b>' + esc(c.name) + '</b>'
+          + (isMineComm(c.id) ? '<span class="minetag">내 담당</span>' : '') + '</td>'
+          + '<td class="num">' + ppl + '명</td>'
+          + '<td><div class="mixcell">'
+          + (todo ? '<span class="pill todo">봐야 할 원고 ' + todo + '</span>'
+            : '<span class="pill off">볼 원고 없음</span>')
+          + '<span class="pill done">끝낸 원고 ' + doneR + '</span></div></td>'
+          + '<td class="num">' + up + '편</td>'
+          + '<td class="num">' + POSTS.filter(function (p) {
+            return commOf(p) === c.id && ['verified', 'paid'].indexOf(p.status) >= 0
+              && p.cycle_month === A.thisMonth() + '-01';
+          }).length + '편</td></tr>';
+      }).join('')
+      + (none ? '<tr><td><b>담당자 미정</b></td><td class="num">-</td>'
+        + '<td><span class="pill todo">봐야 할 원고 ' + none + '</span></td>'
+        + '<td class="num">-</td><td class="num">-</td></tr>' : '')
+      + '</tbody></table></div>';
+  }
+
+  /* 처리 후 보고 있던 곳으로 돌아갑니다 */
+  function rvBack() { if (RV_COMM) openComm(RV_COMM); else if (RV_ORDER) openAcad(RV_ORDER); }
+  A.refreshReview = function () { if (POSTS.length) renderReview(); };
+
+  /* 원고 표 — 학원별·공동체별 둘 다 같은 모양을 씁니다 */
+  function rvHead(byComm) {
+    return '<thead><tr><th>' + (byComm ? '학원' : '공동체') + '</th><th>누가</th>'
+      + '<th>블로그 제목</th><th>원고 낸 날</th><th style="min-width:180px">검수 기록</th>'
+      + '<th>처리</th></tr></thead>';
+  }
+
+  /* 누가 언제 검수했는지 — 통과도 돌려보낸 것도 남깁니다 */
+  function reviewLog(p) {
+    var out = [];
+    if (p.reviewed_at) {
+      var who = staffName(p.reviewed_by) || '기록 없음';
+      var done = ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
+      out.push((p.status === 'rework'
+        ? '<b style="color:var(--bad)">돌려보냄</b>'
+        : done ? '<b style="color:var(--ok)">원고 통과</b>' : '검수함')
+        + ' · ' + esc(who) + ' · ' + A.fdate(p.reviewed_at));
+      if (p.status === 'rework' && (p.reject_reasons || []).length)
+        out.push('<span class="mono">' + esc(p.reject_reasons.join(', ')) + '</span>');
+      if (p.rework_count > 0 && p.status !== 'rework')
+        out.push('<span class="mono">그 전에 ' + p.rework_count + '번 돌려보냈습니다</span>');
+    } else if (p.rework_count > 0) {
+      out.push('<b style="color:var(--bad)">' + p.rework_count + '번 돌려보냄</b>');
+    } else {
+      out.push('<span class="chip c-off">아직 안 봄</span>');
+    }
+    if (p.verified_at)
+      out.push('<span class="mono">올린 글 확인 · ' + esc(staffName(p.verified_by) || '')
+        + ' · ' + A.fdate(p.verified_at) + '</span>');
+    return out.join('<br>');
+  }
+
+  function rvRow(p, dim, byComm) {
+    var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
+    var cls = dim ? ' style="opacity:.5"' : (p.rework_count > 0 ? ' class="sent"' : '');
+    return '<tr' + cls + '>'
+      + '<td>' + (byComm ? '<b>' + esc(orderName(p.order_id)) + '</b>'
+        : (b.name ? esc(A.commName(b.community_id))
+          + (isMineComm(b.community_id) ? '<span class="minetag">내 담당</span>' : '')
+          : '<span class="mono">—</span>')) + '</td>'
+      + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b> ' + A.lvBadge(b.level || 1)
+        : '<span class="mono">담당자 미정</span>') + '</td>'
+      + '<td><b>' + esc(p.keyword || '') + '</b>'
+      + (dim ? '<div style="margin-top:3px">' + A.stChip(p.status) + '</div>' : '') + '</td>'
+      + '<td class="mono">' + (p.submitted_at ? A.fdate(p.submitted_at) : '아직') + '</td>'
+      + '<td style="font-size:12.5px;line-height:1.6">' + reviewLog(p) + '</td>'
+      + '<td><div class="row">'
+      + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">원고 열기 ↗</a>' : '')
+      + (dim ? '' : '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
+        + '<button class="btn btn-s" data-openrj="' + p.id + '">수정 요청</button>')
+      + '</div></td></tr>';
+  }
+
+  /* 공동체 하나를 열어 그 안의 원고를 봅니다 */
+  function openComm(cid) {
+    RV_ORDER = null; RV_COMM = cid;
+    var c = A.COMMS.filter(function (x) { return x.id === cid; })[0] || {};
+    var all = POSTS.filter(function (p) { return commOf(p) === cid && p.status !== 'cancelled'; });
+    var todo = all.filter(function (p) { return p.status === 'submitted'; });
+    var rest = all.filter(function (p) { return p.status !== 'submitted'; });
+
+    $('rvCrumb').textContent = '← 공동체 목록';
+    $('rvAcadName').innerHTML = esc(c.name)
+      + (isMineComm(cid) ? '<span class="minetag">내 담당</span>' : '');
+    $('rvAcadMeta').innerHTML = A.PEOPLE.filter(function (b) {
+      return b.community_id === cid && b.status === 'approved';
+    }).length + '명 · 봐야 할 원고 ' + todo.length + '편 · 만든 글 ' + all.length + '편';
+
+    $('rvPosts').innerHTML =
+      (todo.length ? '<div class="tblbox tblscroll"><table>' + rvHead(true) + '<tbody>'
+        + todo.map(function (p) { return rvRow(p, false, true); }).join('') + '</tbody></table></div>'
+        : A.empty('지금 볼 원고가 없습니다.'))
+      + (rest.length ? '<div class="sec">아직 원고가 안 온 글 · 이미 끝난 글 <small>'
+        + rest.length + '편</small></div>'
+        + '<div class="tblbox tblscroll"><table>' + rvHead(true) + '<tbody>'
+        + rest.map(function (p) { return rvRow(p, true, true); }).join('') + '</tbody></table></div>' : '');
+    A.view('acad-posts');
+  }
+
   function openAcad(oid) {
-    RV_ORDER = oid;
+    RV_ORDER = oid; RV_COMM = null;
     var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0] || {};
     var all = POSTS.filter(function (p) { return p.order_id === oid && p.status !== 'cancelled'; });
     var todo = all.filter(function (p) { return p.status === 'submitted'; });
     var rest = all.filter(function (p) { return p.status !== 'submitted'; });
     var d = A.dday(o.deadline);
 
+    $('rvCrumb').textContent = '← 학원 목록';
     $('rvAcadName').textContent = o.academy_name || '';
     $('rvAcadMeta').innerHTML = o.total_qty + '편 주문 · <b style="color:var(--amber)">마감 '
       + (o.deadline || '-') + (d == null ? '' : d >= 0 ? ' (' + d + '일 남음)' : ' (지났습니다)')
       + '</b> · 봐야 할 원고 ' + todo.length + '편 · 만든 글 ' + all.length + '편';
 
-    function row(p, dim) {
-      var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
-      var again = p.rework_count > 0;
-      var cls = dim ? ' style="opacity:.5"' : (again ? ' class="sent"' : '');
-      return '<tr' + cls + '>'
-        + '<td>' + (b.name ? esc(A.commName(b.community_id)) : '<span class="mono">—</span>') + '</td>'
-        + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b> ' + A.lvBadge(b.level || 1)
-          : '<span class="mono">담당자 미정</span>') + '</td>'
-        + '<td><b>' + esc(p.keyword || '') + '</b></td>'
-        + '<td class="mono">' + (p.submitted_at ? A.fdate(p.submitted_at) : '아직') + '</td>'
-        + '<td>' + (dim ? A.stChip(p.status)
-          : again ? '<b style="color:var(--bad)">' + p.rework_count + '번 · '
-            + esc((p.reject_reasons || []).join(', ') || p.review_note || '') + '</b>'
-            : '<span class="chip c-off">처음</span>') + '</td>'
-        + '<td><div class="row">'
-        + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">원고 열기 ↗</a>' : '')
-        + (dim ? '' : '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
-          + '<button class="btn btn-s" data-openrj="' + p.id + '">수정 요청</button>')
-        + '</div></td></tr>';
-    }
-    var head = '<thead><tr><th>공동체</th><th>누가</th><th>블로그 제목</th><th>원고 낸 날</th>'
-      + '<th>수정 요청했던 글</th><th>처리</th></tr></thead>';
-
     $('rvPosts').innerHTML =
-      (todo.length ? '<div class="tblbox tblscroll"><table>' + head + '<tbody>'
-        + todo.map(function (p) { return row(p, false); }).join('') + '</tbody></table></div>'
+      (todo.length ? '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'
+        + todo.map(function (p) { return rvRow(p, false, false); }).join('') + '</tbody></table></div>'
         : A.empty('지금 볼 원고가 없습니다.'))
       + (rest.length ? '<div class="sec">아직 원고가 안 온 글 · 이미 끝난 글 <small>'
         + rest.length + '편 — 회색은 아직 손댈 게 없다는 뜻입니다</small></div>'
-        + '<div class="tblbox tblscroll"><table>' + head + '<tbody>'
-        + rest.map(function (p) { return row(p, true); }).join('') + '</tbody></table></div>' : '');
+        + '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'
+        + rest.map(function (p) { return rvRow(p, true, false); }).join('') + '</tbody></table></div>' : '');
     A.view('acad-posts');
   }
 
@@ -824,7 +1024,7 @@
       A.toast('수정 요청을 보냈습니다');
       document.querySelectorAll('.rj').forEach(function (c) { c.checked = false; });
       $('rjNote').value = '';
-      await A.loadAdmin(); openAcad(RV_ORDER);
+      await A.loadAdmin(); rvBack();
     } catch (e) { A.toast('실패: ' + e.message); }
     this.disabled = false;
   };
@@ -1237,6 +1437,7 @@
     var t;
 
     if ((t = e.target.closest('[data-openacad]'))) { openAcad(t.dataset.openacad); return; }
+    if ((t = e.target.closest('[data-opencomm]'))) { openComm(t.dataset.opencomm); return; }
     if ((t = e.target.closest('[data-opencp]'))) { openCP(t.dataset.opencp); return; }
     if ((t = e.target.closest('[data-mem]'))) {
       var mr = document.querySelector('[data-memrow="' + t.dataset.mem + '"]');
@@ -1259,7 +1460,7 @@
     if ((t = e.target.closest('[data-approve]'))) {
       t.disabled = true;
       try { await A.rpc('post_review', { p_post: t.dataset.approve, p_ok: true, p_reasons: [], p_note: null });
-        A.toast('승인했습니다'); await A.loadAdmin(); openAcad(RV_ORDER); }
+        A.toast('승인했습니다'); await A.loadAdmin(); rvBack(); }
       catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
@@ -1367,6 +1568,36 @@
       if (r2.error || !r2.data || !r2.data.length) { A.toast('저장 실패'); return; }
       A.toast('글감을 저장했습니다'); await A.loadAdmin(); return;
     }
+
+    if ((t = e.target.closest('[data-openpm]'))) { openPromote(t.dataset.openpm); return; }
+    if ((t = e.target.closest('[data-pmrole]'))) { PM.role = t.dataset.pmrole; pmPaint(); return; }
+
+    if ((t = e.target.closest('[data-staffk]'))) {
+      var k = t.dataset.staffk;
+      if (!k) STAFF_FILTER = [];
+      else {
+        var i = STAFF_FILTER.indexOf(k);
+        if (i >= 0) STAFF_FILTER.splice(i, 1); else STAFF_FILTER.push(k);
+      }
+      renderBlogStaff(); return;
+    }
+
+    /* 담당 공동체 켜고 끄기 */
+    if ((t = e.target.closest('[data-setcomm]'))) {
+      var wrap = t.closest('[data-commsfor]'), sid = wrap.dataset.commsfor;
+      t.classList.toggle('on');
+      var picked = [];
+      wrap.querySelectorAll('button.on').forEach(function (b) { picked.push(b.dataset.setcomm); });
+      try {
+        await A.rpc('blog_staff_set_comms', { p_id: sid, p_comms: picked });
+        A.toast(picked.length ? '담당 공동체 ' + picked.length + '곳으로 바꿨습니다' : '담당 공동체를 비웠습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); await A.loadAdmin(); }
+      return;
+    }
+
+    /* 검수하기 — 학원별 / 공동체별 */
+    if ((t = e.target.closest('[data-rvby]'))) { RV_BY = t.dataset.rvby; renderReview(); return; }
 
     /* 「이 사람 화면 보기」 — 왼쪽 전환 스위치를 그 사람으로 맞춥니다 */
     if ((t = e.target.closest('[data-seeas]'))) {
@@ -1534,25 +1765,6 @@
       try { await A.rpc('blogger_set_level', { p_id: e.target.dataset.lv, p_level: Number(e.target.value) });
         A.toast('단계를 바꿨습니다'); await A.loadAdmin(); }
       catch (err) { A.toast('실패: ' + err.message); }
-    }
-
-    /* 검수자·관리자로 올리기 / 블로거로 내리기 */
-    if (e.target.dataset && e.target.dataset.promote) {
-      var pid = e.target.dataset.promote, role = e.target.value;
-      var per = A.PEOPLE.filter(function (x) { return x.id === pid; })[0] || {};
-      var msg = role === 'none'
-        ? '「' + (per.name || '') + '」님을 블로거로 되돌릴까요?\n\n검수·관리 권한이 사라지고 글을 다시 받게 됩니다.'
-        : '「' + (per.name || '') + '」님을 ' + (role === 'admin' ? '관리자' : '검수자')
-          + '로 올릴까요?\n\n' + (role === 'admin'
-            ? '주문·배정·정산까지 전부 하실 수 있게 됩니다.'
-            : '원고를 보고 통과/수정요청을 하실 수 있게 됩니다.')
-          + '\n글은 더 이상 배정되지 않습니다 (병행에 체크하시면 계속 받습니다).';
-      if (!confirm(msg)) { renderList(); renderBlogStaff(); return; }
-      try {
-        await A.rpc('blogger_promote', { p_id: pid, p_role: role, p_also: false });
-        A.toast(role === 'none' ? '블로거로 되돌렸습니다' : '올렸습니다');
-        await A.loadAdmin();
-      } catch (err) { A.toast('실패: ' + err.message); renderList(); renderBlogStaff(); }
     }
 
     /* 블로거 병행 체크 */

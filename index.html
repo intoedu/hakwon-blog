@@ -254,7 +254,13 @@
           <b>블로거를 검수자·관리자로 올리면 여기로 옮겨집니다.</b>
           올리는 것은 <b>블로거 목록</b>에서 하시면 됩니다.<br>
           검수자·관리자에게는 <b>글이 배정되지 않습니다.</b> 글도 쓰면서 관리도 하실 분은
-          <b>「블로거 병행」</b>에 체크해 주세요. 체크하면 블로거 목록에도 계속 남고 글도 받습니다.
+          <b>「블로거 병행」</b>에 체크해 주세요. 체크하면 블로거 목록에도 계속 남고 글도 받습니다.<br>
+          <b>담당 공동체</b>를 정해두면 그 공동체 글이 검수 화면에서 <span class="minetag">내 담당</span>
+          으로 눈에 띄게 표시됩니다. 막는 것은 아니라서, 맡은 사람이 없으면 다른 분이 보셔도 됩니다.
+        </div>
+        <div class="row" style="margin-bottom:14px">
+          <span class="mono">골라 보기</span>
+          <div class="chips" id="staffFilter"></div>
         </div>
         <div id="blogStaffBox"></div>
         <div class="note warn" style="margin-top:16px">
@@ -413,20 +419,27 @@
     <!-- 6 검수하기 -->
     <section class="screen" data-screen="review">
       <div class="head"><div class="step-of" data-adminonly>6단계 · 일이 돌아가면</div>
-        <h1>검수하기</h1><p>학원별로 묶어서 봅니다. 학원 이름을 누르면 그 학원 글들이 열립니다.</p></div>
+        <h1>검수하기</h1><p>학원별 또는 공동체별로 묶어서 봅니다. 이름을 누르면 그 안의 글들이 열립니다.</p></div>
       <div class="tabs" data-tabs="rv">
         <button class="on" data-pane="rv-draft">① 원고 검수 <span class="mono" id="rcDraft">0</span></button>
         <button data-pane="rv-live">② 올라간 글 확인 <span class="mono" id="rcLive">0</span></button>
       </div>
       <div class="pane on" data-pane="rv-draft">
         <div class="dv on" data-view="acad-list">
+          <div class="row" style="margin-bottom:12px">
+            <div class="chips">
+              <button data-rvby="acad" class="on">학원별로 보기</button>
+              <button data-rvby="comm">공동체별로 보기</button>
+            </div>
+            <span class="mono" id="rvByHint"></span>
+          </div>
           <div class="note" style="margin-bottom:14px">
             빨간 숫자가 지금 봐야 할 원고, 초록 숫자가 이미 끝낸 원고입니다.
           </div>
           <div id="rvAcadList"></div>
         </div>
         <div class="dv" data-view="acad-posts">
-          <div class="crumb"><button data-back="acad-list">← 학원 목록</button><span>/</span>
+          <div class="crumb"><button data-back="acad-list" id="rvCrumb">← 학원 목록</button><span>/</span>
             <b style="color:var(--ink)" id="rvAcadName"></b><span class="mono" id="rvAcadMeta"></span></div>
           <div class="note warn" style="margin-bottom:14px">
             <b style="background:var(--hl);padding:1px 5px;border-radius:3px">노란 줄이 그어진 글</b>
@@ -533,8 +546,9 @@
     <section class="screen" data-screen="noti">
       <div class="head"><div class="step-of">챙길 것</div>
         <h1>알림 보내기</h1>
-        <p>보낼 문구가 이미 다 만들어져 있습니다. <b>[복사]</b>를 누르고 카톡에 붙여넣으신 뒤
-          <b>[보냄]</b>으로 표시하시면 목록에서 사라집니다.</p></div>
+        <p><b>센터 안 알림은 이미 자동으로 갔습니다.</b> 블로거가 로그인하면 작업함 맨 위에 떠 있습니다.
+          여기 있는 것은 <b>카톡으로 한 번 더 보낼 문구</b>입니다 —
+          <b>[복사]</b>해서 붙여넣으신 뒤 <b>[보냄]</b>으로 표시하시면 목록에서 사라집니다.</p></div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn btn-p" id="notiScan">🔄 지금 챙길 것 찾기</button>
         <button class="btn" id="notiCopyAll">📋 보이는 것 전부 복사</button>
@@ -611,6 +625,31 @@
     </section>
 
   </div></main>
+</div>
+
+<!-- 검수자·관리자로 올릴 때 뜨는 확인 창 -->
+<div class="ovl hide" id="promoteBox">
+  <div class="ovlcard">
+    <h3 id="pmTitle">올리기</h3>
+    <p class="lead" id="pmLead"></p>
+    <label class="f">무엇으로 할까요</label>
+    <div class="chips" id="pmRoles" style="margin-bottom:14px">
+      <button data-pmrole="review">검수자</button>
+      <button data-pmrole="admin">관리자</button>
+      <button data-pmrole="none">그냥 블로거</button>
+    </div>
+    <label class="row" id="pmAlsoRow" style="gap:9px;cursor:pointer;padding:12px 14px;
+           border:1px solid var(--line);border-radius:10px;background:var(--surface-2)">
+      <input type="checkbox" id="pmAlso">
+      <span><b>블로거 병행</b>
+        <span class="mono" style="display:block;margin-top:2px">
+          체크하면 검수·관리를 하면서 <b>글도 계속 받습니다</b>. 안 하면 글은 배정되지 않습니다.</span></span>
+    </label>
+    <div class="row" style="margin-top:18px">
+      <button class="btn btn-p" id="pmOk">이대로 하기</button>
+      <button class="btn" id="pmCancel">취소</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>

@@ -157,6 +157,9 @@ window.ESC = (function () {
     /* 검수자·관리자 — 그 사람 직분에 맞는 사이드바를 보여줍니다 */
     var s = A.BLOGSTAFF.filter(function (x) { return x.id === id; })[0];
     if (!s) return;
+    A.PREVIEW_STAFF = id;
+    A.MY_COMMS = s.comms || [];                   /* 검수 화면 형광펜이 이 사람 기준이 됩니다 */
+    if (A.refreshReview) A.refreshReview();
     var full = s.blogRole !== '검수자';           /* 관리자·최고관리자면 전체 화면 */
     A.$('navAdmin').classList.toggle('hide', !full);
     A.$('navReviewer').classList.toggle('hide', full);
