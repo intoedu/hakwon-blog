@@ -809,7 +809,17 @@
   };
   $('pgQ').oninput = renderProgress;
 
-  /* 지금 보이는 목록을 파일로 — 구글 시트·엑셀에서 바로 열립니다 */
+  /* 표를 파일로 — 구글 시트·넘버스·엑셀에서 바로 열립니다 */
+  function saveCsv(name, head, body) {
+    var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+    var csv = [head].concat(body).map(function (r) { return r.map(q).join(','); }).join('\r\n');
+    var url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }));
+    var a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /* 지금 보이는 목록을 파일로 */
   $('btnExport').onclick = function () {
     if (!PG_ROWS.length) { A.toast('내보낼 글이 없습니다'); return; }
     var head = ['학원', '번호', '노리는 검색어', '주차', '공동체', '담당', '상태',
@@ -822,14 +832,8 @@
         p.published_at ? A.fdate(p.published_at) : '', p.published_url || '',
         p.keyword_rank ? p.keyword_rank + '위' : ''];
     });
-    var q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
-    var csv = [head].concat(body).map(function (r) { return r.map(q).join(','); }).join('\r\n');
     var oid = $('pgOrder').value;
-    var name = 'ESC 블로그 진행현황 ' + (oid ? orderName(oid) + ' ' : '') + A.today() + '.csv';
-    var url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' }));
-    var a = document.createElement('a'); a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    saveCsv('ESC 블로그 진행현황 ' + (oid ? orderName(oid) + ' ' : '') + A.today() + '.csv', head, body);
     A.toast(PG_ROWS.length + '편을 파일로 저장했습니다');
   };
 
@@ -888,6 +892,86 @@
       + '<tr><td colspan="4" style="text-align:right"><b>합계</b></td><td class="num"><b>' + won(c.amount) + '</b></td></tr>'
       + '</tbody></table></div>';
   }
+  /* ── 정산 내보내기 ──
+     주민등록번호·개인 계좌는 블로그 센터에 저장하지 않습니다.
+     여기서 뽑은 파일에 시트에서 직접 채워 넣어 세무사에게 넘기는 방식입니다. */
+  function payRow(b) {                       /* blog_payouts 한 줄 → 사람 정보 붙이기 */
+    var p = A.PEOPLE.filter(function (x) { return x.id === b.blogger_id; })[0] || {};
+    var cm = A.COMMS.filter(function (x) { return x.id === p.community_id; })[0] || {};
+    var cp = CPAY.filter(function (x) { return x.community_id === p.community_id; })[0] || {};
+    return { p: p, cm: cm, cp: cp };
+  }
+  var PAY_TAIL = ['주민등록번호 (직접 입력)', '원천징수 (직접 입력)', '실지급액 (직접 입력)', '비고'];
+
+  /* ① 개인별 지급대장 — 이 달. 세무사에게 넘기는 표 */
+  $('btnPayPeople').onclick = function () {
+    if (!BPAY.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
+    var m = $('payMonth').value;
+    var head = ['정산월', '공동체', '이름', '전화번호', '이메일(로그인 아이디)',
+      '단계', '단계 이름', '편수', '편당 평균', '지급액',
+      '지급 상태', '보낸 날', '받는 계좌 (공동체)', '예금주'].concat(PAY_TAIL);
+    var body = BPAY.map(function (b) {
+      var r = payRow(b);
+      return [m, r.cm.name || '', r.p.name || '', r.p.phone || '', r.p.email || '',
+        r.p.level || '', A.levelOf(r.p.level || 1).name,
+        b.post_count, b.post_count ? Math.round(b.amount / b.post_count) : 0, b.amount,
+        r.cp.status === 'sent' ? '보냄' : '아직 안 보냄',
+        r.cp.sent_at ? A.fdate(r.cp.sent_at) : '',
+        [r.cm.bank_name, r.cm.bank_no].filter(Boolean).join(' '), r.cm.bank_holder || '',
+        '', '', '', ''];
+    });
+    saveCsv('ESC 블로그 지급대장 ' + m + '.csv', head, body);
+    A.toast(BPAY.length + '명의 지급대장을 저장했습니다');
+  };
+
+  /* ② 공동체 이체 목록 — 이 달. 은행에서 보고 이체하는 표 */
+  $('btnPayComm').onclick = function () {
+    if (!CPAY.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
+    var m = $('payMonth').value;
+    var head = ['정산월', '공동체', '인원', '편수', '보낼 금액',
+      '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처', '상태', '보낸 날', '메모'];
+    var body = CPAY.map(function (c) {
+      var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
+      return [m, cm.name || '', c.people_count, c.post_count, c.amount,
+        cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
+        cm.leader_name || '', cm.leader_phone || '',
+        c.status === 'sent' ? '보냄' : '아직 안 보냄',
+        c.sent_at ? A.fdate(c.sent_at) : '', c.memo || ''];
+    });
+    saveCsv('ESC 블로그 공동체 이체목록 ' + m + '.csv', head, body);
+    A.toast(CPAY.length + '개 공동체를 저장했습니다');
+  };
+
+  /* ③ 전체 기간 개인별 누계 — 연말 지급명세서용 */
+  $('btnPayYear').onclick = async function () {
+    this.disabled = true;
+    try {
+      var all = await A.sel('blog_payouts', { order: 'month' });
+      if (!all.length) { A.toast('정산 기록이 없습니다'); return; }
+      var byId = {};
+      all.forEach(function (b) {
+        var k = b.blogger_id;
+        if (!byId[k]) byId[k] = { cnt: 0, amt: 0, months: [] };
+        byId[k].cnt += b.post_count; byId[k].amt += b.amount;
+        byId[k].months.push(b.month.slice(0, 7) + '(' + b.post_count + '편 ' + won(b.amount) + '원)');
+      });
+      var head = ['이름', '전화번호', '이메일(로그인 아이디)', '공동체', '현재 단계',
+        '첫 정산월', '마지막 정산월', '정산 개월 수', '누적 편수', '누적 지급액', '월별 내역'].concat(PAY_TAIL);
+      var body = Object.keys(byId).map(function (k) {
+        var v = byId[k];
+        var p = A.PEOPLE.filter(function (x) { return x.id === k; })[0] || {};
+        var mine = all.filter(function (b) { return b.blogger_id === k; });
+        return [p.name || '', p.phone || '', p.email || '', A.commName(p.community_id),
+          (p.level || '') + '단계',
+          mine[0].month.slice(0, 7), mine[mine.length - 1].month.slice(0, 7), mine.length,
+          v.cnt, v.amt, v.months.join(' / '), '', '', '', ''];
+      }).sort(function (a, b) { return b[9] - a[9]; });
+      saveCsv('ESC 블로그 개인별 누계 ' + A.today() + '.csv', head, body);
+      A.toast(body.length + '명의 누계를 저장했습니다');
+    } catch (e) { A.toast('실패: ' + e.message); }
+    this.disabled = false;
+  };
+
   $('payMonth').onchange = loadPay;
   $('btnClose').onclick = async function () {
     this.disabled = true;
