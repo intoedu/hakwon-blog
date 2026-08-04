@@ -10,7 +10,7 @@ window.ESC = (function () {
     sb: (window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SB_URL, SB_KEY) : null,
     ME: null, IS_ADMIN: false, IS_REVIEWER: false, VIEW_AS: 'admin', SESSION: null,
-    LEVELS: [], COMMS: [], PEOPLE: [], ORDERS: []
+    LEVELS: [], COMMS: [], PEOPLE: [], ORDERS: [], BLOGSTAFF: []
   };
 
   /* ── 유틸 ── */
@@ -116,31 +116,57 @@ window.ESC = (function () {
     });
 
     var pw = A.$('previewWho');
-    if (pw) pw.classList.toggle('hide', !blg);
-    A.$('previewBar').classList.toggle('hide', !blg);
+    if (pw) pw.classList.toggle('hide', !(rev || blg));
+    A.$('previewBar').classList.toggle('hide', !(rev || blg));
 
-    if (blg) { A.fillPreviewWho(); return; }   /* 화면 열기는 미리보기 쪽에서 합니다 */
-    A.openApp(rev ? 'review' : 'dash');
+    if (rev || blg) { A.fillPreviewWho(mode); return; }  /* 화면 열기는 미리보기 쪽에서 */
+    A.openApp('dash');
   };
 
-  /* 어느 블로거의 눈으로 볼지 고르기 */
-  A.fillPreviewWho = function () {
+  /* 누구 눈으로 볼지 고르기 — 블로거면 블로거 목록, 검수자면 블로그 스태프 목록 */
+  A.fillPreviewWho = function (mode) {
     var pw = A.$('previewWho'); if (!pw) return;
-    var list = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
+    var blg = mode === 'blogger';
+    var list = blg
+      ? A.PEOPLE.filter(function (p) { return p.status === 'approved'; })
+        .map(function (p) { return { id: p.id, name: p.name, sub: '' }; })
+      : A.BLOGSTAFF.map(function (s) {
+        return { id: s.id, name: s.name || s.email, sub: s.blogRole };
+      });
+
     if (!list.length) {
-      pw.innerHTML = '<option value="">승인된 블로거가 없습니다</option>';
+      pw.innerHTML = '<option value="">' + (blg ? '승인된 블로거가 없습니다' : '검수자·관리자가 없습니다') + '</option>';
       A.$('previewBar').classList.add('hide');
-      A.openApp('b-inbox');
+      A.openApp(blg ? 'b-inbox' : 'review');
       return;
     }
-    if (pw.dataset.filled !== String(list.length)) {
+    var key = mode + ':' + list.length;
+    if (pw.dataset.filled !== key) {
       pw.innerHTML = list.map(function (p) {
-        return '<option value="' + p.id + '">' + A.esc(p.name) + '</option>';
+        return '<option value="' + p.id + '">' + A.esc(p.name)
+          + (p.sub ? ' · ' + A.esc(p.sub) : '') + '</option>';
       }).join('');
-      pw.dataset.filled = String(list.length);
-      pw.onchange = function () { A.loadBloggerPreview(this.value); };
+      pw.dataset.filled = key;
+      pw.onchange = function () { A.pickPreview(A.VIEW_AS, this.value); };
     }
-    A.loadBloggerPreview(pw.value || list[0].id);
+    A.pickPreview(mode, list[0].id);
+  };
+
+  A.pickPreview = function (mode, id) {
+    if (mode === 'blogger') { A.loadBloggerPreview(id); return; }
+    /* 검수자·관리자 — 그 사람 직분에 맞는 사이드바를 보여줍니다 */
+    var s = A.BLOGSTAFF.filter(function (x) { return x.id === id; })[0];
+    if (!s) return;
+    var full = s.blogRole !== '검수자';           /* 관리자·최고관리자면 전체 화면 */
+    A.$('navAdmin').classList.toggle('hide', !full);
+    A.$('navReviewer').classList.toggle('hide', full);
+    A.$('meName').textContent = s.name || s.email;
+    A.$('meRole').textContent = s.blogRole + ' 화면 보는 중';
+    A.$('previewName').textContent = (s.name || s.email) + ' (' + s.blogRole + ')';
+    document.querySelectorAll('[data-adminonly]').forEach(function (el) {
+      el.classList.toggle('hide', !full);
+    });
+    A.openApp(full ? 'dash' : 'review');
   };
 
   A.openApp = function (screen) {

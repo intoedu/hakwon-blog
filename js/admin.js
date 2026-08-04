@@ -16,8 +16,10 @@
     PROG = await A.sel('order_progress');
     POSTS = await A.sel('blog_posts', { order: 'seq' });
 
+    await loadBlogStaff();
+
     fillSelects();
-    renderDash(); renderStaffAll();
+    renderDash(); renderStaffAll(); renderBlogStaff();
     renderOrders(); renderAssign(); renderReview(); renderProgress();
     loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
@@ -149,7 +151,11 @@
 
   function renderApply() {
     $('tcWait').textContent = cnt('pending');
-    $('tcList').textContent = cnt('approved') + cnt('paused');
+    /* 검수자·관리자로 올라간 사람은 빼고 셉니다 (병행 표시한 사람은 포함) */
+    $('tcList').textContent = A.PEOPLE.filter(function (p) {
+      return ['approved', 'paused'].indexOf(p.status) >= 0
+        && (!blogRoleOf(p.id) || p.also_blogging);
+    }).length;
     $('acWait').textContent = cnt('pending');
     $('acHold').textContent = cnt('hold');
     $('acNo').textContent = cnt('rejected');
@@ -210,13 +216,18 @@
 
   function renderList() {
     var q = ($('fName').value || '').trim(), cid = $('fComm').value;
+    var lvf = $('fLevel') ? $('fLevel').value : '';
     var rows = A.PEOPLE.filter(function (p) {
       if (p.status !== 'approved' && p.status !== 'paused') return false;
       if (cid && p.community_id !== cid) return false;
+      if (lvf && String(p.level) !== lvf) return false;
       if (q && p.name.indexOf(q) < 0) return false;
+      /* 검수자·관리자로 올라간 사람은 「검수자 / 관리자」 탭으로 갑니다.
+         병행에 체크한 사람만 여기 남습니다 */
+      if (blogRoleOf(p.id) && !p.also_blogging) return false;
       return true;
     });
-    if (!rows.length) { $('listBox').innerHTML = A.empty('아직 일하는 블로거이 없습니다.'); return; }
+    if (!rows.length) { $('listBox').innerHTML = A.empty('해당하는 블로거가 없습니다.'); return; }
 
     $('listBox').innerHTML = '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>이름</th><th>공동체</th><th>단계</th><th>편당</th><th>이웃</th>'
@@ -237,8 +248,66 @@
           + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>' : '<span class="chip c-wait">미완</span>') + '</td>'
           + '<td><div class="row">'
           + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-lv="' + p.id + '">' + opts + '</select>'
+          + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-promote="' + p.id + '">'
+          + [['none', '블로거'], ['review', '검수자로 ↑'], ['admin', '관리자로 ↑']].map(function (o) {
+            return '<option value="' + o[0] + '"' + (blogRoleOf(p.id) === o[0] ? ' selected' : '') + '>'
+              + o[1] + '</option>';
+          }).join('') + '</select>'
           + '<button class="btn btn-s" data-act="' + (p.status === 'approved' ? 'paused' : 'approved')
           + '" data-id="' + p.id + '">' + (p.status === 'approved' ? '쉬게 하기' : '다시 활동') + '</button>'
+          + '</div></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  /* ── 검수자 / 관리자 ── */
+  function blogRoleOf(id) {
+    var s = A.BLOGSTAFF.filter(function (x) { return x.id === id; })[0];
+    return s ? s.role : null;             /* 'admin' | 'review' | 'owner' | null */
+  }
+  var ROLE_KO = { owner: '최고관리자', admin: '관리자', review: '검수자' };
+
+  async function loadBlogStaff() {
+    var rows = await A.sel('staff');
+    A.BLOGSTAFF = rows.filter(function (s) {
+      return s.status === 'approved' &&
+        (s.role === 'owner' || (s.perms && (s.perms.blog_admin || s.perms.blog_review)));
+    }).map(function (s) {
+      var role = s.role === 'owner' ? 'owner' : (s.perms && s.perms.blog_admin) ? 'admin' : 'review';
+      return { id: s.id, name: s.name, email: s.email, phone: s.phone,
+               role: role, blogRole: ROLE_KO[role], escRole: s.role, perms: s.perms || {} };
+    });
+    var b = $('tcStaff'); if (b) b.textContent = A.BLOGSTAFF.length;
+  }
+
+  function renderBlogStaff() {
+    if (!A.BLOGSTAFF.length) {
+      $('blogStaffBox').innerHTML = A.empty('아직 검수자·관리자가 없습니다. 블로거 목록에서 올려 주세요.');
+      return;
+    }
+    $('blogStaffBox').innerHTML = '<div class="tblbox tblscroll"><table>'
+      + '<thead><tr><th>이름</th><th>직분</th><th>연락처</th><th>블로거 병행</th>'
+      + '<th>이번 달 쓴 글</th><th></th></tr></thead><tbody>'
+      + A.BLOGSTAFF.map(function (s) {
+        var p = A.PEOPLE.filter(function (x) { return x.id === s.id; })[0];
+        var st = p ? stat(p.id) : {};
+        var locked = s.role === 'owner' || !p;   /* 최고관리자·블로거가 아닌 ESC 직원은 여기서 못 바꿈 */
+        return '<tr><td><b>' + esc(s.name || s.email) + '</b>'
+          + '<div class="mono">' + esc(s.email || '') + '</div></td>'
+          + '<td><span class="chip ' + (s.role === 'owner' ? 'c-ok' : s.role === 'admin' ? 'c-info' : 'c-wait')
+          + '">' + s.blogRole + '</span></td>'
+          + '<td class="mono">' + esc(s.phone || '-') + '</td>'
+          + '<td>' + (!p ? '<span class="mono">블로거 아님</span>'
+            : '<label class="row" style="gap:6px;cursor:pointer"><input type="checkbox" data-also="' + s.id + '"'
+              + (p.also_blogging ? ' checked' : '') + '> <span class="mono">'
+              + (p.also_blogging ? '글도 받음' : '글 안 받음') + '</span></label>') + '</td>'
+          + '<td class="num">' + (st.done_month || 0) + '</td>'
+          + '<td><div class="row">'
+          + '<button class="btn btn-s" data-seeas="' + s.id + '">이 사람 화면 보기</button>'
+          + (locked ? '' :
+            '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-promote="' + s.id + '">'
+            + [['review', '검수자'], ['admin', '관리자'], ['none', '블로거로 내리기']].map(function (o) {
+              return '<option value="' + o[0] + '"' + (s.role === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+            }).join('') + '</select>')
           + '</div></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
@@ -1299,6 +1368,15 @@
       A.toast('글감을 저장했습니다'); await A.loadAdmin(); return;
     }
 
+    /* 「이 사람 화면 보기」 — 왼쪽 전환 스위치를 그 사람으로 맞춥니다 */
+    if ((t = e.target.closest('[data-seeas]'))) {
+      var sid = t.dataset.seeas;
+      A.applyView('reviewer');
+      var pw = $('previewWho');
+      if (pw) { pw.value = sid; A.pickPreview('reviewer', sid); }
+      return;
+    }
+
     if ((t = e.target.closest('[data-noti]'))) {
       NOTI_TAB = t.dataset.noti; NOTI_KIND = ''; renderNoti(); return;
     }
@@ -1457,7 +1535,36 @@
         A.toast('단계를 바꿨습니다'); await A.loadAdmin(); }
       catch (err) { A.toast('실패: ' + err.message); }
     }
+
+    /* 검수자·관리자로 올리기 / 블로거로 내리기 */
+    if (e.target.dataset && e.target.dataset.promote) {
+      var pid = e.target.dataset.promote, role = e.target.value;
+      var per = A.PEOPLE.filter(function (x) { return x.id === pid; })[0] || {};
+      var msg = role === 'none'
+        ? '「' + (per.name || '') + '」님을 블로거로 되돌릴까요?\n\n검수·관리 권한이 사라지고 글을 다시 받게 됩니다.'
+        : '「' + (per.name || '') + '」님을 ' + (role === 'admin' ? '관리자' : '검수자')
+          + '로 올릴까요?\n\n' + (role === 'admin'
+            ? '주문·배정·정산까지 전부 하실 수 있게 됩니다.'
+            : '원고를 보고 통과/수정요청을 하실 수 있게 됩니다.')
+          + '\n글은 더 이상 배정되지 않습니다 (병행에 체크하시면 계속 받습니다).';
+      if (!confirm(msg)) { renderList(); renderBlogStaff(); return; }
+      try {
+        await A.rpc('blogger_promote', { p_id: pid, p_role: role, p_also: false });
+        A.toast(role === 'none' ? '블로거로 되돌렸습니다' : '올렸습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); renderList(); renderBlogStaff(); }
+    }
+
+    /* 블로거 병행 체크 */
+    if (e.target.dataset && e.target.dataset.also) {
+      try {
+        await A.rpc('blogger_set_also', { p_id: e.target.dataset.also, p_also: e.target.checked });
+        A.toast(e.target.checked ? '글도 받게 했습니다' : '글은 안 받게 했습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); await A.loadAdmin(); }
+    }
   });
   $('fName').oninput = renderList;
   $('fComm').onchange = renderList;
+  $('fLevel').onchange = renderList;
 })(window.ESC);

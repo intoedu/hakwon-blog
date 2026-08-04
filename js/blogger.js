@@ -260,7 +260,13 @@
       act = '<div class="sec">다 쓰셨으면</div><div class="card">'
         + '<label class="f">구글 문서 링크</label>'
         + '<input class="inp" id="docUrl" value="' + esc(p.content_url || '') + '" placeholder="https://docs.google.com/…">'
-        + '<div class="mono" style="margin-top:5px">문서 오른쪽 위 [공유] → "링크가 있는 모든 사용자"로 바꿔 주세요</div>'
+        + '<div class="note warn" style="margin-top:10px"><b>링크만 보내면 저희가 못 엽니다.</b><br>'
+        + '문서 오른쪽 위 <b>[공유]</b> → 아래쪽 <b>"제한됨"</b>을 눌러 '
+        + '<b>"링크가 있는 모든 사용자"</b>로 바꿔 주세요.<br>'
+        + '이걸 안 하시면 저희 화면에 <b>권한 요청</b>만 뜨고, 검수가 그만큼 늦어집니다.</div>'
+        + '<label class="row" style="gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">'
+        + '<input type="checkbox" id="docShared"> '
+        + '<span><b>공유 설정을 “링크가 있는 모든 사용자”로 바꿨습니다</b></span></label>'
         + '<div style="margin-top:12px"><label class="f">남길 말 (안 쓰셔도 됩니다)</label>'
         + '<input class="inp" id="docMemo" value="' + esc(p.memo || '') + '"></div>'
         + '<div class="row" style="margin-top:14px"><button class="btn btn-a" id="btnSubmit">원고 내기</button>'
@@ -289,6 +295,11 @@
     if ($('btnSubmit')) $('btnSubmit').onclick = async function () {
       var u = $('docUrl').value.trim();
       if (!/^https?:\/\//.test(u)) { A.toast('구글 문서 링크를 넣어 주세요'); return; }
+      if (!$('docShared').checked) {
+        A.toast('공유 설정을 바꾸셨는지 확인하고 체크해 주세요');
+        $('docShared').closest('label').style.color = 'var(--bad)';
+        return;
+      }
       this.disabled = true;
       try {
         await A.rpc('post_submit', { p_post: p.id, p_url: u, p_memo: $('docMemo').value.trim() || null });

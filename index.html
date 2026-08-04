@@ -195,12 +195,13 @@
     <!-- 1 블로거 관리 -->
     <section class="screen" data-screen="staff">
       <div class="head"><div class="step-of">1단계 · 사람을 모읍니다</div>
-        <h1>블로거 관리</h1><p>신청 받기 · 블로거 목록 · 단계 관리 · 공동체</p></div>
+        <h1>블로거 관리</h1><p>신청 받기 · 블로거 목록 · 단계 관리 · 공동체 · 검수자/관리자</p></div>
       <div class="tabs" data-tabs="staff">
         <button class="on" data-pane="t-apply">신청 받기 <span class="mono" id="tcWait">0</span></button>
         <button data-pane="t-list">블로거 목록 <span class="mono" id="tcList">0</span></button>
         <button data-pane="t-level">단계 관리 <span class="mono" id="tcCand">0</span></button>
         <button data-pane="t-comm">공동체</button>
+        <button data-pane="t-staff">검수자 / 관리자 <span class="mono" id="tcStaff">0</span></button>
       </div>
       <div class="pane on" data-pane="t-apply">
         <div class="tabs" data-tabs="apply" style="margin-bottom:14px">
@@ -218,6 +219,12 @@
       <div class="pane hide" data-pane="t-list">
         <div class="row" style="margin-bottom:14px">
           <select class="inp" id="fComm" style="width:auto"><option value="">전체 공동체</option></select>
+          <select class="inp" id="fLevel" style="width:auto">
+            <option value="">전체 단계</option>
+            <option value="1">1단계</option><option value="2">2단계</option>
+            <option value="3">3단계</option><option value="4">4단계</option>
+            <option value="5">5단계</option>
+          </select>
           <input class="inp" id="fName" style="width:auto;flex:1;min-width:140px" placeholder="이름으로 찾기">
         </div>
         <div id="listBox"></div>
@@ -240,6 +247,19 @@
         <div class="row" style="margin-top:14px">
           <input class="inp" id="newComm" style="width:auto;min-width:180px" placeholder="새 공동체 이름">
           <button class="btn btn-p" id="btnAddComm">공동체 추가</button>
+        </div>
+      </div>
+      <div class="pane hide" data-pane="t-staff">
+        <div class="note" style="margin-bottom:16px">
+          <b>블로거를 검수자·관리자로 올리면 여기로 옮겨집니다.</b>
+          올리는 것은 <b>블로거 목록</b>에서 하시면 됩니다.<br>
+          검수자·관리자에게는 <b>글이 배정되지 않습니다.</b> 글도 쓰면서 관리도 하실 분은
+          <b>「블로거 병행」</b>에 체크해 주세요. 체크하면 블로거 목록에도 계속 남고 글도 받습니다.
+        </div>
+        <div id="blogStaffBox"></div>
+        <div class="note warn" style="margin-top:16px">
+          <b>최고관리자와 ESC 직원은 여기서 못 바꿉니다.</b> 그분들은 홈페이지 관리자 페이지의
+          <b>관리자 목록</b>에서 다루셔야 합니다.
         </div>
       </div>
     </section>
