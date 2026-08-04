@@ -3,8 +3,52 @@
   'use strict';
   var $ = A.$, esc = A.esc, won = A.won;
   var MY = [], SESS = [], MATS = [], MINE = [], ATT = [], PAY = [], NOTI = [], CUR = null;
+  var PREVIEW = false;   /* 관리자가 블로거 화면을 들여다보는 중이면 true */
+
+  /* 관리자가 「블로거」로 전환했을 때 — 그 사람 눈으로 보이는 화면을 그대로 그립니다.
+     보기만 되고 버튼은 잠급니다. (서버도 남의 글은 못 건드리게 막혀 있습니다) */
+  A.loadBloggerPreview = async function (id) {
+    var who = A.PEOPLE.filter(function (x) { return x.id === id; })[0];
+    if (!who) { A.toast('블로거를 고르세요'); return; }
+    PREVIEW = true; A.ME = who; CUR = null;
+    A.$('previewName').textContent = who.name;
+
+    var r = await A.sb.from('blog_posts')
+      .select('*, blog_orders(academy_name,region,info_pack,academy_url,photo_paths,photo_note)')
+      .eq('blogger_id', id).order('due_date');
+    MY = (r.data || []).map(function (x) {
+      var o = x.blog_orders || {}; delete x.blog_orders;
+      return Object.assign(x, o);
+    });
+    SESS = await A.sel('training_sessions', { order: 'held_at' });
+    MATS = await A.sel('training_materials_public', { order: 'sort' });
+    MINE = await A.sel('training_progress', { eq: { blogger_id: id } });
+    ATT = await A.sel('training_attendance', { eq: { blogger_id: id } });
+    PAY = await A.sel('blog_payouts', { eq: { blogger_id: id }, order: 'month', asc: false });
+    NOTI = await A.sel('notifications', { eq: { blogger_id: id }, order: 'created_at', asc: false });
+
+    renderInbox(); renderEdu(); renderWork(); renderPay();
+    A.openApp('b-inbox');
+    lockPreview();
+  };
+
+  /* 미리보기에서는 손대지 못하게 잠급니다 */
+  function lockPreview() {
+    if (!PREVIEW) return;
+    ['b-inbox', 'b-edu', 'b-work', 'b-pay'].forEach(function (s) {
+      document.querySelectorAll('.screen[data-screen="' + s + '"] button,'
+        + ' .screen[data-screen="' + s + '"] input,'
+        + ' .screen[data-screen="' + s + '"] textarea,'
+        + ' .screen[data-screen="' + s + '"] select').forEach(function (el) {
+          if (el.id === 'workPick') return;    /* 글 넘겨보기는 되게 둡니다 */
+          el.disabled = true;
+        });
+    });
+  }
+  A.afterBloggerRender = lockPreview;
 
   A.loadBlogger = async function () {
+    PREVIEW = false;
     MY = await A.sel('my_posts', { order: 'due_date' });
     SESS = await A.sel('training_sessions', { order: 'held_at' });
     MATS = await A.sel('training_materials_public', { order: 'sort' });
@@ -262,6 +306,7 @@
         await A.loadBlogger(); A.show('b-inbox');
       } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }
     };
+    lockPreview();          /* 글을 넘겨봐도 계속 잠겨 있게 */
   }
   /* 글마다 다른 사진이 가도록 순번으로 잘라 줍니다 (같은 사진이 여러 블로그에 겹치면
      중복으로 감지될 수 있어서 조합을 달리합니다) */

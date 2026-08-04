@@ -69,7 +69,7 @@
       '<h4>전체 흐름 — 왼쪽 메뉴가 이 순서입니다</h4>'
       + '<div class="fsub">누르면 그 화면으로 갑니다. 처음이시면 1번부터 차례로 보세요.</div>'
       + '<div class="flowrow">'
-      + fgroup('사람을 모읍니다', [[1, '직원 관리', 'staff'], [2, '직원 교육', 'edu']])
+      + fgroup('사람을 모읍니다', [[1, '블로거 관리', 'staff'], [2, '블로거 교육', 'edu']])
       + '<div class="fdiv"></div>'
       + fgroup('주문이 들어오면', [[3, '주문 · 입금', 'orders'], [4, '키워드 만들기', 'kw'], [5, '글 나눠주기', 'assign']])
       + '<div class="fdiv"></div>'
@@ -104,7 +104,7 @@
     if (unass) todo.push(job('담당자 미정 ' + unass + '편',
       '한 번에 맡길 수 있습니다', 'assign', '5 글 나눠주기 →'));
     if (wait) todo.push(job('승인 기다리는 사람 ' + wait + '명',
-      '블로그를 열어보고 판단하세요 · 1명당 1분', 'staff', '1 직원 관리 →'));
+      '블로그를 열어보고 판단하세요 · 1명당 1분', 'staff', '1 블로거 관리 →'));
     var cand = candidates();
     if (cand.length) todo.push(job('승급 후보 ' + cand.length + '명',
       '기준을 넘었습니다. 확인하고 올려주세요', 'staff', '단계 관리 →'));
@@ -142,7 +142,7 @@
       + '<div class="right"><button class="btn btn-p btn-s" data-go="' + go + '">' + esc(btn) + '</button></div></div>';
   }
 
-  /* ═══ 1 직원 관리 ═══ */
+  /* ═══ 1 블로거 관리 ═══ */
   function renderStaffAll() { renderApply(); renderList(); renderLevels(); renderComms(); }
 
   A.onSubTab = function (s) { SUBTAB = s; renderApply(); };
@@ -216,7 +216,7 @@
       if (q && p.name.indexOf(q) < 0) return false;
       return true;
     });
-    if (!rows.length) { $('listBox').innerHTML = A.empty('아직 일하는 직원이 없습니다.'); return; }
+    if (!rows.length) { $('listBox').innerHTML = A.empty('아직 일하는 블로거이 없습니다.'); return; }
 
     $('listBox').innerHTML = '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>이름</th><th>공동체</th><th>단계</th><th>편당</th><th>이웃</th>'
@@ -357,7 +357,7 @@
       }).join('') + '</tbody></table></div>' : A.empty('공동체가 없습니다.');
   }
 
-  /* ═══ 2 직원 교육 ═══ */
+  /* ═══ 2 블로거 교육 ═══ */
   async function loadEdu() {
     SESSIONS = await A.sel('training_sessions', { order: 'held_at', asc: false });
     MATS = await A.sel('training_materials', { order: 'sort' });
@@ -410,7 +410,7 @@
               : '<span class="chip c-bad">' + mine + '/' + need + '</span>') + '</td>'
           + '<td>' + (a2 ? '<span class="chip c-ok">참석</span>' : '<span class="chip c-off">—</span>') + '</td>'
           + '<td>' + (s.ready ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>' : A.empty('승인된 직원이 없습니다.');
+      }).join('') + '</tbody></table></div>' : A.empty('승인된 블로거이 없습니다.');
   }
 
   /* ═══ 3 주문 · 입금 ═══ */
@@ -557,7 +557,7 @@
 
     $('postList').innerHTML = mine.length ? mine.map(function (p, i) {
       return '<label class="pickrow" draggable="true" data-post="' + p.id + '">'
-        + '<span class="grip" title="끌어서 오른쪽 직원에게 놓으세요">⠿</span>'
+        + '<span class="grip" title="끌어서 오른쪽 블로거에게 놓으세요">⠿</span>'
         + '<input type="checkbox" class="pk-post" value="' + p.id + '">'
         + '<span><b>' + esc(p.keyword || '(제목 없음)') + '</b></span>'
         + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span></label>';
@@ -577,7 +577,7 @@
         + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id))
         + ' · ' + p.level + '단계</span></span>'
         + '<span class="sub">이번 달 ' + (s.done_month || 0) + '편 · 이 학원 ' + here + '편</span></label>';
-    }).join('') : '<div class="empty">승인된 직원이 없습니다.</div>';
+    }).join('') : '<div class="empty">승인된 블로거이 없습니다.</div>';
 
     $('allPosts').checked = false; $('allPeople').checked = false;
     refreshPick();
@@ -589,7 +589,7 @@
     var a = picked('pk-post').length, b = picked('pk-ppl').length;
     $('cPosts').textContent = a; $('cPeople').textContent = b;
     $('doAssign').disabled = !(a && b);
-    $('assignHint').textContent = (!a || !b) ? '왼쪽에서 글, 오른쪽에서 직원을 골라 주세요'
+    $('assignHint').textContent = (!a || !b) ? '왼쪽에서 글, 오른쪽에서 블로거를 골라 주세요'
       : a === b ? a + '편을 ' + b + '명에게 한 편씩 줍니다'
         : a > b ? a + '편을 ' + b + '명에게 골고루 나눕니다 (한 명당 최대 ' + Math.ceil(a / b) + '편)'
           : a + '편을 ' + b + '명 중 앞에서 ' + a + '명에게 한 편씩 줍니다';
@@ -1027,7 +1027,7 @@
     if (n.audience === 'blogger') {
       var p = A.PEOPLE.filter(function (x) { return x.id === n.blogger_id; })[0];
       return p ? { name: p.name, sub: [A.commName(p.community_id), p.phone].filter(Boolean).join(' · ') }
-        : { name: '(지워진 직원)', sub: '' };
+        : { name: '(지워진 블로거)', sub: '' };
     }
     if (n.audience === 'academy') {
       var o = A.ORDERS.filter(function (x) { return x.id === n.order_id; })[0];
@@ -1109,7 +1109,7 @@
     $('notiSign').value = NOTI_SET.sign || '';
     var on = NOTI_SET.noti || {};
     $('notiToggles').innerHTML = Object.keys(KIND_OF).map(function (aud) {
-      var label = aud === 'blogger' ? '직원(블로거)에게' : aud === 'academy' ? '학원에게' : '우리끼리';
+      var label = aud === 'blogger' ? '블로거에게' : aud === 'academy' ? '학원에게' : '우리끼리';
       return '<div><label class="f">' + label + '</label>'
         + KIND_OF[aud].map(function (k) {
           return '<label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:3px 0">'

@@ -98,11 +98,12 @@ window.ESC = (function () {
      관리자는 위쪽 전환 버튼으로 검수자 화면을 미리 볼 수 있습니다(서버 권한은 그대로). */
   A.applyView = function (mode) {
     A.VIEW_AS = mode;
-    var rev = mode === 'reviewer';
-    A.$('navAdmin').classList.toggle('hide', rev);
+    var rev = mode === 'reviewer', blg = mode === 'blogger';
+    A.$('navAdmin').classList.toggle('hide', rev || blg);
     A.$('navReviewer').classList.toggle('hide', !rev);
-    A.$('navBlogger').classList.add('hide');
-    A.$('meRole').textContent = rev ? '블로그 원고 검수자' : '블로그 센터 관리자';
+    A.$('navBlogger').classList.toggle('hide', !blg);
+    A.$('meRole').textContent = rev ? '블로그 원고 검수자'
+      : blg ? '블로거 화면 보는 중' : '블로그 센터 관리자';
 
     var sw = A.$('viewSwitch');
     if (sw) sw.classList.toggle('hide', !A.IS_ADMIN);
@@ -111,9 +112,35 @@ window.ESC = (function () {
     });
     /* 검수자에게는 관리자 전용 조각을 숨깁니다 (서버에서도 막혀 있습니다) */
     document.querySelectorAll('[data-adminonly]').forEach(function (el) {
-      el.classList.toggle('hide', rev);
+      el.classList.toggle('hide', rev || blg);
     });
+
+    var pw = A.$('previewWho');
+    if (pw) pw.classList.toggle('hide', !blg);
+    A.$('previewBar').classList.toggle('hide', !blg);
+
+    if (blg) { A.fillPreviewWho(); return; }   /* 화면 열기는 미리보기 쪽에서 합니다 */
     A.openApp(rev ? 'review' : 'dash');
+  };
+
+  /* 어느 블로거의 눈으로 볼지 고르기 */
+  A.fillPreviewWho = function () {
+    var pw = A.$('previewWho'); if (!pw) return;
+    var list = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
+    if (!list.length) {
+      pw.innerHTML = '<option value="">승인된 블로거가 없습니다</option>';
+      A.$('previewBar').classList.add('hide');
+      A.openApp('b-inbox');
+      return;
+    }
+    if (pw.dataset.filled !== String(list.length)) {
+      pw.innerHTML = list.map(function (p) {
+        return '<option value="' + p.id + '">' + A.esc(p.name) + '</option>';
+      }).join('');
+      pw.dataset.filled = String(list.length);
+      pw.onchange = function () { A.loadBloggerPreview(this.value); };
+    }
+    A.loadBloggerPreview(pw.value || list[0].id);
   };
 
   A.openApp = function (screen) {

@@ -124,8 +124,8 @@
     <div id="navAdmin" class="hide">
       <button class="nav on" data-go="dash">오늘 할 일</button>
       <div class="navlbl">사람을 모읍니다</div>
-      <button class="nav" data-go="staff"><span class="n">1</span>직원 관리 <span class="cnt hide" id="cWait">0</span></button>
-      <button class="nav" data-go="edu"><span class="n">2</span>직원 교육</button>
+      <button class="nav" data-go="staff"><span class="n">1</span>블로거 관리 <span class="cnt hide" id="cWait">0</span></button>
+      <button class="nav" data-go="edu"><span class="n">2</span>블로거 교육</button>
       <div class="navlbl">주문이 들어오면</div>
       <button class="nav" data-go="orders"><span class="n">3</span>주문 · 입금</button>
       <button class="nav" data-go="kw"><span class="n">4</span>키워드 만들기</button>
@@ -160,9 +160,12 @@
         <div class="vsw">
           <button data-view-btn="admin" class="on">관리자</button>
           <button data-view-btn="reviewer">검수자</button>
+          <button data-view-btn="blogger">블로거</button>
         </div>
+        <select class="inp hide" id="previewWho"
+                style="margin-top:6px;padding:5px 7px;font-size:11.5px"></select>
         <div style="font-size:10.5px;margin-top:5px;line-height:1.5">
-          검수자로 두면 직원에게 보이는 화면이 그대로 보입니다</div>
+          검수자·블로거에게 보이는 화면을 그대로 볼 수 있습니다</div>
       </div>
       <b id="meName">-</b><span id="meRole">-</span>
       <button class="nav" style="margin-top:8px" id="btnReload">↻ 새로고침</button>
@@ -171,6 +174,11 @@
   </aside>
 
   <main class="main"><div class="wrap">
+
+    <div class="msg ok hide" id="previewBar" style="margin-bottom:16px">
+      👀 <b id="previewName"></b> 님에게 보이는 화면입니다. <b>보기만 됩니다</b> — 버튼은 눌리지 않습니다.
+      원래대로 돌아가시려면 왼쪽 아래에서 <b>[관리자]</b>를 누르세요.
+    </div>
 
     <!-- 오늘 할 일 -->
     <section class="screen on" data-screen="dash">
@@ -184,13 +192,13 @@
       <div id="dashOrders"></div>
     </section>
 
-    <!-- 1 직원 관리 -->
+    <!-- 1 블로거 관리 -->
     <section class="screen" data-screen="staff">
       <div class="head"><div class="step-of">1단계 · 사람을 모읍니다</div>
-        <h1>직원 관리</h1><p>신청 받기 · 직원 목록 · 단계 관리 · 공동체</p></div>
+        <h1>블로거 관리</h1><p>신청 받기 · 블로거 목록 · 단계 관리 · 공동체</p></div>
       <div class="tabs" data-tabs="staff">
         <button class="on" data-pane="t-apply">신청 받기 <span class="mono" id="tcWait">0</span></button>
-        <button data-pane="t-list">직원 목록 <span class="mono" id="tcList">0</span></button>
+        <button data-pane="t-list">블로거 목록 <span class="mono" id="tcList">0</span></button>
         <button data-pane="t-level">단계 관리 <span class="mono" id="tcCand">0</span></button>
         <button data-pane="t-comm">공동체</button>
       </div>
@@ -236,10 +244,10 @@
       </div>
     </section>
 
-    <!-- 2 직원 교육 -->
+    <!-- 2 블로거 교육 -->
     <section class="screen" data-screen="edu">
       <div class="head"><div class="step-of">2단계 · 사람을 모읍니다</div>
-        <h1>직원 교육</h1><p>줌 두 번과 영상 자료로 굴러갑니다. 1차와 영상을 마쳐야 글이 배정됩니다.</p></div>
+        <h1>블로거 교육</h1><p>줌 두 번과 영상 자료로 굴러갑니다. 1차와 영상을 마쳐야 글이 배정됩니다.</p></div>
       <div class="sec">줌 일정</div>
       <div id="eduSessions"></div>
       <div class="card" style="margin-top:12px">
@@ -367,14 +375,14 @@
         </div>
         <div class="picklist">
           <div class="pickhead">
-            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPeople"> <b>지금 맡길 수 있는 직원</b></label>
+            <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="allPeople"> <b>지금 맡길 수 있는 블로거</b></label>
             <span class="cntx"><span id="cPeople">0</span>명 선택</span></div>
           <div class="pickbody" id="peopleList"></div>
         </div>
       </div>
       <div class="pickbar">
         <button class="btn btn-p" id="doAssign" disabled>선택한 글을 선택한 사람에게 나눠주기</button>
-        <span class="mono" id="assignHint">왼쪽에서 글, 오른쪽에서 직원을 골라 주세요</span>
+        <span class="mono" id="assignHint">왼쪽에서 글, 오른쪽에서 블로거를 골라 주세요</span>
       </div>
       <div class="note" style="margin-top:14px">
         <b>회색으로 죽어 있는 사람은 못 고릅니다.</b> 교육을 다 안 받았거나 저품질로 표시된 경우입니다.
@@ -515,7 +523,7 @@
           <input type="checkbox" id="notiShowSent"> 이미 보낸 것도 보기</label>
       </div>
       <div class="tabs" id="notiTabs" style="margin-bottom:14px">
-        <button class="on" data-noti="blogger">직원(블로거)에게</button>
+        <button class="on" data-noti="blogger">블로거에게</button>
         <button data-noti="academy">학원에게</button>
         <button data-noti="staff">우리끼리 챙길 것</button>
       </div>
