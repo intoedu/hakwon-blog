@@ -88,6 +88,17 @@
       <button class="link" data-out="1" style="margin-left:auto">로그아웃</button></div>
   </div>
 
+  <!-- ESC 직원인데 블로그 센터 권한이 없는 경우 -->
+  <div class="gbox hide" id="g-nostaff">
+    <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
+    <h2>블로그 센터 권한이 없습니다</h2>
+    <p class="lead">ESC 직원 계정으로 로그인하셨습니다. 다만 블로그 센터를 쓰실 권한이 아직 없습니다.</p>
+    <div class="note">최고관리자에게 <b>「블로그 센터 운영」</b> 또는 <b>「블로그 원고 검수만」</b> 권한을
+      요청해 주세요. ESC 관리자 페이지 → <b>관리자 목록</b>에서 체크하면 바로 들어오실 수 있습니다.</div>
+    <div class="gfoot"><span id="nostaffWho" class="mono"></span>
+      <button class="link" data-out="1" style="margin-left:auto">로그아웃</button></div>
+  </div>
+
   <div class="gbox hide" id="g-rejected">
     <div class="glogo"><div class="mk">ESC</div><div><b>블로그 센터</b><span>학원지원센터</span></div></div>
     <h2>아쉽지만 이번에는 함께하지 못하게 되었습니다</h2>
@@ -127,6 +138,13 @@
       <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
     </div>
 
+    <!-- ESC 직원 중 '검수만' 권한을 가진 분 -->
+    <div id="navReviewer" class="hide">
+      <button class="nav on" data-go="review">원고 검수하기 <span class="cnt hot hide" id="cReview2">0</span></button>
+      <button class="nav" data-go="posts">진행 현황 보기</button>
+      <button class="nav" data-go="noti">🔔 챙길 것</button>
+    </div>
+
     <div id="navBlogger" class="hide">
       <button class="nav on" data-go="b-inbox">내 작업함</button>
       <div class="navlbl">이 순서로 하시면 됩니다</div>
@@ -136,6 +154,16 @@
     </div>
 
     <div class="sidefoot">
+      <div id="viewSwitch" class="hide" style="margin-bottom:12px">
+        <div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;margin-bottom:5px">
+          어느 화면으로 볼까요</div>
+        <div class="vsw">
+          <button data-view-btn="admin" class="on">관리자</button>
+          <button data-view-btn="reviewer">검수자</button>
+        </div>
+        <div style="font-size:10.5px;margin-top:5px;line-height:1.5">
+          검수자로 두면 직원에게 보이는 화면이 그대로 보입니다</div>
+      </div>
       <b id="meName">-</b><span id="meRole">-</span>
       <button class="nav" style="margin-top:8px" id="btnReload">↻ 새로고침</button>
       <button class="nav" data-out="1">로그아웃</button>
@@ -356,7 +384,7 @@
 
     <!-- 6 검수하기 -->
     <section class="screen" data-screen="review">
-      <div class="head"><div class="step-of">6단계 · 일이 돌아가면</div>
+      <div class="head"><div class="step-of" data-adminonly>6단계 · 일이 돌아가면</div>
         <h1>검수하기</h1><p>학원별로 묶어서 봅니다. 학원 이름을 누르면 그 학원 글들이 열립니다.</p></div>
       <div class="tabs" data-tabs="rv">
         <button class="on" data-pane="rv-draft">① 원고 검수 <span class="mono" id="rcDraft">0</span></button>
@@ -412,7 +440,7 @@
 
     <!-- 7 진행 현황 -->
     <section class="screen" data-screen="posts">
-      <div class="head"><div class="step-of">7단계 · 일이 돌아가면</div>
+      <div class="head"><div class="step-of" data-adminonly>7단계 · 일이 돌아가면</div>
         <h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p></div>
       <div class="row" style="margin-bottom:10px">
         <select class="inp" id="pgOrder" style="width:auto;flex:1;min-width:180px"></select>
@@ -491,7 +519,22 @@
         <button data-noti="academy">학원에게</button>
         <button data-noti="staff">우리끼리 챙길 것</button>
       </div>
+      <div id="notiKinds" style="margin-bottom:14px"></div>
       <div id="notiList"></div>
+      <details id="notiSetBox" style="margin-top:20px" data-adminonly>
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
+          ⚙️ 어떤 알림을 만들지 · 문구 끝 서명 고치기</summary>
+        <div class="card" style="margin-top:10px">
+          <div><label class="f">문구 끝에 붙는 서명</label>
+            <input class="inp" id="notiSign" placeholder="ESC 이은총 드림" style="max-width:320px"></div>
+          <div class="sec">만들 알림 고르기 <small>끄면 그 종류는 아예 안 생깁니다</small></div>
+          <div id="notiToggles" class="grid g3" style="gap:8px"></div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn btn-p btn-s" id="notiSetSave">저장</button>
+            <span class="mono">저장하면 앞으로 만들어지는 알림부터 반영됩니다</span>
+          </div>
+        </div>
+      </details>
       <div class="note" style="margin-top:16px">
         <b>왜 자동으로 안 보내나요?</b> — 카카오 알림톡은 사업자등록과 발신프로필 심사가 필요하고,
         이메일은 도메인이 있어야 스팸함을 면합니다. 둘 다 정리되면 <b>이 목록을 그대로 읽어 자동으로 나가게</b>

@@ -9,7 +9,7 @@ window.ESC = (function () {
   var A = {
     sb: (window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SB_URL, SB_KEY) : null,
-    ME: null, IS_ADMIN: false, SESSION: null,
+    ME: null, IS_ADMIN: false, IS_REVIEWER: false, VIEW_AS: 'admin', SESSION: null,
     LEVELS: [], COMMS: [], PEOPLE: [], ORDERS: []
   };
 
@@ -91,9 +91,31 @@ window.ESC = (function () {
   A.gate = function (id) {
     A.$('app').classList.add('hide');
     A.$('gate').classList.remove('hide');
-    ['g-loading', 'g-login', 'g-signup', 'g-pending', 'g-rejected', 'g-paused']
+    ['g-loading', 'g-login', 'g-signup', 'g-pending', 'g-rejected', 'g-paused', 'g-nostaff']
       .forEach(function (g) { A.$(g).classList.toggle('hide', g !== id); });
   };
+  /* 어느 얼굴로 들어갈지 — 'admin' 이면 전체, 'reviewer' 면 검수만.
+     관리자는 위쪽 전환 버튼으로 검수자 화면을 미리 볼 수 있습니다(서버 권한은 그대로). */
+  A.applyView = function (mode) {
+    A.VIEW_AS = mode;
+    var rev = mode === 'reviewer';
+    A.$('navAdmin').classList.toggle('hide', rev);
+    A.$('navReviewer').classList.toggle('hide', !rev);
+    A.$('navBlogger').classList.add('hide');
+    A.$('meRole').textContent = rev ? '블로그 원고 검수자' : '블로그 센터 관리자';
+
+    var sw = A.$('viewSwitch');
+    if (sw) sw.classList.toggle('hide', !A.IS_ADMIN);
+    document.querySelectorAll('[data-view-btn]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.viewBtn === mode);
+    });
+    /* 검수자에게는 관리자 전용 조각을 숨깁니다 (서버에서도 막혀 있습니다) */
+    document.querySelectorAll('[data-adminonly]').forEach(function (el) {
+      el.classList.toggle('hide', rev);
+    });
+    A.openApp(rev ? 'review' : 'dash');
+  };
+
   A.openApp = function (screen) {
     A.$('gate').classList.add('hide');
     A.$('app').classList.remove('hide');
@@ -123,6 +145,9 @@ window.ESC = (function () {
 
     var out = e.target.closest('[data-out]');
     if (out) { await A.sb.auth.signOut(); location.hash = ''; location.reload(); return; }
+
+    var vb = e.target.closest('[data-view-btn]');
+    if (vb) { A.applyView(vb.dataset.viewBtn); return; }
 
     var n = e.target.closest('.nav[data-go]');
     if (n) { A.show(n.dataset.go); return; }
@@ -167,6 +192,8 @@ window.ESC = (function () {
 
     var a = await A.sb.rpc('blog_admin');
     A.IS_ADMIN = a.data === true;
+    var rv = await A.sb.rpc('blog_reviewer');
+    A.IS_REVIEWER = rv.data === true;      /* 관리자도 true 입니다 */
 
     var r = await A.sb.from('bloggers').select('*').eq('id', A.SESSION.user.id).maybeSingle();
     A.ME = r.data || null;
@@ -183,17 +210,29 @@ window.ESC = (function () {
     }
 
     if (A.IS_ADMIN) {
-      A.$('navAdmin').classList.remove('hide');
-      A.$('navBlogger').classList.add('hide');
       A.$('meName').textContent = A.SESSION.user.email;
-      A.$('meRole').textContent = '블로그 센터 관리자';
-      A.openApp('dash');
+      A.applyView('admin');
       await A.loadAdmin();
       A.applyHash();
       return;
     }
 
+    /* ESC 직원 중 '검수만' 권한을 가진 분 */
+    if (A.IS_REVIEWER) {
+      A.$('meName').textContent = A.SESSION.user.email;
+      A.applyView('reviewer');
+      await A.loadAdmin();
+      return;
+    }
+
+    /* 블로거도 아니고 블로그 권한도 없는 ESC 직원 */
     if (!A.ME) {
+      var st = await A.sb.from('staff').select('name,email,role,status').eq('id', A.SESSION.user.id).maybeSingle();
+      if (st.data && st.data.status === 'approved') {
+        A.$('nostaffWho').textContent = (st.data.name || '') + ' · ' + (st.data.email || '');
+        A.gate('g-nostaff');
+        return;
+      }
       A.gate('g-signup'); A.prefillLoggedIn();
       A.msg('suMsg', '이 계정은 아직 블로거로 등록되지 않았습니다. 아래를 채워 신청해 주세요.', 'ok');
       return;

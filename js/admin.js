@@ -96,6 +96,7 @@
       if (hot) b.classList.add('hot');
     };
     badge('cWait', wait, true); badge('cUnassigned', unass); badge('cReview', toReview + toVerify, true);
+    badge('cReview2', toReview + toVerify, true);   /* 검수자 사이드바 */
 
     var todo = [];
     if (toReview + toVerify) todo.push(job('검수해야 할 글 ' + (toReview + toVerify) + '편',
@@ -985,16 +986,36 @@
   };
 
   /* ═══ 🔔 알림 보내기 ═══ */
-  var NOTI = [], NOTI_TAB = 'blogger';
+  var NOTI = [], NOTI_TAB = 'blogger', NOTI_KIND = '', NOTI_SET = {};
+
+  /* 알림 종류 이름 — 화면에 보이는 말 */
+  var KIND_KO = {
+    assigned: '글 배정', due1: '마감 임박', overdue: '마감 지남', rework: '수정 요청',
+    payout: '정산 확정', approved: '신청 승인', rejected: '신청 거절', edu_wait: '교육 미이수',
+    submitted: '검수할 원고', overdue_admin: '마감 지난 글', unpaid_order: '입금 지연',
+    unassigned: '미배정 남음',
+    order_paid: '입금 확인', first_post: '첫 글 올라감', half: '절반 진행', order_done: '전부 완료'
+  };
+  var KIND_OF = {
+    blogger: ['assigned', 'due1', 'overdue', 'rework', 'payout', 'approved', 'rejected', 'edu_wait'],
+    staff: ['submitted', 'overdue_admin', 'unpaid_order', 'unassigned'],
+    academy: ['order_paid', 'first_post', 'half', 'order_done']
+  };
+  function kindKo(k) { return KIND_KO[k] || k; }
 
   async function loadNoti(scan) {
-    if (scan) {
+    if (scan && A.IS_ADMIN) {        /* 훑기·보냄표시는 관리자만 (서버에서도 막혀 있습니다) */
       try {
         var made = await A.rpc('notify_scan');
         A.toast(made ? made + '건을 새로 찾았습니다' : '새로 챙길 것은 없습니다');
       } catch (e) { A.toast('실패: ' + e.message); }
     }
     NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
+    if (A.IS_ADMIN) {
+      var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+      NOTI_SET = (s.data && s.data.value) || {};
+      renderNotiSet();
+    }
     renderNoti();
     var un = NOTI.filter(function (n) { return !n.sent_at; }).length;
     var b = $('cNoti');
@@ -1019,11 +1040,38 @@
   function notiRows() {
     var showSent = $('notiShowSent').checked;
     return NOTI.filter(function (n) {
-      return n.audience === NOTI_TAB && (showSent || !n.sent_at);
+      return n.audience === NOTI_TAB && (showSent || !n.sent_at)
+        && (!NOTI_KIND || n.kind === NOTI_KIND);
     });
   }
 
+  /* 종류 고르기 — 「마감 지남만 보기」 처럼 좁혀서 한 번에 보냅니다 */
+  function renderKinds() {
+    var showSent = $('notiShowSent').checked;
+    var pool = NOTI.filter(function (n) {
+      return n.audience === NOTI_TAB && (showSent || !n.sent_at);
+    });
+    var counts = {};
+    pool.forEach(function (n) { counts[n.kind] = (counts[n.kind] || 0) + 1; });
+    var kinds = (KIND_OF[NOTI_TAB] || []).filter(function (k) { return counts[k]; });
+    if (!kinds.length) { $('notiKinds').innerHTML = ''; return; }
+    $('notiKinds').innerHTML = '<div class="row" style="gap:6px">'
+      + '<button class="btn btn-s' + (NOTI_KIND ? '' : ' btn-p') + '" data-notikind="">전체 '
+      + pool.length + '</button>'
+      + kinds.map(function (k) {
+        return '<button class="btn btn-s' + (NOTI_KIND === k ? ' btn-p' : '') + '" data-notikind="'
+          + k + '">' + esc(kindKo(k)) + ' ' + counts[k] + '</button>';
+      }).join('') + '</div>';
+  }
+
   function renderNoti() {
+    /* 검수자는 '우리끼리 챙길 것'만 보고, 보내는 일은 하지 않습니다 */
+    var rev = !A.IS_ADMIN;
+    if (rev) NOTI_TAB = 'staff';
+    ['notiScan', 'notiCopyAll', 'notiSentAll', 'notiTabs'].forEach(function (id) {
+      var el = $(id); if (el) el.classList.toggle('hide', rev);
+    });
+    renderKinds();
     var rows = notiRows();
     if (!rows.length) {
       $('notiList').innerHTML = A.empty(NOTI_TAB === 'staff'
@@ -1041,8 +1089,8 @@
         + (n.sent_at ? ' <span class="chip c-ok">보냄 ' + A.fdate(n.sent_at) + '</span>' : '')
         + '<div class="mono" style="margin-top:3px">' + esc(w.sub || '') + '</div></div>'
         + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
-        + (n.audience === 'staff' ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '">📋 복사</button>')
-        + (n.sent_at ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
+        + (n.audience === 'staff' || rev ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '">📋 복사</button>')
+        + (n.sent_at || rev ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
           + (n.audience === 'staff' ? '확인함' : '보냄') + '</button>')
         + '</span></div>'
         + '<pre style="white-space:pre-wrap;font:inherit;margin:11px 0 0;padding:11px 13px;'
@@ -1052,9 +1100,36 @@
     }).join('');
   }
 
-  A.onSubTabNoti = function (t) { NOTI_TAB = t; renderNoti(); };
   $('notiShowSent').onchange = renderNoti;
   $('notiScan').onclick = function () { loadNoti(true); };
+
+  /* 설정 — 서명과 '어떤 알림을 만들지' */
+  function renderNotiSet() {
+    if (!A.IS_ADMIN) return;
+    $('notiSign').value = NOTI_SET.sign || '';
+    var on = NOTI_SET.noti || {};
+    $('notiToggles').innerHTML = Object.keys(KIND_OF).map(function (aud) {
+      var label = aud === 'blogger' ? '직원(블로거)에게' : aud === 'academy' ? '학원에게' : '우리끼리';
+      return '<div><label class="f">' + label + '</label>'
+        + KIND_OF[aud].map(function (k) {
+          return '<label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:3px 0">'
+            + '<input type="checkbox" data-notikindset="' + k + '"'
+            + (on[k] === false ? '' : ' checked') + '>' + esc(kindKo(k)) + '</label>';
+        }).join('') + '</div>';
+    }).join('');
+  }
+  $('notiSetSave').onclick = async function () {
+    this.disabled = true;
+    var on = {};
+    document.querySelectorAll('[data-notikindset]').forEach(function (c) {
+      on[c.dataset.notikindset] = c.checked;
+    });
+    var v = Object.assign({}, NOTI_SET, { sign: $('notiSign').value.trim(), noti: on });
+    var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
+    this.disabled = false;
+    if (r.error || !r.data || !r.data.length) { A.toast('저장 실패'); return; }
+    NOTI_SET = v; A.toast('저장했습니다');
+  };
 
   $('notiCopyAll').onclick = async function () {
     var rows = notiRows();
@@ -1080,7 +1155,7 @@
 
   /* ═══ 화면 진입 시 ═══ */
   A.onShow = function (name) {
-    if (!A.IS_ADMIN) return;
+    if (!A.IS_REVIEWER) return;      /* 관리자·검수자 둘 다 true */
     if (name === 'noti') loadNoti(true);
     if (name === 'edu') loadEdu();
     if (name === 'pay') loadPay();
@@ -1224,7 +1299,12 @@
       A.toast('글감을 저장했습니다'); await A.loadAdmin(); return;
     }
 
-    if ((t = e.target.closest('[data-noti]'))) { NOTI_TAB = t.dataset.noti; renderNoti(); return; }
+    if ((t = e.target.closest('[data-noti]'))) {
+      NOTI_TAB = t.dataset.noti; NOTI_KIND = ''; renderNoti(); return;
+    }
+    if ((t = e.target.closest('[data-notikind]'))) {
+      NOTI_KIND = t.dataset.notikind; renderNoti(); return;
+    }
 
     if ((t = e.target.closest('[data-noticopy]'))) {
       var nn = NOTI.filter(function (x) { return x.id === t.dataset.noticopy; })[0];
