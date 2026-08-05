@@ -10,6 +10,7 @@ window.ESC = (function () {
     sb: (window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SB_URL, SB_KEY) : null,
     ME: null, IS_ADMIN: false, IS_REVIEWER: false, VIEW_AS: 'admin', SESSION: null,
+    PREVIEW_STAFF: null, SELF_NAME: '', SELF_COMMS: [], MY_COMMS: [],
     LEVELS: [], COMMS: [], PEOPLE: [], ORDERS: [], BLOGSTAFF: []
   };
 
@@ -120,6 +121,14 @@ window.ESC = (function () {
     A.$('previewBar').classList.toggle('hide', !(rev || blg));
 
     if (rev || blg) { A.fillPreviewWho(mode); return; }  /* 화면 열기는 미리보기 쪽에서 */
+
+    /* 관리자로 돌아올 때는 남의 흔적을 반드시 지웁니다.
+       (안 지우면 이름·담당 공동체가 아까 보던 사람 것으로 남습니다) */
+    A.PREVIEW_STAFF = null;
+    A.MY_COMMS = A.SELF_COMMS || [];
+    A.$('meName').textContent = A.SELF_NAME
+      || (A.SESSION && A.SESSION.user ? A.SESSION.user.email : '-');
+    if (A.refreshReview) A.refreshReview();
     A.openApp('dash');
   };
 
@@ -136,11 +145,14 @@ window.ESC = (function () {
 
     if (!list.length) {
       pw.innerHTML = '<option value="">' + (blg ? '승인된 블로거가 없습니다' : '검수자·관리자가 없습니다') + '</option>';
+      pw.dataset.filled = '';
       A.$('previewBar').classList.add('hide');
       A.openApp(blg ? 'b-inbox' : 'review');
       return;
     }
-    var key = mode + ':' + list.length;
+
+    var cur = pw.value;                       /* 다시 채우기 전에 기억해 둡니다 */
+    var key = mode + ':' + list.map(function (p) { return p.id; }).join(',');
     if (pw.dataset.filled !== key) {
       pw.innerHTML = list.map(function (p) {
         return '<option value="' + p.id + '">' + A.esc(p.name)
@@ -149,11 +161,17 @@ window.ESC = (function () {
       pw.dataset.filled = key;
       pw.onchange = function () { A.pickPreview(A.VIEW_AS, this.value); };
     }
-    A.pickPreview(mode, list[0].id);
+    /* 아까 고른 사람이 목록에 아직 있으면 그 사람을 그대로 봅니다.
+       (예전엔 무조건 첫 사람을 열어서, 고른 이름과 화면이 어긋났습니다) */
+    var keep = list.some(function (p) { return p.id === cur; });
+    A.pickPreview(mode, keep ? cur : list[0].id);
   };
 
   A.pickPreview = function (mode, id) {
+    var pw = A.$('previewWho');
+    if (pw && pw.value !== id) pw.value = id;   /* 고른 칸과 화면을 항상 맞춥니다 */
     if (mode === 'blogger') { A.loadBloggerPreview(id); return; }
+
     /* 검수자·관리자 — 그 사람 직분에 맞는 사이드바를 보여줍니다 */
     var s = A.BLOGSTAFF.filter(function (x) { return x.id === id; })[0];
     if (!s) return;

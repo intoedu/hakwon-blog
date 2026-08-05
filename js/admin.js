@@ -288,10 +288,16 @@
                comms: (s.perms && s.perms.blog_comms) || [] };
     });
     var b = $('tcStaff'); if (b) b.textContent = A.BLOGSTAFF.length;
+
+    /* 로그인한 본인 — 미리보기에서 돌아올 때 여기로 되돌립니다 */
+    var myId = A.SESSION && A.SESSION.user ? A.SESSION.user.id : null;
+    var self = A.BLOGSTAFF.filter(function (s) { return s.id === myId; })[0];
+    A.SELF_NAME = (self && self.name) || (A.SESSION && A.SESSION.user ? A.SESSION.user.email : '');
+    A.SELF_COMMS = self ? self.comms : [];
+
     /* 지금 보고 있는 사람이 맡은 공동체 (검수 화면 형광펜에 씁니다) */
-    var meId = A.PREVIEW_STAFF || (A.SESSION && A.SESSION.user.id);
-    var mine = A.BLOGSTAFF.filter(function (s) { return s.id === meId; })[0];
-    A.MY_COMMS = mine ? mine.comms : [];
+    var seen = A.BLOGSTAFF.filter(function (s) { return s.id === A.PREVIEW_STAFF; })[0];
+    A.MY_COMMS = A.PREVIEW_STAFF ? (seen ? seen.comms : []) : A.SELF_COMMS;
   }
 
   function staffName(id) {
