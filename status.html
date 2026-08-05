@@ -64,12 +64,40 @@
   <div class="empty" style="margin-top:60px">불러오는 중입니다…</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
   'use strict';
   var SB_URL = 'https://qkvebwxewttqtcryfycy.supabase.co';
   var SB_KEY = 'sb_publishable_Me_R6M540Fg60nmEVqByTg_p-zD8pxa';
+
+  /* 학원에 보내는 유일한 주소라 가장 튼튼해야 합니다.
+     바깥 라이브러리(CDN)를 하나도 안 쓰고 브라우저 기본 기능만으로 주고받습니다.
+     — 광고차단기·회사망·메신저 인앱 브라우저에서 CDN이 막혀도 열립니다. */
+  function hdr(extra) {
+    var h = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+    for (var k in extra) h[k] = extra[k];
+    return h;
+  }
+  async function rpc(fn, body) {
+    var r = await fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST', headers: hdr({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body)
+    });
+    var txt = await r.text();
+    var data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+    if (!r.ok) throw new Error((data && data.message) || txt.slice(0, 150) || ('오류 ' + r.status));
+    return data;
+  }
+  async function putPhoto(path, file) {
+    var r = await fetch(SB_URL + '/storage/v1/object/request-photos/' + encodeURI(path), {
+      method: 'POST',
+      headers: hdr({ 'Content-Type': file.type || 'image/jpeg', 'x-upsert': 'false' }),
+      body: file
+    });
+    if (!r.ok) throw new Error((await r.text()).slice(0, 150));
+    return path;
+  }
 
   function esc(s) {
     return (s == null ? '' : ('' + s))
@@ -93,12 +121,25 @@
     return /^https?:\/\//i.test(u) ? u : '';
   }
   var PG = document.getElementById('pg');
-  function fail(msg) {
+  function fail(msg, detail) {
     PG.innerHTML = '<div class="big" style="margin-top:48px;text-align:center">'
       + '<h1 style="font-size:19px;margin-bottom:8px">' + esc(msg) + '</h1>'
-      + '<p style="color:var(--muted);font-size:13.5px">주소를 다시 확인해 주시고, 그래도 안 열리면 '
-      + '담당자에게 말씀해 주세요.<br>ESC 학원지원센터 · 010-7318-1790</p></div>';
+      + '<p style="color:var(--muted);font-size:13.5px">'
+      + '주소가 중간에 잘리지 않았는지 확인해 주세요. '
+      + '<b>?k=</b> 뒤에 글자가 붙어 있어야 합니다.<br>'
+      + '그래도 안 열리면 담당자에게 말씀해 주세요.<br>'
+      + 'ESC 학원지원센터 · <a href="tel:01073181790">010-7318-1790</a></p>'
+      + '<button class="btn" style="margin-top:14px" onclick="location.reload()">다시 시도</button>'
+      + (detail ? '<p class="mono" style="margin-top:14px;font-size:11px;word-break:break-all">'
+        + esc(detail) + '</p>' : '')
+      + '</div>';
   }
+  /* 어떤 이유로든 화면이 하얗게 비지 않도록 */
+  window.addEventListener('error', function (e) {
+    if (PG && PG.textContent.indexOf('불러오는 중') >= 0) {
+      fail('화면을 여는 중 문제가 생겼습니다', e.message || '');
+    }
+  });
 
   function key() {
     var m = location.search.match(/[?&]k=([^&#]+)/);
@@ -234,11 +275,6 @@
   }
 
   /* ── 사진 올리기 ── */
-  var SB = null;
-  function sb() {
-    if (!SB) SB = window.supabase.createClient(SB_URL, SB_KEY);
-    return SB;
-  }
   function wireUpload() {
     var btn = document.getElementById('upGo'); if (!btn) return;
     btn.onclick = async function () {
@@ -260,14 +296,10 @@
           var ext = (f.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
           var path = folder + '/' + stamp + '-' + ('00' + (i + 1)).slice(-3) + '.' + ext;
           msg.textContent = files.length + '장 중 ' + (i + 1) + '장째 올리는 중…';
-          var up = await sb().storage.from('request-photos')
-            .upload(path, f, { contentType: f.type || 'image/jpeg', upsert: false });
-          if (up.error) throw new Error(up.error.message);
-          paths.push(up.data.path);
+          paths.push(await putPhoto(path, f));
         }
         var note = (document.getElementById('upNote').value || '').trim();
-        var r = await sb().rpc('order_add_photos', { k: key(), p_paths: paths, p_note: note || null });
-        if (r.error) throw new Error(r.error.message);
+        await rpc('order_add_photos', { k: key(), p_paths: paths, p_note: note || null });
         msg.textContent = '';
         alert(paths.length + '장을 보내주셨습니다. 담당자가 확인하고 글에 씁니다. 감사합니다!');
         load();
@@ -281,11 +313,13 @@
   async function load() {
     var k = key();
     if (!k) { fail('주소에 확인 코드가 없습니다'); return; }
-    if (!window.supabase || !window.supabase.createClient) { fail('연결에 실패했습니다'); return; }
-    var r = await sb().rpc('order_status', { k: k });
-    if (r.error) { fail('불러오지 못했습니다'); console.warn(r.error.message); return; }
-    if (!r.data) { fail('이 주소로는 볼 수 있는 내용이 없습니다'); return; }
-    render(r.data);
+    try {
+      var data = await rpc('order_status', { k: k });
+      if (!data) { fail('이 주소로는 볼 수 있는 내용이 없습니다'); return; }
+      render(data);
+    } catch (e) {
+      fail('불러오지 못했습니다', e && e.message);
+    }
   }
 
   document.getElementById('btnRe').onclick = function () { PG.innerHTML = '<div class="empty" style="margin-top:60px">불러오는 중입니다…</div>'; load(); };
