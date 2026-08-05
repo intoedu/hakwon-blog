@@ -599,7 +599,7 @@
         + '<textarea class="inp" data-of="info_pack" data-oid="' + o.id + '">' + esc(o.info_pack || '') + '</textarea></div>'
         + '<div class="row" style="margin-top:10px">'
         + ((o.photo_paths || []).length
-          ? '<span class="chip c-ok">신청서 사진 ' + o.photo_paths.length + '장 들어옴</span>'
+          ? '<span class="chip c-ok">사진 ' + o.photo_paths.length + '장 들어옴</span>'
             + '<span class="mono">글마다 다른 조합으로 5~8장씩 나눠 줍니다</span>'
           : o.photo_note
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)

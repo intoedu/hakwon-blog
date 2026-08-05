@@ -172,6 +172,25 @@
         + '</div></div>';
     }).join('');
 
+    /* 사진 보내기 */
+    h += '<div class="sec">사진 보내기 <small>지금까지 ' + (d.photos || 0) + '장 받았습니다</small></div>'
+      + '<div class="ocard">'
+      + '<p style="font-size:13.5px;color:var(--ink-2);line-height:1.7;margin-bottom:12px">'
+      + '<b>신청하실 때 못 보내셨어도 괜찮습니다. 언제든 여기서 올리시면 됩니다.</b><br>'
+      + '사진이 많을수록 좋습니다. 글마다 다른 사진을 써야 검색에 잘 걸리기 때문입니다 — '
+      + '<b>30장 이상을 권합니다.</b><br>'
+      + '간판·건물 바깥, 강의실, 교재, 시간표, 안내문, 수업 자료 등 '
+      + '<b>학생 얼굴이 나오지 않는 사진</b>이면 무엇이든 좋습니다.</p>'
+      + '<input type="file" id="upFiles" accept="image/*" multiple '
+      + 'style="width:100%;font-size:13px;margin-bottom:10px">'
+      + '<input class="inp" id="upNote" placeholder="같이 알려주실 내용이 있으면 적어주세요 (안 쓰셔도 됩니다)" '
+      + 'style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;'
+      + 'background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px">'
+      + '<div class="row" style="margin-top:12px">'
+      + '<button class="btn btn-p" id="upGo">사진 올리기</button>'
+      + '<span class="mono" id="upMsg">한 장에 10MB까지 · 한 번에 60장까지</span></div>'
+      + '</div>';
+
     /* 올라간 글 */
     h += '<div class="sec">올라간 글 <small>' + posts.length + '편 · 새 창에서 열립니다</small></div>';
     if (!posts.length) {
@@ -211,14 +230,59 @@
       + '<span class="mono">' + fdate(d.now) + ' 기준</span></div>';
 
     PG.innerHTML = h;
+    wireUpload();
+  }
+
+  /* ── 사진 올리기 ── */
+  var SB = null;
+  function sb() {
+    if (!SB) SB = window.supabase.createClient(SB_URL, SB_KEY);
+    return SB;
+  }
+  function wireUpload() {
+    var btn = document.getElementById('upGo'); if (!btn) return;
+    btn.onclick = async function () {
+      var inp = document.getElementById('upFiles');
+      var msg = document.getElementById('upMsg');
+      var files = inp.files ? Array.prototype.slice.call(inp.files) : [];
+      if (!files.length) { msg.textContent = '올릴 사진을 먼저 골라 주세요.'; return; }
+      if (files.length > 60) { msg.textContent = '한 번에 60장까지만 올릴 수 있습니다.'; return; }
+      var big = files.filter(function (f) { return f.size > 10 * 1024 * 1024; });
+      if (big.length) { msg.textContent = '10MB가 넘는 사진이 있습니다: ' + big[0].name; return; }
+
+      btn.disabled = true; inp.disabled = true;
+      var folder = 'k-' + key();
+      var stamp = String(Date.now());
+      var paths = [];
+      try {
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          var ext = (f.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+          var path = folder + '/' + stamp + '-' + ('00' + (i + 1)).slice(-3) + '.' + ext;
+          msg.textContent = files.length + '장 중 ' + (i + 1) + '장째 올리는 중…';
+          var up = await sb().storage.from('request-photos')
+            .upload(path, f, { contentType: f.type || 'image/jpeg', upsert: false });
+          if (up.error) throw new Error(up.error.message);
+          paths.push(up.data.path);
+        }
+        var note = (document.getElementById('upNote').value || '').trim();
+        var r = await sb().rpc('order_add_photos', { k: key(), p_paths: paths, p_note: note || null });
+        if (r.error) throw new Error(r.error.message);
+        msg.textContent = '';
+        alert(paths.length + '장을 보내주셨습니다. 담당자가 확인하고 글에 씁니다. 감사합니다!');
+        load();
+      } catch (e) {
+        msg.textContent = '올리지 못했습니다: ' + e.message + ' — 다시 시도해 주시거나 010-7318-1790 으로 연락 주세요.';
+        btn.disabled = false; inp.disabled = false;
+      }
+    };
   }
 
   async function load() {
     var k = key();
     if (!k) { fail('주소에 확인 코드가 없습니다'); return; }
     if (!window.supabase || !window.supabase.createClient) { fail('연결에 실패했습니다'); return; }
-    var sb = window.supabase.createClient(SB_URL, SB_KEY);
-    var r = await sb.rpc('order_status', { k: k });
+    var r = await sb().rpc('order_status', { k: k });
     if (r.error) { fail('불러오지 못했습니다'); console.warn(r.error.message); return; }
     if (!r.data) { fail('이 주소로는 볼 수 있는 내용이 없습니다'); return; }
     render(r.data);
