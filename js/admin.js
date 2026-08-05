@@ -20,7 +20,7 @@
 
     fillSelects();
     renderDash(); renderStaffAll(); renderBlogStaff();
-    renderOrders(); renderAssign(); renderReview(); renderProgress();
+    renderOrders(); renderAssign(); renderReview(); renderProgress(); renderLinks();
     loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
 
@@ -1428,9 +1428,64 @@
     } catch (e) { A.toast('실패: ' + e.message); }
   };
 
+  /* ═══ 🔗 주소 모음 ═══ */
+  function baseUrl() {
+    return location.origin + location.pathname.replace(/[^/]*$/, '');
+  }
+  var LINKS = [
+    { t: '블로거 모집 · 신청서', d: '블로그를 쓰실 분에게 보내는 주소입니다. 로그인 없이 바로 신청서가 열립니다.',
+      u: function () { return baseUrl() + '#signup'; }, who: '새로 모집할 사람에게' },
+    { t: '블로그 센터 (여기)', d: '블로거·검수자·관리자가 로그인해서 들어오는 곳입니다.',
+      u: function () { return baseUrl(); }, who: '승인된 블로거·직원에게' },
+    { t: 'ESC 홈페이지', d: '학원이 의뢰를 넣는 곳입니다. 블로그 홍보 신청도 여기서 받습니다.',
+      u: function () { return 'https://intoedu.github.io/hakwon-support/'; }, who: '학원에게' },
+    { t: 'ESC 관리자 (의뢰 관리)', d: '인력·컨텐츠·마케팅 의뢰를 관리하고, 직원 권한을 주는 곳입니다.',
+      u: function () { return 'https://intoedu.github.io/hakwon-support/admin.html'; }, who: 'ESC 직원만' }
+  ];
+
+  function linkRow(title, desc, url, who, extra) {
+    return '<div class="card" style="margin-bottom:10px">'
+      + '<div class="row" style="justify-content:space-between;align-items:flex-start">'
+      + '<div style="min-width:200px"><b style="font-size:14.5px">' + esc(title) + '</b>'
+      + (who ? ' <span class="chip c-off">' + esc(who) + '</span>' : '')
+      + (desc ? '<div class="mono" style="margin-top:3px">' + esc(desc) + '</div>' : '')
+      + (extra || '') + '</div>'
+      + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
+      + '<button class="btn btn-p btn-s" data-copylink="' + esc(url) + '">📋 복사</button>'
+      + '<a class="btn btn-s" href="' + esc(url) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
+      + '</span></div>'
+      + '<div class="mono" style="margin-top:9px;padding:9px 11px;background:var(--surface-2);'
+      + 'border:1px solid var(--line);border-radius:8px;word-break:break-all">' + esc(url) + '</div>'
+      + '</div>';
+  }
+
+  function renderLinks() {
+    $('linkFixed').innerHTML = LINKS.map(function (l) {
+      return linkRow(l.t, l.d, l.u(), l.who, '');
+    }).join('');
+
+    var q = ($('linkQ').value || '').trim();
+    var rows = A.ORDERS.filter(function (o) { return !q || o.academy_name.indexOf(q) >= 0; });
+    /* 같은 학원은 주소가 하나 — 학원 이름으로 묶습니다 */
+    var seen = {}, uniq = [];
+    rows.forEach(function (o) {
+      var k = (o.academy_name || '').trim();
+      if (seen[k]) { seen[k].qty += o.total_qty; seen[k].n++; return; }
+      seen[k] = { o: o, qty: o.total_qty, n: 1 }; uniq.push(seen[k]);
+    });
+
+    $('linkOrders').innerHTML = uniq.length ? uniq.map(function (g) {
+      return linkRow(g.o.academy_name,
+        g.n + '건 주문 · 모두 ' + g.qty + '편' + (g.o.region ? ' · ' + g.o.region : ''),
+        statusUrl(g.o), '이 학원에게', '');
+    }).join('') : A.empty(q ? '찾는 학원이 없습니다.' : '아직 주문이 없습니다.');
+  }
+  $('linkQ').oninput = renderLinks;
+
   /* ═══ 화면 진입 시 ═══ */
   A.onShow = function (name) {
     if (!A.IS_REVIEWER) return;      /* 관리자·검수자 둘 다 true */
+    if (name === 'links') renderLinks();
     if (name === 'noti') loadNoti(true);
     if (name === 'edu') loadEdu();
     if (name === 'pay') loadPay();
@@ -1633,6 +1688,13 @@
       t.disabled = true;
       try { await A.rpc('notify_sent', { p_ids: [t.dataset.notisent] }); await loadNoti(false); }
       catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
+    if ((t = e.target.closest('[data-copylink]'))) {
+      var lu = t.dataset.copylink;
+      try { await navigator.clipboard.writeText(lu); A.toast('주소를 복사했습니다'); }
+      catch (err) { window.prompt('아래 주소를 복사해 보내주세요', lu); }
       return;
     }
 

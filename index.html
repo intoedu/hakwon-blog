@@ -136,6 +136,7 @@
       <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
       <div class="navlbl">챙길 것</div>
       <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
+      <button class="nav" data-go="links">🔗 주소 모음</button>
     </div>
 
     <!-- ESC 직원 중 '검수만' 권한을 가진 분 -->
@@ -582,6 +583,27 @@
         이메일은 도메인이 있어야 스팸함을 면합니다. 둘 다 정리되면 <b>이 목록을 그대로 읽어 자동으로 나가게</b>
         붙일 수 있습니다. 지금은 문구까지만 만들어 두고 보내는 것은 사람이 합니다.
       </div>
+    </section>
+
+    <section class="screen" data-screen="links">
+      <div class="head"><div class="step-of">챙길 것</div>
+        <h1>주소 모음</h1>
+        <p>보내야 할 주소가 전부 여기 있습니다. <b>[복사]</b>를 누르고 카톡·문자에 붙여넣으세요.</p></div>
+
+      <div class="note warn" style="margin-bottom:16px">
+        <b>손으로 옮겨 적지 마세요.</b> 주소에 밑줄(<b>_</b>)이 들어가는 경우가 있는데,
+        메신저에서 링크에 밑줄이 그어지면 그 글자가 안 보여 빠뜨리기 쉽습니다.
+        <b>반드시 [복사] 버튼</b>을 쓰세요.
+      </div>
+
+      <div class="sec">자주 쓰는 주소</div>
+      <div id="linkFixed"></div>
+
+      <div class="sec">학원별 진행현황 주소 <small>학원마다 다릅니다 · 같은 학원은 여러 번 주문해도 주소가 하나</small></div>
+      <div class="row" style="margin-bottom:12px">
+        <input class="inp" id="linkQ" style="width:auto;flex:1;min-width:180px" placeholder="학원 이름으로 찾기">
+      </div>
+      <div id="linkOrders"></div>
     </section>
 
     <!-- ═══ 블로거 화면 ═══ -->
