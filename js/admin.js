@@ -639,6 +639,24 @@
   function splitv(id) {
     return ($(id).value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
   }
+  /* 입금 전이면 글을 만들 수 없습니다 — 다 만들고 나서 알면 늦으니 미리 알려줍니다 */
+  function kwPaidCheck() {
+    var o = A.ORDERS.filter(function (x) { return x.id === $('kwOrder').value; })[0];
+    var box = $('kwPaid'); if (!box) return true;
+    if (!o) { box.innerHTML = ''; return true; }
+    if (o.paid_at) {
+      box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">입금 확인됨 ('
+        + esc(o.paid_at) + ') · 글을 만드실 수 있습니다</div>';
+      return true;
+    }
+    box.innerHTML = '<div class="msg err" style="margin:0 0 12px">'
+      + '<b>아직 입금 확인이 안 된 주문입니다.</b> 키워드는 만들 수 있지만 '
+      + '<b>글은 만들어지지 않습니다.</b><br>'
+      + '「3 주문 · 입금」에서 <b>' + esc(o.academy_name) + '</b> 카드의 [입금 확인]을 먼저 눌러 주세요.'
+      + ' <button class="link" data-gopay="' + o.id + '">3번으로 가기 →</button></div>';
+    return false;
+  }
+
   $('kwOrder').onchange = function () {
     var o = A.ORDERS.filter(function (x) { return x.id === this.value; }.bind(this))[0];
     if (!o) return;
@@ -647,6 +665,7 @@
     $('k3').value = (o.target_grades || []).join(', ');
     $('k4').value = (o.target_purposes || []).join(', ');
     $('kwN').value = o.total_qty;
+    kwPaidCheck();
   };
   $('kwGo').onclick = function () {
     var a = splitv('k1'), b = splitv('k2'), c = splitv('k3'), d = splitv('k4');
@@ -684,12 +703,20 @@
   $('kwSave').onclick = async function () {
     var oid = $('kwOrder').value;
     if (!oid || !KWDRAFT.length) { A.toast('주문과 키워드를 확인해 주세요'); return; }
+    if (!kwPaidCheck()) {
+      A.toast('입금 확인을 먼저 해주세요 — 위 안내를 봐주세요');
+      $('kwPaid').scrollIntoView({ block: 'center' });
+      return;
+    }
     this.disabled = true;
     try {
       var n = await A.rpc('posts_generate', { p_order: oid, p_items: KWDRAFT });
       A.toast(n + '편을 만들었습니다');
       await A.loadAdmin(); A.show('assign');
-    } catch (e) { A.toast('실패: ' + e.message); }
+    } catch (e) {
+      A.toast('실패: ' + e.message);
+      A.msg && kwPaidCheck();
+    }
     this.disabled = false;
   };
 
@@ -707,13 +734,35 @@
         return '<option value="' + w + '"' + (wk === w ? ' selected' : '') + '>' + w + '주차</option>';
       }).join('');
 
+    /* 비어 있을 때 왜 비었는지 알려줍니다 — 그냥 '없습니다'만 뜨면 답답합니다 */
+    function whyEmpty() {
+      var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+      if (!o) return '<div class="empty">먼저 위에서 주문을 골라 주세요.</div>';
+      var made = POSTS.filter(function (p) { return p.order_id === oid; }).length;
+      if (!made) {
+        return '<div class="empty" style="text-align:left;line-height:1.8">'
+          + '<b>아직 글이 하나도 안 만들어졌습니다.</b><br>'
+          + (o.paid_at
+            ? '「4 키워드 만들기」에서 [키워드 만들기] → <b>[이대로 글 만들기]</b> 까지 두 번 눌러 주세요. '
+              + '두 번째 버튼을 눌러야 글이 생깁니다.<br>'
+              + '<button class="link" data-gokw2="' + o.id + '">4번으로 가기 →</button>'
+            : '<b style="color:var(--bad)">이 주문은 아직 입금 확인이 안 됐습니다.</b> '
+              + '입금 확인 전에는 글이 만들어지지 않습니다.<br>'
+              + '「3 주문 · 입금」에서 [입금 확인]을 먼저 누르시고, 그다음 4번에서 글을 만드시면 됩니다.<br>'
+              + '<button class="link" data-gopay="' + o.id + '">3번으로 가기 →</button>')
+          + '</div>';
+      }
+      if (wk) return '<div class="empty">이 주차에는 맡길 글이 없습니다. 위에서 「전체 주차」로 바꿔 보세요.</div>';
+      return '<div class="empty">이 학원 글은 모두 맡겼습니다. 👍</div>';
+    }
+
     $('postList').innerHTML = mine.length ? mine.map(function (p, i) {
       return '<label class="pickrow" draggable="true" data-post="' + p.id + '">'
         + '<span class="grip" title="끌어서 오른쪽 블로거에게 놓으세요">⠿</span>'
         + '<input type="checkbox" class="pk-post" value="' + p.id + '">'
         + '<span><b>' + esc(p.keyword || '(제목 없음)') + '</b></span>'
         + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span></label>';
-    }).join('') : '<div class="empty">맡길 글이 없습니다.</div>';
+    }).join('') : whyEmpty();
 
     var ppl = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
     $('peopleList').innerHTML = ppl.length ? ppl.map(function (p) {
@@ -1688,6 +1737,25 @@
       t.disabled = true;
       try { await A.rpc('notify_sent', { p_ids: [t.dataset.notisent] }); await loadNoti(false); }
       catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
+    /* 「3번으로 가기」 · 「4번으로 가기」 — 그 주문을 골라 둔 채로 넘어갑니다 */
+    if ((t = e.target.closest('[data-gopay]'))) {
+      A.show('orders');
+      setTimeout(function () {
+        var el = document.querySelector('[data-ordercard="' + t.dataset.gopay + '"]');
+        if (el) {
+          el.scrollIntoView({ block: 'center' });
+          el.style.outline = '2px solid var(--amber)'; el.style.outlineOffset = '3px';
+        }
+      }, 150);
+      return;
+    }
+    if ((t = e.target.closest('[data-gokw2]'))) {
+      $('kwOrder').value = t.dataset.gokw2;
+      $('kwOrder').onchange();
+      A.show('kw');
       return;
     }
 
