@@ -59,6 +59,34 @@
     renderInbox(); renderEdu(); renderWork(); renderPay();
   };
 
+  /* 글을 많이 받고 싶은지 본인이 켭니다 — 켠 사람에게 먼저 배정됩니다 */
+  function renderWants() {
+    var box = $('bWants'); if (!box) return;
+    var on = !!A.ME.wants_more;
+    box.innerHTML = '<div class="card" style="margin-bottom:18px">'
+      + '<div class="row" style="justify-content:space-between;gap:12px">'
+      + '<div style="min-width:220px;flex:1">'
+      + '<b style="font-size:14.5px">글을 더 받고 싶으신가요?</b>'
+      + '<div class="mono" style="margin-top:4px;line-height:1.6">'
+      + '켜두시면 <b>글이 남을 때 먼저 배정</b>해 드립니다. 켠 분들끼리는 '
+      + '<b>이번 달 적게 받은 순서</b>로 돌아가니 한 사람에게 몰리지 않습니다.<br>'
+      + '언제든 끄실 수 있고, 꺼도 글이 아예 안 오는 것은 아닙니다.</div></div>'
+      + '<button class="btn ' + (on ? 'btn-a' : '') + '" id="bWantsBtn">'
+      + (on ? '★ 많이 받는 중 — 끄기' : '많이 받고 싶어요') + '</button>'
+      + '</div></div>';
+
+    $('bWantsBtn').onclick = async function () {
+      if (PREVIEW) { A.toast('미리보기에서는 바꿀 수 없습니다'); return; }
+      this.disabled = true;
+      try {
+        var v = await A.rpc('blogger_set_wants', { p_want: !on });
+        A.ME.wants_more = v;
+        A.toast(v ? '많이 받는 것으로 해두었습니다' : '평소대로 받습니다');
+        renderWants();
+      } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }
+    };
+  }
+
   /* 안 읽은 알림 — 작업함 맨 위에 뜹니다 */
   function renderNoti() {
     var box = $('bNoti'); if (!box) return;
@@ -106,6 +134,7 @@
     });
 
     renderNoti();
+    renderWants();
     $('bhWho').textContent = A.ME.name + ' 님, 반갑습니다.';
     $('bStats').innerHTML =
       s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 글')

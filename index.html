@@ -423,8 +423,15 @@
         </div>
       </div>
       <div class="pickbar">
-        <button class="btn btn-p" id="doAssign" disabled>선택한 글을 선택한 사람에게 나눠주기</button>
-        <span class="mono" id="assignHint">왼쪽에서 글, 오른쪽에서 블로거를 골라 주세요</span>
+        <button class="btn btn-a" id="doAuto" disabled>⚖️ 고르게 자동으로 나눠주기</button>
+        <button class="btn btn-p" id="doAssign" disabled>고른 사람에게만 나눠주기</button>
+        <span class="mono" id="assignHint">왼쪽에서 글을 고르세요</span>
+      </div>
+      <div class="note" style="margin-top:14px">
+        <b>⚖️ 고르게 자동으로 나눠주기</b> — 사람을 안 고르셔도 됩니다. 글만 고르고 누르시면
+        <b>①「많이 쓰고 싶어요」를 켠 블로거 먼저 ② 그 안에서 이번 달 적게 받은 사람 먼저</b>
+        순서로 알아서 나눠줍니다. 같이 사는 블로거들끼리 편수가 벌어지지 않게 하는 장치입니다.<br>
+        오른쪽에서 사람을 골라두고 누르시면 <b>고른 사람들 안에서만</b> 고르게 나눕니다.
       </div>
       <div class="note" style="margin-top:14px">
         <b>회색으로 죽어 있는 사람은 못 고릅니다.</b> 교육을 다 안 받았거나 저품질로 표시된 경우입니다.
@@ -625,6 +632,7 @@
     <section class="screen" data-screen="b-inbox">
       <div class="head"><h1>내 작업함</h1><p id="bhWho"></p></div>
       <div class="grid g4" id="bStats" style="margin-bottom:18px"></div>
+      <div id="bWants"></div>
       <div id="bNoti"></div>
       <div id="bGate"></div>
       <div class="sec">할 일</div>

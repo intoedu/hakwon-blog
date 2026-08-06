@@ -238,7 +238,9 @@
         var opts = A.LEVELS.map(function (l) {
           return '<option value="' + l.lv + '"' + (l.lv === p.level ? ' selected' : '') + '>' + l.lv + '단계</option>';
         }).join('');
-        return '<tr><td><b>' + esc(p.name) + '</b><div class="mono">' + esc(p.phone || '') + '</div></td>'
+        return '<tr><td><b>' + esc(p.name) + '</b>'
+          + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
+          + '<div class="mono">' + esc(p.phone || '') + '</div></td>'
           + '<td>' + esc(A.commName(p.community_id)) + '</td>'
           + '<td>' + A.lvBadge(p.level) + '</td><td class="num">' + won(lv.rate) + '</td>'
           + '<td class="num">' + (p.neighbors == null ? '<span class="mono">' + esc(p.neighbors_band || '-') + '</span>' : won(p.neighbors)) + '</td>'
@@ -249,6 +251,9 @@
           + '<td><div class="row">'
           + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-lv="' + p.id + '">' + opts + '</select>'
           + '<button class="btn btn-s" data-openpm="' + p.id + '">검수자·관리자로 ↑</button>'
+          + '<button class="btn btn-s" data-wants="' + p.id + '" data-on="' + (p.wants_more ? 1 : 0)
+          + '" title="글을 많이 받고 싶다는 표시. 켜면 배정에서 먼저 갑니다">'
+          + (p.wants_more ? '★ 많이' : '☆ 많이') + '</button>'
           + '<button class="btn btn-s" data-act="' + (p.status === 'approved' ? 'paused' : 'approved')
           + '" data-id="' + p.id + '">' + (p.status === 'approved' ? '쉬게 하기' : '다시 활동') + '</button>'
           + '</div></td></tr>';
@@ -838,21 +843,40 @@
         + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span></label>';
     }).join('') : whyEmpty();
 
-    var ppl = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
-    $('peopleList').innerHTML = ppl.length ? ppl.map(function (p) {
-      var s = stat(p.id);
-      var here = POSTS.filter(function (x) { return x.order_id === oid && x.blogger_id === p.id; }).length;
+    /* 이번 달 '배정받은' 편수 — 끝낸 편수(done_month)가 아니라 받은 편수로 봐야 공평합니다 */
+    var thisM = A.thisMonth() + '-01';
+    function gotThisMonth(bid) {
+      return POSTS.filter(function (x) {
+        return x.blogger_id === bid && x.cycle_month === thisM && x.status !== 'cancelled';
+      }).length;
+    }
+    /* 자동 배정과 같은 순서로 보여줍니다 — 위에 있는 사람이 먼저 받습니다 */
+    var ppl = A.PEOPLE.filter(function (p) { return p.status === 'approved'; })
+      .map(function (p) { return { p: p, s: stat(p.id), m: gotThisMonth(p.id) }; })
+      .sort(function (a, b) {
+        if (a.s.ready !== b.s.ready) return a.s.ready ? -1 : 1;
+        if (!!a.p.wants_more !== !!b.p.wants_more) return a.p.wants_more ? -1 : 1;
+        if (a.m !== b.m) return a.m - b.m;
+        return (a.p.name || '').localeCompare(b.p.name || '');
+      });
+
+    $('peopleList').innerHTML = ppl.length ? ppl.map(function (x) {
+      var p = x.p, s = x.s;
+      var here = POSTS.filter(function (y) { return y.order_id === oid && y.blogger_id === p.id; }).length;
       if (!s.ready) {
         return '<label class="pickrow" style="opacity:.45;cursor:not-allowed"><input type="checkbox" disabled>'
           + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id)) + '</span></span>'
-          + '<span class="sub" style="color:var(--bad)">' + (p.quality === 'low' ? '저품질' : '교육 미완') + '</span></label>';
+          + '<span class="sub" style="color:var(--bad)">'
+          + (p.quality === 'low' ? '저품질' : blogRoleOf(p.id) ? '검수자·관리자' : '교육 미완') + '</span></label>';
       }
       return '<label class="pickrow drop" data-drop="' + p.id + '">'
         + '<input type="checkbox" class="pk-ppl" value="' + p.id + '">'
-        + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id))
+        + '<span><b>' + esc(p.name) + '</b>'
+        + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
+        + ' <span class="mono">' + esc(A.commName(p.community_id))
         + ' · ' + p.level + '단계</span></span>'
-        + '<span class="sub">이번 달 ' + (s.done_month || 0) + '편 · 이 학원 ' + here + '편</span></label>';
-    }).join('') : '<div class="empty">승인된 블로거이 없습니다.</div>';
+        + '<span class="sub">이번 달 <b>' + x.m + '편</b> · 이 학원 ' + here + '편</span></label>';
+    }).join('') : '<div class="empty">승인된 블로거가 없습니다.</div>';
 
     $('allPosts').checked = false; $('allPeople').checked = false;
     refreshPick();
@@ -864,10 +888,12 @@
     var a = picked('pk-post').length, b = picked('pk-ppl').length;
     $('cPosts').textContent = a; $('cPeople').textContent = b;
     $('doAssign').disabled = !(a && b);
-    $('assignHint').textContent = (!a || !b) ? '왼쪽에서 글, 오른쪽에서 블로거를 골라 주세요'
-      : a === b ? a + '편을 ' + b + '명에게 한 편씩 줍니다'
-        : a > b ? a + '편을 ' + b + '명에게 골고루 나눕니다 (한 명당 최대 ' + Math.ceil(a / b) + '편)'
-          : a + '편을 ' + b + '명 중 앞에서 ' + a + '명에게 한 편씩 줍니다';
+    $('doAuto').disabled = !a;            /* 자동은 사람을 안 골라도 됩니다 */
+    $('assignHint').textContent = !a ? '왼쪽에서 글을 고르세요'
+      : !b ? a + '편 — [⚖️ 고르게 자동으로]를 누르시면 알아서 나눠줍니다'
+        : a === b ? a + '편을 ' + b + '명에게 한 편씩 줍니다'
+          : a > b ? a + '편을 ' + b + '명에게 골고루 나눕니다 (한 명당 최대 ' + Math.ceil(a / b) + '편)'
+            : a + '편을 ' + b + '명 중 앞에서 ' + a + '명에게 한 편씩 줍니다';
   }
   /* 끌어서 맡기기 — 체크한 글이 있으면 그것들을, 없으면 끌고 온 글 하나를 맡깁니다 */
   var DRAG = [];
@@ -907,6 +933,28 @@
     try {
       var n = await A.rpc('posts_assign', { p_posts: picked('pk-post'), p_bloggers: picked('pk-ppl') });
       A.toast(n + '편을 나눠줬습니다. 마감은 배정일 + 7일입니다');
+      await A.loadAdmin();
+    } catch (e) { A.toast('실패: ' + e.message); }
+    this.disabled = false;
+  };
+
+  /* 고르게 자동 배정 — 사람을 안 고르면 배정 가능한 사람 전체가 대상 */
+  $('doAuto').onclick = async function () {
+    var posts = picked('pk-post'), pool = picked('pk-ppl');
+    if (!posts.length) { A.toast('나눠줄 글을 고르세요'); return; }
+    if (!confirm(posts.length + '편을 고르게 나눠줄까요?\n\n'
+      + (pool.length ? '고르신 ' + pool.length + '명 안에서만 나눕니다.'
+        : '「많이 쓰고 싶어요」를 켠 사람부터, 이번 달 적게 받은 순으로 나눕니다.'))) return;
+    this.disabled = true;
+    try {
+      var r = await A.rpc('posts_auto_assign', {
+        p_posts: posts, p_pool: pool.length ? pool : null
+      });
+      var who = (r.people || []).map(function (p) {
+        return (p.wants ? '★' : '') + p.name + ' ' + p.month + '편';
+      }).join(' · ');
+      A.toast(r.assigned + '편을 나눠줬습니다');
+      if (who) A.toast('이번 달 — ' + who);
       await A.loadAdmin();
     } catch (e) { A.toast('실패: ' + e.message); }
     this.disabled = false;
@@ -1830,6 +1878,16 @@
       $('kwOrder').value = t.dataset.gokw2;
       $('kwOrder').onchange();
       A.show('kw');
+      return;
+    }
+
+    if ((t = e.target.closest('[data-wants]'))) {
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_set_wants_admin',
+          { p_id: t.dataset.wants, p_want: t.dataset.on !== '1' });
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
 
