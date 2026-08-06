@@ -667,17 +667,75 @@
     $('kwN').value = o.total_qty;
     kwPaidCheck();
   };
+  /* ── 말이 안 되는 조합 걸러내기 ──
+     네 축을 그냥 곱하면 "영어내신 수학학원", "송림고 예비중" 같은 게 나옵니다.
+     학부모가 그렇게 검색하지 않으니 글을 써도 헛일입니다. */
+  var GRADE_LV = { '초등': 1, '예비중': 2, '중등': 3, '예비고': 4, '고등': 5, '고3': 5, '재수': 5 };
+  var SUBJ_LV = { '초등': 1, '중등': 3, '고등': 5, '수능': 5, '내신고': 5 };
+
+  function badCombo(region, grade, subject, purpose) {
+    var whole = [region, grade, subject, purpose];
+
+    /* ① 같은 말이 두 번 (중등수학내신 + 내신 / 전과목학습코칭 + 학습코칭) */
+    for (var i = 0; i < whole.length; i++) {
+      for (var j = i + 1; j < whole.length; j++) {
+        var x = whole[i], y = whole[j];
+        if (!x || !y) continue;
+        if (x === y) return '같은 말이 두 번';
+        if (x.length >= 2 && y.length >= 2 && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0))
+          return '같은 말이 겹침';
+      }
+    }
+
+    /* ② 과목이 학년을 품고 있는데 고른 학년과 어긋남 (중등국어논술 + 고등) */
+    var sLv = 0;
+    Object.keys(SUBJ_LV).forEach(function (k) { if (subject.indexOf(k) >= 0) sLv = SUBJ_LV[k]; });
+    var gLv = GRADE_LV[grade] || 0;
+    if (sLv && gLv) {
+      /* 예비고(중3)는 고등 과목을 미리 볼 수 있으니 한 칸까지는 봐줍니다 */
+      if (sLv >= 5 && gLv <= 3) return '수능·고등 과목인데 중등';
+      if (sLv <= 3 && gLv >= 4) return '중등 과목인데 고등';
+      if (sLv === 1 && gLv >= 3) return '초등 과목인데 중등 이상';
+    }
+
+    /* ③ 학교 이름과 학년이 어긋남 (송림고 + 예비중 / 이매초 + 고등) */
+    var last = region.slice(-1);
+    if (gLv) {
+      if (last === '초' && gLv >= 4) return '초등학교인데 고등';
+      if (last === '중' && gLv >= 5) return '중학교인데 고등';
+      if (last === '고' && gLv <= 3) return '고등학교인데 중등 이하';
+    }
+
+    /* ④ 과목과 '○○학원' 목적이 서로 다른 과목 (영어내신 + 수학학원) */
+    var FIELDS = ['영어', '수학', '국어', '논술', '과학', '사회', '한국사', '코딩', '중국어', '일본어'];
+    var pField = null;
+    FIELDS.forEach(function (f) { if (purpose.indexOf(f) >= 0) pField = f; });
+    if (pField && subject.indexOf(pField) < 0) {
+      var sHas = FIELDS.some(function (f) { return subject.indexOf(f) >= 0; });
+      if (sHas) return '과목과 다른 과목 학원';
+    }
+    return null;
+  }
+
   $('kwGo').onclick = function () {
     var a = splitv('k1'), b = splitv('k2'), c = splitv('k3'), d = splitv('k4');
     if (!a.length || !b.length) { A.toast('지역과 과목은 채워 주세요'); return; }
-    var all = [];
+    var filterOn = $('kwFilter').checked;
+    var all = [], dropped = 0;
     a.forEach(function (x) {
       b.forEach(function (y) {
         c.forEach(function (z) {
-          d.forEach(function (w) { all.push({ kw: x + ' ' + z + ' ' + y + ' ' + w, brief: z + ' · ' + w }); });
+          d.forEach(function (w) {
+            if (filterOn && badCombo(x, z, y, w)) { dropped++; return; }
+            all.push({ kw: x + ' ' + z + ' ' + y + ' ' + w, brief: z + ' · ' + w });
+          });
         });
       });
     });
+    if (!all.length) {
+      $('kwInfo').textContent = '쓸 만한 조합이 하나도 없습니다. 걸러내기를 끄고 다시 해보세요.';
+      A.toast('쓸 만한 조합이 없습니다'); return;
+    }
     var want = Math.max(1, Number($('kwN').value) || 100);
     var weeks = Math.max(1, Number($('kwW').value) || 4);
     var picked = [];
@@ -688,21 +746,37 @@
     KWDRAFT = picked.map(function (p, i) {
       return { keyword: p.kw, brief: p.brief, week: Math.floor(i / per) + 1 };
     });
-    $('kwInfo').textContent = '만들 수 있는 조합 ' + all.length + '개 중 ' + picked.length
-      + '개를 뽑아 ' + weeks + '주로 나눴습니다 (주당 약 ' + per + '편)';
+    $('kwInfo').innerHTML = '쓸 만한 조합 ' + all.length + '개 중 <b>' + picked.length
+      + '개</b>를 뽑아 ' + weeks + '주로 나눴습니다 (주당 약 ' + per + '편)'
+      + (dropped ? ' · <b style="color:var(--bad)">말이 안 되는 조합 ' + dropped + '개는 뺐습니다</b>' : '');
     $('kwOut').className = 'tblbox tblscroll';
-    $('kwOut').innerHTML = '<table><thead><tr><th>#</th><th>주차</th>'
+    $('kwOut').innerHTML = '<table><thead><tr>'
+      + '<th style="width:34px"><input type="checkbox" id="kwAll" checked></th>'
+      + '<th>#</th><th>주차</th>'
       + '<th>이 글이 노릴 검색어 — 제목에 그대로 들어갑니다</th><th>다룰 내용</th></tr></thead><tbody>'
       + KWDRAFT.map(function (p, i) {
-        return '<tr><td class="mono">' + (i + 1) + '</td><td class="mono">' + p.week + '주차</td>'
+        return '<tr><td><input type="checkbox" class="kw-pick" value="' + i + '" checked></td>'
+          + '<td class="mono">' + (i + 1) + '</td><td class="mono">' + p.week + '주차</td>'
           + '<td><b>' + esc(p.keyword) + '</b></td><td class="mono">' + esc(p.brief) + '</td></tr>';
       }).join('') + '</tbody></table>';
+    $('kwAll').onclick = function () {
+      var on = this.checked;
+      document.querySelectorAll('.kw-pick').forEach(function (c) { c.checked = on; });
+    };
     $('kwSave').disabled = false;
-    A.toast(picked.length + '개를 만들었습니다');
+    A.toast(picked.length + '개를 만들었습니다'
+      + (dropped ? ' (이상한 것 ' + dropped + '개 제외)' : ''));
   };
   $('kwSave').onclick = async function () {
     var oid = $('kwOrder').value;
     if (!oid || !KWDRAFT.length) { A.toast('주문과 키워드를 확인해 주세요'); return; }
+    /* 체크를 푼 것은 빼고 만듭니다 */
+    var keep = [];
+    document.querySelectorAll('.kw-pick').forEach(function (c) {
+      if (c.checked) keep.push(KWDRAFT[Number(c.value)]);
+    });
+    if (!keep.length) { A.toast('만들 검색어를 하나 이상 체크해 주세요'); return; }
+    KWDRAFT = keep;
     if (!kwPaidCheck()) {
       A.toast('입금 확인을 먼저 해주세요 — 위 안내를 봐주세요');
       $('kwPaid').scrollIntoView({ block: 'center' });

@@ -371,10 +371,24 @@
           <input class="inp" id="kwN" type="number" value="100" style="width:88px">
           <label class="f" style="margin:0">몇 주에 나눠서</label>
           <input class="inp" id="kwW" type="number" value="4" style="width:70px">
+        </div>
+        <div class="row" style="margin-top:10px">
+          <label class="row" style="gap:7px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="kwFilter" checked>
+            <b>말이 안 되는 조합은 빼기</b></label>
           <span class="mono" id="kwInfo">아직 안 만들었습니다</span>
         </div>
       </div>
-      <div class="sec">만들어진 키워드</div>
+      <div class="note" style="margin-top:14px">
+        <b>이런 것을 자동으로 뺍니다</b> —
+        「영어내신 <b>수학학원</b>」처럼 과목이 서로 안 맞는 것,
+        「송림<b>고</b> <b>예비중</b>」처럼 학교와 학년이 안 맞는 것,
+        「<b>중등</b>국어논술 <b>고등</b>」처럼 학년이 두 번 나오며 어긋나는 것,
+        「중등수학<b>내신</b> <b>내신</b>」처럼 같은 말이 겹치는 것.<br>
+        <b>다 걸러내지는 못합니다.</b> 아래 표를 한 번 훑어보시고 이상한 줄은
+        <b>왼쪽 체크를 풀어</b> 빼주세요. 체크된 것만 글로 만들어집니다.
+      </div>
+      <div class="sec">만들어진 키워드 <small>체크된 것만 글이 됩니다</small></div>
       <div id="kwOut" class="empty">위에서 [키워드 만들기]를 눌러 보세요.</div>
       <div class="row" style="margin-top:14px">
         <button class="btn btn-p" id="kwSave" disabled>이대로 글 만들기</button>
