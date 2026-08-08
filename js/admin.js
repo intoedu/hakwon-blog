@@ -664,21 +664,36 @@
     return '<div><label class="f">' + k + '</label><div style="font-size:16px;font-weight:700">' + esc(v) + '</div></div>';
   }
 
-  /* 학원이 보낸 사진을 크게 봅니다 */
+  /* 학원이 보낸 사진을 크게 봅니다.
+     한 장에 1~5MB라 한꺼번에 받으면 멈춥니다 — 12장씩 끊어서 보여줍니다 */
+  var PICS = [], PSHOWN = 0;
   async function showPics(o) {
     var paths = o.photo_paths || [];
     if (!paths.length) { A.toast('받은 사진이 없습니다'); return; }
     var r = await A.sb.storage.from('request-photos').createSignedUrls(paths, 3600);
     if (r.error) throw new Error(r.error.message);
-    var ok = (r.data || []).filter(function (x) { return x.signedUrl; });
-    var box = $('picModal');
-    $('picTitle').textContent = o.academy_name + ' — 학원이 보낸 사진 ' + ok.length + '장';
-    $('picBody').innerHTML = ok.map(function (x, i) {
-      return '<a href="' + esc(x.signedUrl) + '" target="_blank" rel="noopener" class="picitem">'
-        + '<img src="' + esc(x.signedUrl) + '" loading="lazy" alt="사진 ' + (i + 1) + '">'
-        + '<span>' + (i + 1) + '</span></a>';
-    }).join('');
-    box.classList.add('on');
+    PICS = (r.data || []).filter(function (x) { return x.signedUrl; })
+      .map(function (x) { return x.signedUrl; });
+    PSHOWN = 0;
+    $('picTitle').textContent = o.academy_name + ' — 학원이 보낸 사진 ' + PICS.length + '장';
+    $('picBody').innerHTML = '';
+    morePics();
+    $('picModal').classList.add('on');
+  }
+  function morePics() {
+    var next = PICS.slice(PSHOWN, PSHOWN + 12);
+    $('picBody').insertAdjacentHTML('beforeend', next.map(function (u, i) {
+      var n = PSHOWN + i + 1;
+      return '<a href="' + esc(u) + '" target="_blank" rel="noopener" class="picitem">'
+        + '<img src="' + esc(u) + '" loading="lazy" alt="사진 ' + n + '">'
+        + '<span>' + n + '</span></a>';
+    }).join(''));
+    PSHOWN += next.length;
+    var m = $('picMore');
+    m.innerHTML = PSHOWN < PICS.length
+      ? '<button class="btn" id="picMoreBtn">더 보기 (남은 ' + (PICS.length - PSHOWN) + '장)</button>'
+      : '<span class="mono">' + PICS.length + '장을 모두 보셨습니다</span>';
+    if ($('picMoreBtn')) $('picMoreBtn').onclick = morePics;
   }
   function fld(o, f, label) {
     return '<div><label class="f">' + label + '</label><input class="inp" data-of="' + f
@@ -1516,12 +1531,12 @@
     assigned: '글 배정', due1: '마감 임박', overdue: '마감 지남', rework: '수정 요청',
     payout: '정산 확정', approved: '신청 승인', rejected: '신청 거절', edu_wait: '교육 미이수',
     submitted: '검수할 원고', overdue_admin: '마감 지난 글', unpaid_order: '입금 지연',
-    unassigned: '미배정 남음',
+    unassigned: '미배정 남음', academy_note: '학원 전달사항', custom: '직접 쓴 알림',
     order_paid: '입금 확인', first_post: '첫 글 올라감', half: '절반 진행', order_done: '전부 완료'
   };
   var KIND_OF = {
-    blogger: ['assigned', 'due1', 'overdue', 'rework', 'payout', 'approved', 'rejected', 'edu_wait'],
-    staff: ['submitted', 'overdue_admin', 'unpaid_order', 'unassigned'],
+    blogger: ['assigned', 'due1', 'overdue', 'rework', 'payout', 'approved', 'rejected', 'edu_wait', 'custom'],
+    staff: ['submitted', 'overdue_admin', 'unpaid_order', 'unassigned', 'academy_note', 'custom'],
     academy: ['order_paid', 'first_post', 'half', 'order_done']
   };
   function kindKo(k) { return KIND_KO[k] || k; }
@@ -1591,7 +1606,7 @@
     /* 검수자는 '우리끼리 챙길 것'만 보고, 보내는 일은 하지 않습니다 */
     var rev = !A.IS_ADMIN;
     if (rev) NOTI_TAB = 'staff';
-    ['notiScan', 'notiCopyAll', 'notiSentAll', 'notiTabs'].forEach(function (id) {
+    ['notiScan', 'notiCopyAll', 'notiSentAll', 'notiTabs', 'notiSendBox'].forEach(function (id) {
       var el = $(id); if (el) el.classList.toggle('hide', rev);
     });
     renderKinds();
@@ -1625,6 +1640,46 @@
 
   $('notiShowSent').onchange = renderNoti;
   $('notiScan').onclick = function () { loadNoti(true); };
+
+  /* 직접 써서 보내기 */
+  function renderSendPick() {
+    var pick = $('nsWho').value === 'blogger-pick';
+    $('nsPick').classList.toggle('hide', !pick);
+    if (!pick) return;
+    var list = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
+    $('nsPeople').innerHTML = list.length ? list.map(function (p) {
+      return '<label class="pickrow"><input type="checkbox" class="ns-p" value="' + p.id + '">'
+        + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id)) + '</span></span>'
+        + '</label>';
+    }).join('') : '<div class="empty">승인된 블로거가 없습니다.</div>';
+  }
+  $('nsWho').onchange = renderSendPick;
+
+  $('nsGo').onclick = async function () {
+    var who = $('nsWho').value;
+    var title = $('nsTitle').value.trim(), body = $('nsBody').value.trim();
+    if (!title || !body) { A.toast('제목과 내용을 적어 주세요'); return; }
+    var ids = null, aud = 'blogger';
+    if (who === 'staff') aud = 'staff';
+    else if (who === 'blogger-pick') {
+      ids = [].map.call(document.querySelectorAll('.ns-p:checked'), function (c) { return c.value; });
+      if (!ids.length) { A.toast('받을 사람을 골라 주세요'); return; }
+    }
+    var target = who === 'staff' ? '우리끼리'
+      : ids ? ids.length + '명' : '블로거 전체';
+    if (!confirm('「' + title + '」\n\n' + target + '에게 보낼까요?')) return;
+    this.disabled = true;
+    try {
+      var n = await A.rpc('notify_send_custom',
+        { p_audience: aud, p_ids: ids, p_title: title, p_body: body });
+      A.toast(n + '건을 만들었습니다. 아래 목록에서 복사해 카톡으로도 보내세요');
+      $('nsTitle').value = ''; $('nsBody').value = '';
+      $('notiSendBox').open = false;
+      NOTI_TAB = aud; NOTI_KIND = '';
+      await loadNoti(false);
+    } catch (e) { A.toast('실패: ' + e.message); }
+    this.disabled = false;
+  };
 
   /* 설정 — 서명과 '어떤 알림을 만들지' */
   function renderNotiSet() {

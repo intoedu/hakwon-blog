@@ -584,6 +584,33 @@
         <button data-noti="academy">학원에게</button>
         <button data-noti="staff">우리끼리 챙길 것</button>
       </div>
+      <details id="notiSendBox" style="margin-bottom:16px" data-adminonly>
+        <summary style="cursor:pointer;font-size:13.5px;font-weight:700;color:var(--ink-2)">
+          ✍️ 직접 써서 보내기 — 블로거·검수자에게 하고 싶은 말</summary>
+        <div class="card" style="margin-top:10px">
+          <div class="row" style="margin-bottom:12px">
+            <label class="f" style="margin:0">받는 사람</label>
+            <select class="inp" id="nsWho" style="width:auto">
+              <option value="blogger-all">블로거 전체</option>
+              <option value="blogger-pick">블로거 중에서 고르기</option>
+              <option value="staff">검수자·관리자 (우리끼리)</option>
+            </select>
+          </div>
+          <div id="nsPick" class="hide" style="margin-bottom:12px">
+            <label class="f">누구에게 보낼까요</label>
+            <div class="pickbody" id="nsPeople" style="max-height:220px"></div>
+          </div>
+          <div class="fld" style="margin-bottom:10px"><label class="f">제목</label>
+            <input class="inp" id="nsTitle" placeholder="예: 이번 주 마감 안내"></div>
+          <div class="fld"><label class="f">내용</label>
+            <textarea class="inp" id="nsBody" style="min-height:120px"
+              placeholder="블로거들에게 그대로 갑니다. 센터 안에 바로 뜨고, 목록에서 복사해 카톡으로도 보내실 수 있습니다."></textarea></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-p" id="nsGo">알림 만들기</button>
+            <span class="mono">문구 끝에 서명이 자동으로 붙습니다</span>
+          </div>
+        </div>
+      </details>
       <div id="notiKinds" style="margin-bottom:14px"></div>
       <div id="notiList"></div>
       <details id="notiSetBox" style="margin-top:20px" data-adminonly>
@@ -703,6 +730,7 @@
       <span class="mono" style="margin-left:auto">사진을 누르면 원본이 열립니다</span>
       <button class="btn btn-s" id="picClose">닫기</button></div>
     <div class="picgrid" id="picBody"></div>
+    <div id="picMore" style="padding:0 16px 18px;text-align:center"></div>
   </div>
 </div>
 
