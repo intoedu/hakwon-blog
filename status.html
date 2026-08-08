@@ -245,7 +245,7 @@
       + 'background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px">'
       + '<div class="row" style="margin-top:12px">'
       + '<button class="btn btn-p" id="upGo">사진 올리기</button>'
-      + '<span class="mono" id="upMsg">한 장에 10MB까지 · 한 번에 60장까지</span></div>'
+      + '<span class="mono" id="upMsg">한 번에 60장까지 · <b>크기는 알아서 줄여 올립니다</b></span></div>'
       + (d.photos ? '<div class="msg ok" style="margin:14px 0 0">'
         + '✓ <b>' + d.photos + '장</b>이 잘 도착했습니다. 글 쓰는 분들에게 나눠서 전달됩니다. '
         + '<button class="btn btn-s" id="seeMyPics" style="margin-left:6px">🖼 보낸 사진 보기</button></div>'
@@ -397,7 +397,32 @@
     };
   }
 
-  /* ── 사진 올리기 ── */
+  /* ── 사진 올리기 ──
+     요즘 폰 사진은 한 장에 4000×3000 · 5MB씩 합니다. 블로그 글에는 그만한 크기가
+     필요 없어서 보내기 전에 브라우저에서 줄입니다. 원장님 데이터도 아끼고,
+     나중에 글 쓰는 분들이 받을 때도 빨라집니다. */
+  var LONG_SIDE = 1600, QUALITY = 0.82;
+  async function shrinkPhoto(file) {
+    if (!/^image\//.test(file.type) || /gif|svg/.test(file.type)) return file;
+    var bmp;
+    try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (e) {
+      try { bmp = await createImageBitmap(file); } catch (e2) { return file; }  /* 못 줄이면 원본 */
+    }
+    var w = bmp.width, h = bmp.height, long = Math.max(w, h);
+    if (long <= LONG_SIDE && file.size <= 700 * 1024) { bmp.close && bmp.close(); return file; }
+    var s = Math.min(1, LONG_SIDE / long);
+    var cw = Math.round(w * s), ch = Math.round(h * s);
+    var cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+    var cx = cv.getContext('2d');
+    cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch);
+    cx.drawImage(bmp, 0, 0, cw, ch);
+    bmp.close && bmp.close();
+    var blob = await new Promise(function (r) { cv.toBlob(r, 'image/jpeg', QUALITY); });
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name, { type: 'image/jpeg' });
+  }
+
   function wireUpload() {
     var btn = document.getElementById('upGo'); if (!btn) return;
     btn.onclick = async function () {
@@ -406,17 +431,22 @@
       var files = inp.files ? Array.prototype.slice.call(inp.files) : [];
       if (!files.length) { msg.textContent = '올릴 사진을 먼저 골라 주세요.'; return; }
       if (files.length > 60) { msg.textContent = '한 번에 60장까지만 올릴 수 있습니다.'; return; }
-      var big = files.filter(function (f) { return f.size > 10 * 1024 * 1024; });
-      if (big.length) { msg.textContent = '10MB가 넘는 사진이 있습니다: ' + big[0].name; return; }
 
       btn.disabled = true; inp.disabled = true;
       var folder = 'k-' + key();
       var stamp = String(Date.now());
-      var paths = [];
+      var paths = [], saved = 0;
       try {
         for (var i = 0; i < files.length; i++) {
-          var f = files[i];
-          var ext = (f.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+          msg.textContent = files.length + '장 중 ' + (i + 1) + '장째 — 크기 줄이는 중…';
+          var f = await shrinkPhoto(files[i]);
+          saved += Math.max(0, files[i].size - f.size);
+          if (f.size > 10 * 1024 * 1024) {
+            throw new Error('「' + files[i].name + '」은 줄여도 10MB가 넘습니다');
+          }
+          /* 안 줄여지고 원본 그대로 갈 수도 있어서 실제 형식에 맞춰 확장자를 붙입니다 */
+          var ext = (f.type === 'image/jpeg') ? 'jpg'
+            : (f.type.split('/')[1] || 'jpg').replace(/[^a-z0-9]/g, '') || 'jpg';
           var path = folder + '/' + stamp + '-' + ('00' + (i + 1)).slice(-3) + '.' + ext;
           msg.textContent = files.length + '장 중 ' + (i + 1) + '장째 올리는 중…';
           paths.push(await putPhoto(path, f));
@@ -424,7 +454,9 @@
         var note = (document.getElementById('upNote').value || '').trim();
         await rpc('order_add_photos', { k: key(), p_paths: paths, p_note: note || null });
         msg.textContent = '';
-        alert(paths.length + '장을 보내주셨습니다. 담당자가 확인하고 글에 씁니다. 감사합니다!');
+        alert(paths.length + '장을 보내주셨습니다. 담당자가 확인하고 글에 씁니다. 감사합니다!'
+          + (saved > 1048576
+            ? '\n\n(보내기 좋게 크기를 줄여 ' + Math.round(saved / 1048576) + 'MB를 아꼈습니다)' : ''));
         load();
       } catch (e) {
         msg.textContent = '올리지 못했습니다: ' + e.message + ' — 다시 시도해 주시거나 010-7318-1790 으로 연락 주세요.';
