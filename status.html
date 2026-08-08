@@ -230,6 +230,8 @@
       + '<div class="row" style="margin-top:12px">'
       + '<button class="btn btn-p" id="upGo">사진 올리기</button>'
       + '<span class="mono" id="upMsg">한 장에 10MB까지 · 한 번에 60장까지</span></div>'
+      + (d.photos ? '<div class="msg ok" style="margin:14px 0 0">'
+        + '✓ <b>' + d.photos + '장</b>이 잘 도착했습니다. 글 쓰는 분들에게 나눠서 전달됩니다.</div>' : '')
       + '</div>';
 
     /* 올라간 글 */

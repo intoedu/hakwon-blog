@@ -6,6 +6,7 @@
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
+  var REQ_DONE = {};    /* 의뢰 id → ESC 관리자에서 '완료'로 표시됐는지 */
 
   /* ═══ 데이터 ═══ */
   A.loadAdmin = async function () {
@@ -17,6 +18,14 @@
     POSTS = await A.sel('blog_posts', { order: 'seq' });
 
     await loadBlogStaff();
+
+    /* ESC 관리자에서 의뢰를 '완료'로 바꾸면 여기서도 끝난 것으로 봅니다 */
+    REQ_DONE = {};
+    var rids = A.ORDERS.map(function (o) { return o.request_id; }).filter(Boolean);
+    if (rids.length) {
+      var rr = await A.sb.from('requests').select('id,status').in('id', rids);
+      (rr.data || []).forEach(function (x) { REQ_DONE[x.id] = (x.status === '완료'); });
+    }
 
     fillSelects();
     renderDash(); renderStaffAll(); renderBlogStaff();
@@ -113,18 +122,36 @@
     $('dashTodo').innerHTML = todo.length ? todo.join('')
       : '<div class="empty">지금 급한 일은 없습니다. 잘 돌아가고 있습니다.</div>';
 
-    $('dashOrders').innerHTML = A.ORDERS.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>학원</th><th>주문</th><th>올라간 글</th><th>검수 대기</th><th>입금</th><th>마감일</th></tr></thead><tbody>'
-      + A.ORDERS.map(function (o) {
+    /* 끝난 주문(다 끝냄·종료, 또는 ESC 관리자에서 의뢰를 '완료'로 바꾼 것)은 맨 아래로 */
+    function closed(o) {
+      return o.status === 'done' || o.status === 'ended'
+        || REQ_DONE[o.request_id] === true;
+    }
+    var ords = A.ORDERS.slice().sort(function (a, b) {
+      var ca = closed(a) ? 1 : 0, cb = closed(b) ? 1 : 0;
+      if (ca !== cb) return ca - cb;
+      return (b.ordered_at || '').localeCompare(a.ordered_at || '');
+    });
+
+    $('dashOrders').innerHTML = ords.length ? '<div class="tblbox tblscroll"><table>'
+      + '<thead><tr><th>학원</th><th>주문</th><th>올라간 글</th><th>검수 대기</th><th>입금</th><th>마감일</th>'
+      + (A.IS_OWNER ? '<th></th>' : '') + '</tr></thead><tbody>'
+      + ords.map(function (o) {
         var p = prog(o.id), done = Number(p.done || 0), pct = o.total_qty ? Math.round(done / o.total_qty * 100) : 0;
         var d = A.dday(o.deadline);
-        return '<tr><td><b>' + esc(o.academy_name) + '</b><div class="mono">' + esc(o.region || '') + '</div></td>'
+        var fin = closed(o);
+        return '<tr' + (fin ? ' style="opacity:.5"' : '') + '>'
+          + '<td><b>' + esc(o.academy_name) + '</b>'
+          + (fin ? ' <span class="chip c-off">끝난 주문</span>' : '')
+          + '<div class="mono">' + esc(o.region || '') + '</div></td>'
           + '<td class="num">' + o.total_qty + '편</td>'
           + '<td><div class="row"><div class="bar' + (pct < 50 ? ' mid' : '') + '" style="width:80px"><i style="width:'
           + pct + '%"></i></div><span class="num">' + done + '</span></div></td>'
           + '<td class="num">' + ((p.to_review || 0) + (p.to_verify || 0)) + '</td>'
           + '<td>' + (o.paid_at ? '<span class="chip c-ok">입금됨</span>' : '<span class="chip c-wait">입금 대기</span>') + '</td>'
-          + '<td class="mono">' + (o.deadline || '-') + (d != null && d >= 0 ? ' (' + d + '일)' : d != null ? ' <b style="color:var(--bad)">지남</b>' : '') + '</td></tr>';
+          + '<td class="mono">' + (o.deadline || '-') + (d != null && d >= 0 ? ' (' + d + '일)' : d != null ? ' <b style="color:var(--bad)">지남</b>' : '') + '</td>'
+          + (A.IS_OWNER ? '<td><button class="btn btn-s" data-delorder="' + o.id + '">🗑</button></td>' : '')
+          + '</tr>';
       }).join('') + '</tbody></table></div>' : A.empty('아직 주문이 없습니다. 3번에서 만드시면 됩니다.');
   }
   function fgroup(title, steps) {
@@ -605,6 +632,7 @@
         + '<div class="row" style="margin-top:10px">'
         + ((o.photo_paths || []).length
           ? '<span class="chip c-ok">사진 ' + o.photo_paths.length + '장 들어옴</span>'
+            + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기</button>'
             + '<span class="mono">글마다 다른 조합으로 5~8장씩 나눠 줍니다</span>'
           : o.photo_note
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
@@ -634,6 +662,23 @@
   }
   function kv(k, v) {
     return '<div><label class="f">' + k + '</label><div style="font-size:16px;font-weight:700">' + esc(v) + '</div></div>';
+  }
+
+  /* 학원이 보낸 사진을 크게 봅니다 */
+  async function showPics(o) {
+    var paths = o.photo_paths || [];
+    if (!paths.length) { A.toast('받은 사진이 없습니다'); return; }
+    var r = await A.sb.storage.from('request-photos').createSignedUrls(paths, 3600);
+    if (r.error) throw new Error(r.error.message);
+    var ok = (r.data || []).filter(function (x) { return x.signedUrl; });
+    var box = $('picModal');
+    $('picTitle').textContent = o.academy_name + ' — 학원이 보낸 사진 ' + ok.length + '장';
+    $('picBody').innerHTML = ok.map(function (x, i) {
+      return '<a href="' + esc(x.signedUrl) + '" target="_blank" rel="noopener" class="picitem">'
+        + '<img src="' + esc(x.signedUrl) + '" loading="lazy" alt="사진 ' + (i + 1) + '">'
+        + '<span>' + (i + 1) + '</span></a>';
+    }).join('');
+    box.classList.add('on');
   }
   function fld(o, f, label) {
     return '<div><label class="f">' + label + '</label><input class="inp" data-of="' + f
@@ -787,8 +832,35 @@
       $('kwPaid').scrollIntoView({ block: 'center' });
       return;
     }
+
+    /* 이미 만들어 둔 글이 있으면 — 지우고 새로 할지, 뒤에 더할지 물어봅니다 */
+    var exist = POSTS.filter(function (p) {
+      return p.order_id === oid && p.status === 'pending' && !p.blogger_id;
+    });
+    var already = POSTS.filter(function (p) { return p.order_id === oid; }).length;
+    var replace = false;
+    if (already) {
+      var nm = (A.ORDERS.filter(function (x) { return x.id === oid; })[0] || {}).academy_name || '';
+      var ans = window.prompt(
+        '「' + nm + '」에는 이미 글이 ' + already + '편 있습니다'
+        + (exist.length ? ' (그중 아직 안 맡긴 글 ' + exist.length + '편)' : '') + '.\n\n'
+        + '  1 = 뒤에 ' + KWDRAFT.length + '편을 더 만들기\n'
+        + (exist.length
+          ? '  2 = 아직 안 맡긴 ' + exist.length + '편을 지우고 새로 만들기\n'
+          : '')
+        + '\n번호를 넣어 주세요 (취소하려면 그냥 닫기)', '1');
+      if (ans === null) return;
+      ans = String(ans).trim();
+      if (ans === '2' && exist.length) replace = true;
+      else if (ans !== '1') { A.toast('취소했습니다'); return; }
+    }
+
     this.disabled = true;
     try {
+      if (replace) {
+        var del = await A.rpc('posts_clear_pending', { p_order: oid });
+        A.toast('안 맡긴 글 ' + del + '편을 지웠습니다');
+      }
       var n = await A.rpc('posts_generate', { p_order: oid, p_items: KWDRAFT });
       A.toast(n + '편을 만들었습니다');
       await A.loadAdmin(); A.show('assign');
@@ -840,8 +912,13 @@
         + '<span class="grip" title="끌어서 오른쪽 블로거에게 놓으세요">⠿</span>'
         + '<input type="checkbox" class="pk-post" value="' + p.id + '">'
         + '<span><b>' + esc(p.keyword || '(제목 없음)') + '</b></span>'
-        + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span></label>';
-    }).join('') : whyEmpty();
+        + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span>'
+        + '<button class="xdel" data-delpost="' + p.id + '" title="이 글을 지웁니다">✕</button></label>';
+    }).join('')
+      + (mine.length > 1 ? '<div class="row" style="padding:8px 12px">'
+        + '<button class="btn btn-s" id="delChecked">체크한 글 지우기</button>'
+        + '<span class="mono">잘못 만들어진 검색어를 뺄 때 쓰세요</span></div>' : '')
+      : whyEmpty();
 
     /* 이번 달 '배정받은' 편수 — 끝낸 편수(done_month)가 아니라 받은 편수로 봐야 공평합니다 */
     var thisM = A.thisMonth() + '-01';
@@ -1881,6 +1958,40 @@
       return;
     }
 
+    /* 잘못 만들어진 글 지우기 (아직 아무도 안 맡은 것만) */
+    if ((t = e.target.closest('[data-delpost]'))) {
+      e.preventDefault();
+      var dp = POSTS.filter(function (x) { return x.id === t.dataset.delpost; })[0] || {};
+      if (!confirm('「' + (dp.keyword || '') + '」\n\n이 글을 지울까요? 되돌릴 수 없습니다.')) return;
+      try {
+        var dn = await A.rpc('posts_delete', { p_posts: [t.dataset.delpost] });
+        A.toast(dn ? '지웠습니다' : '이미 맡긴 글이라 지울 수 없습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); }
+      return;
+    }
+    if ((t = e.target.closest('#delChecked'))) {
+      var sel = picked('pk-post');
+      if (!sel.length) { A.toast('지울 글을 체크해 주세요'); return; }
+      if (!confirm(sel.length + '편을 지울까요? 되돌릴 수 없습니다.')) return;
+      try {
+        var dn2 = await A.rpc('posts_delete', { p_posts: sel });
+        A.toast(dn2 + '편을 지웠습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); }
+      return;
+    }
+
+    /* 학원이 보낸 사진 보기 — 비공개 저장소라 1시간짜리 임시 주소를 만들어 띄웁니다 */
+    if ((t = e.target.closest('[data-seepics]'))) {
+      var po = A.ORDERS.filter(function (x) { return x.id === t.dataset.seepics; })[0];
+      if (!po) return;
+      t.disabled = true;
+      try { await showPics(po); } catch (err) { A.toast('불러오지 못했습니다: ' + err.message); }
+      t.disabled = false;
+      return;
+    }
+
     if ((t = e.target.closest('[data-wants]'))) {
       t.disabled = true;
       try {
@@ -2044,6 +2155,9 @@
       } catch (err) { A.toast('실패: ' + err.message); await A.loadAdmin(); }
     }
   });
+  $('picClose').onclick = function () { $('picModal').classList.remove('on'); };
+  $('picModal').onclick = function (e) { if (e.target === this) this.classList.remove('on'); };
+
   $('fName').oninput = renderList;
   $('fComm').onchange = renderList;
   $('fLevel').onchange = renderList;

@@ -9,7 +9,7 @@ window.ESC = (function () {
   var A = {
     sb: (window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SB_URL, SB_KEY) : null,
-    ME: null, IS_ADMIN: false, IS_REVIEWER: false, VIEW_AS: 'admin', SESSION: null,
+    ME: null, IS_ADMIN: false, IS_REVIEWER: false, IS_OWNER: false, VIEW_AS: 'admin', SESSION: null,
     PREVIEW_STAFF: null, SELF_NAME: '', SELF_COMMS: [], MY_COMMS: [],
     LEVELS: [], COMMS: [], PEOPLE: [], ORDERS: [], BLOGSTAFF: []
   };
@@ -223,11 +223,10 @@ window.ESC = (function () {
     var vb = e.target.closest('[data-view-btn]');
     if (vb) { A.applyView(vb.dataset.viewBtn); return; }
 
-    var n = e.target.closest('.nav[data-go]');
+    /* 사이드바 메뉴뿐 아니라 화면 안의 「6 검수하기 →」 같은 바로가기 버튼도 여기서 받습니다
+       (예전엔 .nav / .fstep 만 받아서 오늘 할 일·알림의 바로가기가 안 눌렸습니다) */
+    var n = e.target.closest('[data-go]');
     if (n) { A.show(n.dataset.go); return; }
-
-    var f = e.target.closest('.fstep[data-go]');
-    if (f) { A.show(f.dataset.go); return; }
 
     var bk = e.target.closest('[data-back]');
     if (bk) { A.view(bk.dataset.back); return; }
@@ -268,6 +267,8 @@ window.ESC = (function () {
     A.IS_ADMIN = a.data === true;
     var rv = await A.sb.rpc('blog_reviewer');
     A.IS_REVIEWER = rv.data === true;      /* 관리자도 true 입니다 */
+    var ow = await A.sb.rpc('is_owner');
+    A.IS_OWNER = ow.data === true;         /* 주문 삭제는 최고관리자만 */
 
     var r = await A.sb.from('bloggers').select('*').eq('id', A.SESSION.user.id).maybeSingle();
     A.ME = r.data || null;
