@@ -205,6 +205,12 @@
         <button data-pane="t-staff">검수자 / 관리자 <span class="mono" id="tcStaff">0</span></button>
       </div>
       <div class="pane on" data-pane="t-apply">
+        <div class="note" style="margin-bottom:14px">
+          <b>여기는 글을 쓰실 「블로거」 신청만 들어옵니다.</b>
+          <b>ESC 직원</b>이 계정을 만들어 신청한 것은 여기가 아니라
+          <b>홈페이지 관리자 페이지 → 관리자 목록 → 승인 대기</b>에 뜹니다.
+          <button class="btn btn-s" id="goEscStaff" style="margin-left:6px">ESC 관리자 열기 ↗</button>
+        </div>
         <div class="tabs" data-tabs="apply" style="margin-bottom:14px">
           <button class="on" data-sub="pending">기다리는 중 <span class="mono" id="acWait">0</span></button>
           <button data-sub="hold">보류함 <span class="mono" id="acHold">0</span></button>
@@ -265,8 +271,12 @@
         </div>
         <div id="blogStaffBox"></div>
         <div class="note warn" style="margin-top:16px">
-          <b>최고관리자와 ESC 직원은 여기서 못 바꿉니다.</b> 그분들은 홈페이지 관리자 페이지의
-          <b>관리자 목록</b>에서 다루셔야 합니다.
+          <b>여기는 「블로거였던 사람」을 올리는 곳입니다.</b>
+          블로거가 아닌 <b>ESC 직원</b>에게 블로그 권한을 주시려면, 그리고 <b>최고관리자로 올리시려면</b>
+          홈페이지 관리자 페이지 → <b>관리자 목록</b>에서 하셔야 합니다.<br>
+          그 화면에서 직원 줄의 <b>「블로그 센터 운영 (전체)」</b>에 체크하면 사장님과 같은 화면이 열리고,
+          직분을 <b>「최고관리자」</b>로 바꾸면 블로그·홈페이지 권한이 한 번에 전부 열립니다.
+          <button class="btn btn-s" id="goEscStaff2" style="margin-left:6px">ESC 관리자 열기 ↗</button>
         </div>
       </div>
     </section>

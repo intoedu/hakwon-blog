@@ -2210,6 +2210,14 @@
       } catch (err) { A.toast('실패: ' + err.message); await A.loadAdmin(); }
     }
   });
+  /* ESC 직원 신청·직분은 홈페이지 관리자 페이지에서 다룹니다 */
+  ['goEscStaff', 'goEscStaff2'].forEach(function (id) {
+    var b = $(id);
+    if (b) b.onclick = function () {
+      window.open('https://intoedu.github.io/hakwon-support/admin.html#staff', '_blank', 'noopener');
+    };
+  });
+
   $('picClose').onclick = function () { $('picModal').classList.remove('on'); };
   $('picModal').onclick = function (e) { if (e.target === this) this.classList.remove('on'); };
 
