@@ -274,15 +274,19 @@
 
     var act;
     if (p.status === 'approved') {
-      act = '<div class="sec">원고가 통과됐습니다 — 이제 올리시면 됩니다</div><div class="card">'
+      act = '<div class="sec" style="color:var(--ok)">✅ 원고가 통과됐습니다 — 이제 블로그에 올려주세요</div>'
+        + '<div class="card" style="border-color:var(--ok);box-shadow:inset 0 0 0 1px var(--ok)">'
         + '<div class="note" style="margin-bottom:14px"><b>올리기 전에 확인해 주세요.</b><br>'
         + '· 오늘 이미 다른 글을 올리셨다면 내일 올려 주세요 (하루 한 편)<br>'
         + '· 제목에 <b>' + esc(p.keyword || '') + '</b> 이 들어갔는지<br>'
         + '· 맨 아래 광고 표기가 있는지</div>'
-        + '<label class="f">올린 글 주소</label>'
-        + '<input class="inp" id="pubUrl" placeholder="https://blog.naver.com/…">'
+        + '<label class="f" style="font-size:14px;color:var(--ink)">올린 글 주소를 여기에 붙여넣어 주세요</label>'
+        + '<input class="inp" id="pubUrl" placeholder="https://blog.naver.com/…" '
+        + 'style="border-color:var(--ok)">'
+        + '<div class="mono" style="margin-top:5px">'
+        + '내 블로그에서 그 글을 열고, 주소창의 주소를 그대로 복사해 오시면 됩니다.</div>'
         + '<div class="row" style="margin-top:14px"><button class="btn btn-a" id="btnPublish">다 올렸습니다</button>'
-        + '<span class="mono">확인이 끝나야 돈으로 잡힙니다</span></div></div>'
+        + '<span class="mono"><b>주소를 넣으셔야 정산에 잡힙니다.</b> 올리기만 하면 저희가 모릅니다</span></div></div>'
         + '<div class="note warn" style="margin-top:14px"><b>올린 글은 1년 동안 지우지 말아 주세요.</b> '
         + '학원이 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>';
     } else {

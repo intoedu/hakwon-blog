@@ -254,6 +254,7 @@ window.ESC = (function () {
 
     var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
     A.LEVELS = (s.data && s.data.value && s.data.value.levels) || [];
+    A.REVIEW_RATE = (s.data && s.data.value && s.data.value.review) || { approve: 250, verify: 250 };
 
     await A.loadCommsPublic();
 

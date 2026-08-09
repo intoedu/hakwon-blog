@@ -143,6 +143,7 @@
     <div id="navReviewer" class="hide">
       <button class="nav on" data-go="review">원고 검수하기 <span class="cnt hot hide" id="cReview2">0</span></button>
       <button class="nav" data-go="posts">진행 현황 보기</button>
+      <button class="nav" data-go="r-pay">내 검수 정산</button>
       <button class="nav" data-go="noti">🔔 챙길 것</button>
     </div>
 
@@ -561,6 +562,7 @@
       <div class="grid g4" id="payStats" style="margin-bottom:16px"></div>
       <div class="sec">공동체별로 보낼 돈 <small>이름을 누르면 안에 누가 얼마인지 펼쳐집니다</small></div>
       <div id="payList"></div>
+      <div id="payLoose" style="margin-top:14px"></div>
       <div id="payDetail" style="margin-top:14px"></div>
       <div class="note" style="margin-top:16px">
         <b>주민등록번호·개인 계좌는 여기에 넣지 않습니다.</b>
@@ -642,6 +644,17 @@
         이메일은 도메인이 있어야 스팸함을 면합니다. 둘 다 정리되면 <b>이 목록을 그대로 읽어 자동으로 나가게</b>
         붙일 수 있습니다. 지금은 문구까지만 만들어 두고 보내는 것은 사람이 합니다.
       </div>
+    </section>
+
+    <section class="screen" data-screen="r-pay">
+      <div class="head"><h1>내 검수 정산</h1>
+        <p>검수도 일이라 수당이 나갑니다. 원고를 통과시키면 <b id="rpA">250</b>원,
+          올라간 글을 확인하면 <b id="rpV">250</b>원 — 글 한 편에 합쳐서 <b id="rpT">500</b>원입니다.</p></div>
+      <div class="grid g4" id="rpStats" style="margin-bottom:18px"></div>
+      <div id="rpNote"></div>
+      <div class="sec">이번 달 내가 검수한 글</div>
+      <div id="rpList"></div>
+      <div id="rpPast"></div>
     </section>
 
     <section class="screen" data-screen="links">
