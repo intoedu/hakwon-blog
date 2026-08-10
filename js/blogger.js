@@ -113,14 +113,22 @@
     };
   }
 
+  /* 이수는 「요약을 내고 → 관리자가 통과시킨 것」만 인정합니다.
+     내기만 한 것(waiting)은 아직 이수가 아닙니다. */
+  function progOf(id) {
+    return MINE.filter(function (g) { return g.material_id === id; })[0] || null;
+  }
   function ready() {
     var req = MATS.filter(function (m) { return m.required; });
     var done = req.filter(function (m) {
-      return MINE.some(function (g) { return g.material_id === m.id; });
+      var g = progOf(m.id); return g && g.status === 'approved';
+    }).length;
+    var wait = req.filter(function (m) {
+      var g = progOf(m.id); return g && g.status === 'submitted';
     }).length;
     var t1 = SESS.filter(function (s) { return s.kind === 't1'; }).map(function (s) { return s.id; });
     var att1 = ATT.some(function (a) { return t1.indexOf(a.session_id) >= 0 && ['live', 'video'].indexOf(a.mode) >= 0; });
-    return { videoDone: done, videoNeed: req.length, t1: att1, ok: done >= req.length && att1 };
+    return { videoDone: done, videoWait: wait, videoNeed: req.length, t1: att1, ok: done >= req.length && att1 };
   }
 
   function renderInbox() {
@@ -147,7 +155,15 @@
       + ' · 필수 영상 ' + r.videoDone + '/' + r.videoNeed
       + '. 다 마치셔야 글이 배정됩니다. <button class="link" data-go="b-edu">교육 받으러 가기 →</button></div>';
 
-    $('bTodo').innerHTML = todo.length ? todo.map(function (p) {
+    /* 통과된 글은 「올리고 주소 넣기」만 남았는데도 그냥 지나치기 쉬워서 맨 위에 크게 띄웁니다 */
+    var pub = todo.filter(function (p) { return p.status === 'approved'; });
+    $('bTodo').innerHTML = (pub.length
+      ? '<div class="note ok" style="margin-bottom:14px"><b>원고 ' + pub.length + '편이 통과됐습니다 — 이제 블로그에 올려 주세요.</b><br>'
+      + '올리신 뒤에 <b>「2 글 쓰기」 맨 위</b>에서 <b>올린 글 주소</b>를 넣어 주셔야 정산에 잡힙니다. '
+      + '올리기만 하고 주소를 안 넣으시면 저희가 알 수 없습니다.<br>'
+      + '<span class="mono">' + pub.map(function (p) { return esc(p.keyword || ''); }).join(' · ') + '</span></div>'
+      : '')
+      + (todo.length ? todo.map(function (p) {
       var d = A.dday(p.due_date);
       var late = d != null && d <= 0;
       var label = p.status === 'approved' ? '올리고 주소 넣기'
@@ -162,7 +178,7 @@
         + '<span class="dday' + (late ? '' : ' calm') + '">' + (p.due_date || '-')
         + (d != null ? (d < 0 ? ' 지남' : d === 0 ? ' 오늘' : ' D-' + d) : '') + '</span>'
         + '<button class="btn btn-a btn-s" data-open="' + p.id + '">' + label + '</button></div></div>';
-    }).join('') : A.empty(r.ok ? '지금 맡으신 글이 없습니다. 배정되면 여기에 뜹니다.' : '교육을 마치면 글이 배정됩니다.');
+    }).join('') : A.empty(r.ok ? '지금 맡으신 글이 없습니다. 배정되면 여기에 뜹니다.' : '교육을 마치면 글이 배정됩니다.'));
 
     var next = A.LEVELS.filter(function (l) { return l.lv === A.ME.level + 1; })[0];
     $('bLevel').innerHTML = '<div class="card"><div class="row" style="gap:14px">'
@@ -191,8 +207,10 @@
       + '<div class="step">2차 줌</div></div>'
       + '<div class="note" style="margin-top:15px">'
       + (r.ok ? '<b>교육을 마치셨습니다.</b> 이제 글이 배정됩니다. 첫 글을 쓰시면 2차 줌에서 같이 보면서 피드백해 드립니다.'
-        : '<b>1차 줌 참석과 필수 영상 시청</b>을 마치셔야 글이 배정됩니다. '
-        + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 보셨습니다.')
+        : '<b>1차 줌 참석과 필수 영상 요약</b>을 마치셔야 글이 배정됩니다. '
+        + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
+        + (r.videoWait ? ' <b style="color:var(--wait)">' + r.videoWait
+          + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
       + '<br><br><b>첫 글도 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.</div></div>';
 
     var future = SESS.filter(function (x) { return new Date(x.held_at) >= new Date(Date.now() - 864e5); });
@@ -206,19 +224,157 @@
         + '</div></div>';
     }).join('') : A.empty('아직 잡힌 일정이 없습니다. 정해지면 알려드립니다.');
 
-    $('bEduMats').innerHTML = MATS.length ? '<div class="matlist">' + MATS.map(function (m) {
-      var done = MINE.some(function (g) { return g.material_id === m.id; });
-      return '<div class="mat"><div class="thumb">▶</div><div style="flex:1;min-width:150px">'
-        + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '') + '</h4>'
-        + '<div class="meta">' + (m.minutes ? m.minutes + '분 · ' : '')
-        + (done ? '<span style="color:var(--ok)">이수 완료</span>' : '<span style="color:var(--wait)">아직 안 보셨습니다</span>')
-        + '</div></div>'
-        + '<a class="btn btn-s" href="' + esc(m.url) + '" target="_blank" rel="noopener">보기 ↗</a>'
-        + (done || !m.needs_code ? (done ? '' : '<button class="btn btn-a btn-s" data-watch="' + m.id + '">봤습니다</button>')
-          : '<input class="inp" style="width:100px" data-code="' + m.id + '" placeholder="이수 코드">'
-          + '<button class="btn btn-a btn-s" data-watch="' + m.id + '">확인</button>')
-        + '</div>';
-    }).join('') + '</div>' : A.empty('아직 올라온 영상이 없습니다.');
+    $('bEduMats').innerHTML = MATS.length
+      ? '<div class="matlist">' + MATS.map(matRow).join('') + '</div>'
+      : A.empty('아직 올라온 영상이 없습니다.');
+    if (OPEN) openPlayer(OPEN, true);
+  }
+
+  /* ══ 교육 영상 ══
+     예전에는 「봤습니다」 버튼 하나로 끝나서 안 보고도 누를 수 있었습니다.
+     지금은 ① 이 페이지 안에서 영상이 재생되고 ② 실제로 본 시간을 재고
+     ③ 요약을 직접 써서 내면 ④ 관리자·검수자가 읽고 통과시켜야 이수됩니다. */
+  var WATCH = {}, PASTED = {}, OPEN = null, TICK = null;
+
+  function wkey(id) { return 'esc_watch_' + (A.ME ? A.ME.id : '') + '_' + id; }
+  function watched(id) {
+    if (WATCH[id] == null) WATCH[id] = parseInt(localStorage.getItem(wkey(id)) || '0', 10) || 0;
+    return WATCH[id];
+  }
+  function bumpWatch(id) {
+    WATCH[id] = watched(id) + 1;
+    try { localStorage.setItem(wkey(id), WATCH[id]); } catch (e) { /* 사파리 시크릿 모드 */ }
+  }
+  /* 유튜브 주소 여러 형태에서 영상 id 뽑기 */
+  function ytId(url) {
+    var m = String(url || '').match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{6,})/);
+    return m ? m[1] : '';
+  }
+  function mmss(s) {
+    s = Math.max(0, Math.round(s));
+    return Math.floor(s / 60) + '분 ' + ('0' + (s % 60)).slice(-2) + '초';
+  }
+  function needSec(m) { return m.minutes ? Math.round(m.minutes * 60 * 0.7) : 0; }
+  function matOf(id) { return MATS.filter(function (m) { return m.id === id; })[0]; }
+
+  function matRow(m) {
+    var g = progOf(m.id);
+    var st = g ? g.status : '';
+    var tag = st === 'approved' ? '<span style="color:var(--ok)">이수 완료</span>'
+      : st === 'submitted' ? '<span style="color:var(--wait)">요약 냄 · 확인 기다리는 중</span>'
+        : st === 'rejected' ? '<b style="color:var(--bad)">다시 써 주세요</b>'
+          : '<span style="color:var(--wait)">아직 안 보셨습니다</span>';
+    return '<div class="mat"><div class="thumb">▶</div><div style="flex:1;min-width:150px">'
+      + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '') + '</h4>'
+      + '<div class="meta">' + (m.minutes ? m.minutes + '분 · ' : '') + tag + '</div></div>'
+      + (st === 'approved' ? '<span class="chip c-ok">✓</span>'
+        : '<button class="btn btn-a btn-s" data-play="' + m.id + '">'
+        + (OPEN === m.id ? '접기' : st === 'rejected' ? '다시 하기' : '영상 보고 요약 쓰기') + '</button>')
+      + '</div>'
+      + '<div class="matopen" id="mo-' + m.id + '"></div>';
+  }
+
+  /* 영상 + 요약 칸을 그 자리에서 펼칩니다 */
+  function openPlayer(id, keep) {
+    var m = matOf(id); if (!m) return;
+    if (OPEN && OPEN !== id) { var old = $('mo-' + OPEN); if (old) old.innerHTML = ''; }
+    OPEN = id;
+    var g = progOf(id), vid = ytId(m.url), box = $('mo-' + id);
+    if (!box) return;
+
+    box.innerHTML =
+      (vid
+        ? '<div class="ytwrap" id="mp-' + id + '"><iframe src="https://www.youtube-nocookie.com/embed/'
+        + esc(vid) + '?rel=0" title="' + esc(m.title) + '" allowfullscreen '
+        + 'allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>'
+        + '<div class="mono" style="margin-top:6px">화면이 비어 있으면 '
+        + '<a href="' + esc(m.url) + '" target="_blank" rel="noopener">유튜브에서 열기 ↗</a> 를 눌러 주세요.</div>'
+        : '<div class="note warn" id="mp-' + id + '">유튜브 영상이 아니라 여기서 바로 못 틉니다. '
+        + '<a href="' + esc(m.url) + '" target="_blank" rel="noopener">자료 열기 ↗</a></div>')
+      + '<div id="wt-' + id + '" class="wbar"></div>'
+      + (g && g.status === 'rejected' && g.review_note
+        ? '<div class="note bad" style="margin-top:12px"><b>다시 써 달라는 이유</b><br>' + esc(g.review_note) + '</div>' : '')
+      + (m.check_question
+        ? '<div style="margin-top:14px"><label class="f">확인 질문 — ' + esc(m.check_question) + '</label>'
+        + '<input class="inp" id="ans-' + id + '" value="' + esc(g && g.answer || '') + '" placeholder="영상에서 들은 대로 적어 주세요"></div>' : '')
+      + '<div style="margin-top:14px"><label class="f">본 내용을 요약해 주세요 '
+      + '<small>' + (m.min_chars || 150) + '자 이상</small></label>'
+      + '<textarea class="inp" id="sum-' + id + '" rows="6" '
+      + 'placeholder="무엇을 배웠는지, 내 글에 어떻게 쓸지 내 말로 적어 주세요.">' + esc(g && g.summary || '') + '</textarea>'
+      + '<div class="row" style="justify-content:space-between;margin-top:6px">'
+      + '<span class="mono" id="cnt-' + id + '"></span>'
+      + '<span class="mono">직접 손으로 써 주세요. <b>붙여넣기는 표시가 남습니다.</b></span></div></div>'
+      + '<div class="row" style="margin-top:12px">'
+      + '<button class="btn btn-a" id="sb-' + id + '">요약 내기</button>'
+      + '<span class="mono">낸 요약을 담당자가 읽고 이수 처리해 드립니다.</span></div>';
+
+    var ta = $('sum-' + id);
+    ta.addEventListener('input', function () { paint(id); });
+    ta.addEventListener('paste', function () {
+      PASTED[id] = true;
+      setTimeout(function () { paint(id); }, 0);
+    });
+    $('sb-' + id).onclick = function () { submitSummary(id); };
+    paint(id);
+    startTick();
+    if (!keep) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    lockPreview();
+  }
+
+  /* 본 시간 막대와 글자 수를 다시 그립니다 */
+  function paint(id) {
+    var m = matOf(id); if (!m || OPEN !== id) return;
+    var need = needSec(m), got = watched(id), ok = !need || got >= need;
+    var bar = $('wt-' + id);
+    if (bar) bar.innerHTML = need
+      ? '<div class="wfill" style="width:' + Math.min(100, Math.round(got / need * 100)) + '%"></div>'
+      + '<span>' + (ok ? '✓ 충분히 보셨습니다' : '본 시간 ' + mmss(got) + ' / 최소 ' + mmss(need))
+      + '</span>'
+      : '<span>영상을 끝까지 보신 뒤 요약해 주세요.</span>';
+
+    var ta = $('sum-' + id); if (!ta) return;
+    var len = ta.value.trim().length, min = m.min_chars || 150;
+    var cnt = $('cnt-' + id);
+    if (cnt) cnt.innerHTML = '<b style="color:var(--' + (len >= min ? 'ok' : 'bad') + ')">' + len + '자</b> / ' + min + '자'
+      + (PASTED[id] ? ' · <span style="color:var(--bad)">붙여넣기 있음</span>' : '');
+
+    var btn = $('sb-' + id); if (!btn || PREVIEW) return;
+    var why = !ok ? '영상을 더 보셔야 합니다' : len < min ? (min - len) + '자 더 써 주세요' : '';
+    btn.disabled = !!why;
+    btn.textContent = why || '요약 내기';
+  }
+
+  /* 화면에 떠 있고 탭이 보이는 동안만 1초씩 셉니다 (뒤로 돌려놓으면 멈춥니다) */
+  function startTick() {
+    if (TICK) return;
+    TICK = setInterval(function () {
+      if (!OPEN || document.hidden) return;
+      var scr = document.querySelector('.screen[data-screen="b-edu"]');
+      if (!scr || !scr.classList.contains('on')) return;
+      if (!$('mp-' + OPEN)) return;
+      bumpWatch(OPEN); paint(OPEN);
+    }, 1000);
+  }
+
+  async function submitSummary(id) {
+    if (PREVIEW) { A.toast('미리보기에서는 낼 수 없습니다'); return; }
+    var m = matOf(id), btn = $('sb-' + id);
+    var ansEl = $('ans-' + id);
+    btn.disabled = true; btn.textContent = '내는 중…';
+    try {
+      await A.rpc('training_submit', {
+        p_material: id,
+        p_summary: $('sum-' + id).value.trim(),
+        p_answer: ansEl ? ansEl.value.trim() : null,
+        p_watched: watched(id),
+        p_pasted: !!PASTED[id]
+      });
+      A.toast('냈습니다. 담당자가 읽고 이수 처리해 드립니다');
+      OPEN = null;
+      await A.loadBlogger();
+    } catch (e) {
+      A.toast(e.message); btn.disabled = false; paint(id);
+    }
   }
 
   function renderWork() {
@@ -317,7 +473,11 @@
           + esc(x.keyword || '') + ' (' + (A.ST[x.status] ? A.ST[x.status][0] : x.status) + ')</option>';
       }).join('') + '</select></div>' : '';
 
-    $('bWork').innerHTML = picker + head + form + act;
+    /* 원고가 통과된 뒤에는 「올린 글 주소 넣기」가 맨 위에 옵니다.
+       예전에는 긴 작성 가이드 아래에 묻혀 있어서 못 찾으셨습니다. */
+    $('bWork').innerHTML = picker + head + (p.status === 'approved'
+      ? act + '<details class="foldguide"><summary>글 쓰는 법 다시 보기</summary>' + form + '</details>'
+      : form + act);
 
     if ($('workPick')) $('workPick').onchange = function () {
       CUR = MY.filter(function (x) { return x.id === this.value; }.bind(this))[0]; renderWork();
@@ -445,14 +605,11 @@
         + '<div class="mono" style="margin-top:8px">사진을 눌러 저장하세요. 링크는 1시간 동안 유효합니다.</div>';
       return;
     }
-    var w = e.target.closest('[data-watch]');
-    if (w) {
-      var el = document.querySelector('[data-code="' + w.dataset.watch + '"]');
-      w.disabled = true;
-      try {
-        await A.rpc('training_watch', { p_material: w.dataset.watch, p_code: el ? el.value.trim() : '' });
-        A.toast('이수 처리했습니다'); await A.loadBlogger();
-      } catch (err) { A.toast(err.message); w.disabled = false; }
+    var pl = e.target.closest('[data-play]');
+    if (pl) {
+      var id = pl.dataset.play;
+      if (OPEN === id) { OPEN = null; renderEdu(); }   /* 접기 */
+      else { OPEN = id; renderEdu(); }
     }
   });
 })(window.ESC);

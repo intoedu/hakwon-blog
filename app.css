@@ -294,6 +294,26 @@ select.inp{cursor:pointer}
 .mat h4{font-size:14px;font-weight:650}
 .mat .meta{color:var(--muted);font-size:12px}
 
+/* 원고 통과 뒤에는 작성 가이드를 접어 둡니다 (주소 넣는 칸이 위로 오게) */
+.foldguide{margin-top:18px}
+.foldguide>summary{cursor:pointer;font-size:13.5px;color:var(--muted);
+     padding:10px 14px;background:var(--surface);border:1px solid var(--line);
+     border-radius:var(--radius)}
+.foldguide[open]>summary{margin-bottom:14px}
+
+/* 교육 영상 — 페이지 안에서 바로 재생하고 그 아래 요약을 씁니다 */
+.matopen:empty{display:none}
+.matopen{background:var(--surface);border:1px solid var(--line);border-top:none;
+     border-radius:0 0 var(--radius) var(--radius);padding:15px;margin-top:-10px}
+.ytwrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;
+     border-radius:8px;overflow:hidden}
+.ytwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.wbar{position:relative;margin-top:10px;height:24px;border-radius:12px;
+     background:var(--side-bg);overflow:hidden;display:flex;align-items:center}
+.wbar .wfill{position:absolute;left:0;top:0;bottom:0;background:var(--ok);
+     transition:width .4s ease}
+.wbar span{position:relative;padding:0 12px;font-size:12px;color:#fff;font-variant-numeric:tabular-nums}
+
 .pickwrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .picklist{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
      overflow:hidden;display:flex;flex-direction:column}

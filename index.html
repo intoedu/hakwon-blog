@@ -297,10 +297,12 @@
           <button class="btn btn-p" id="btnAddSession">일정 추가</button>
         </div>
       </div>
-      <div class="note warn" style="margin-top:12px">
-        <b>줌에 못 온 사람은 녹화본을 끝까지 봐야 이수됩니다.</b>
-        영상 마지막 30초에 네 자리 숫자를 띄우고, 그 숫자를 넣어야 완료로 잡히게 해뒀습니다.
-        끝까지 봐야만 알 수 있는 숫자라 건너뛰면 못 넣습니다.
+      <div class="note ok" style="margin-top:12px">
+        <b>영상은 「봤습니다」 버튼이 아니라 요약으로 확인합니다.</b>
+        블로거 화면에서 영상이 <b>이 사이트 안에서 재생</b>되고, 본 시간이 자동으로 재집니다.
+        영상 길이의 <b>70% 이상</b>을 봐야 요약 칸이 열리고, 요약을 내면 아래
+        <b>「낸 요약 확인하기」</b>에 올라옵니다. 여러분이 읽고 통과시켜야 이수로 잡힙니다.
+        붙여넣기로 쓴 요약은 <b>「붙여넣기」 표시</b>가 함께 뜹니다.
       </div>
       <div class="sec">영상 자료</div>
       <div id="eduMaterials"></div>
@@ -309,11 +311,15 @@
           <input class="inp" id="nm_title" style="width:auto;flex:1;min-width:140px" placeholder="자료 제목">
           <input class="inp" id="nm_url" style="width:auto;flex:1;min-width:160px" placeholder="유튜브 주소">
           <input class="inp" id="nm_min" type="number" style="width:90px" placeholder="분">
-          <input class="inp" id="nm_code" style="width:110px" placeholder="이수 코드">
+          <input class="inp" id="nm_chars" type="number" style="width:110px" placeholder="요약 글자수">
           <label class="row" style="gap:6px"><input type="checkbox" id="nm_req" checked> 필수</label>
           <button class="btn btn-p" id="btnAddMat">자료 올리기</button>
         </div>
+        <input class="inp" id="nm_q" style="margin-top:8px"
+               placeholder="확인 질문 (선택) — 영상을 본 사람만 답할 수 있는 것으로. 예) 황금 키워드의 조건 3가지는?">
       </div>
+      <div class="sec">낸 요약 확인하기 <small>읽어보고 통과시켜야 이수됩니다</small></div>
+      <div id="eduSummaries"></div>
       <div class="sec">누가 어디까지 왔나</div>
       <div id="eduProgress"></div>
     </section>
@@ -697,17 +703,20 @@
       <div id="bEduState"></div>
       <div class="sec">다음 일정</div>
       <div id="bEduSessions"></div>
-      <div class="sec">봐야 할 영상 <small>다 보고 이수 코드를 넣어야 완료됩니다</small></div>
+      <div class="sec">봐야 할 영상 <small>여기서 바로 보고, 요약을 내시면 됩니다</small></div>
       <div id="bEduMats"></div>
       <div class="note warn" style="margin-top:12px">
-        <b>영상 마지막 30초에 네 자리 숫자가 나옵니다.</b> 그 숫자를 넣어야 완료 처리됩니다.
-        끝까지 봐야 알 수 있는 숫자라 건너뛰면 못 넣습니다.
+        <b>영상을 보시면서 요약을 써 주세요.</b>
+        「영상 보고 요약 쓰기」를 누르면 이 화면 안에서 바로 재생됩니다.
+        본 시간이 자동으로 재지고, 요약을 내시면 담당자가 읽어본 뒤 이수 처리해 드립니다.
+        <b>요약은 내 말로 써 주세요</b> — 영상 자막이나 남의 글을 붙여넣으면 표시가 남고 다시 쓰셔야 합니다.
       </div>
     </section>
 
     <section class="screen" data-screen="b-work">
       <div class="head"><div class="step-of">2단계</div><h1>글 쓰기</h1>
-        <p>아래 폼대로 구글 문서에 쓰시고, 링크만 붙여넣으면 끝입니다.</p></div>
+        <p>아래 폼대로 구글 문서에 쓰고 원고를 냅니다. 원고가 통과되면 블로그에 올리고,
+           <b>올린 글 주소</b>를 이 화면 맨 위에 넣어 주시면 끝입니다.</p></div>
       <div id="bWork"></div>
     </section>
 
