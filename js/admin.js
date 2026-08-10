@@ -62,8 +62,18 @@
     var opts = A.ORDERS.map(function (o) {
       return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)</option>';
     }).join('');
+    /* 4번 주문 고르는 칸에는 「이미 만들었음」을 붙여 둡니다 —
+       같은 학원 키워드를 또 만들어 글이 두 배로 늘어나는 사고를 막습니다 */
     var el0 = $('kwOrder');
-    if (el0) { var k0 = el0.value; el0.innerHTML = opts || '<option value="">주문이 없습니다</option>'; if (k0) el0.value = k0; }
+    if (el0) {
+      var k0 = el0.value;
+      el0.innerHTML = A.ORDERS.map(function (o) {
+        var s = kwMade(o.id);
+        return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)'
+          + (s.made ? ' — 이미 ' + s.made + '편 만듦' : ' — 아직 안 만듦') + '</option>';
+      }).join('') || '<option value="">주문이 없습니다</option>';
+      if (k0) el0.value = k0;
+    }
 
     /* 5번은 "맡길 글이 남은 주문"을 먼저 보여줍니다 */
     var left = function (id) {
@@ -703,9 +713,7 @@
       + (m.check_question
         ? '<div class="note" style="margin-bottom:10px"><b>확인 질문</b> · ' + esc(m.check_question)
         + '<br><b>답</b> · ' + esc(g.answer || '(빈칸)') + '</div>' : '')
-      + '<pre style="white-space:pre-wrap;font:inherit;font-size:13.5px;line-height:1.7;margin:0;'
-      + 'background:var(--side-bg);color:var(--ink);padding:12px;border-radius:8px">'
-      + esc(g.summary || '') + '</pre>'
+      + '<pre class="sumtext">' + esc(g.summary || '') + '</pre>'
       + '<div class="row" style="margin-top:12px">'
       + '<input class="inp" style="flex:1;min-width:180px" data-sumnote="' + key + '" '
       + 'placeholder="한마디 (통과에도 다시쓰기에도 같이 갑니다)">'
@@ -820,6 +828,47 @@
   function splitv(id) {
     return ($(id).value || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
   }
+  /* 이 주문에 키워드를 이미 만들었는지 — 만든 편수·맡긴 편수·올린 편수 */
+  function kwMade(oid) {
+    var mine = POSTS.filter(function (p) { return p.order_id === oid; });
+    return {
+      made: mine.length,
+      idle: mine.filter(function (p) { return p.status === 'pending' && !p.blogger_id; }).length,
+      given: mine.filter(function (p) { return p.blogger_id; }).length,
+      up: mine.filter(function (p) {
+        return ['published', 'verified', 'paid'].indexOf(p.status) >= 0;
+      }).length
+    };
+  }
+
+  /* 「이미 만들었습니다」를 주문을 고르는 순간 크게 알려줍니다.
+     여기서 안 보여주면 또 만들고, 5번에서 「맡길 글 있음」으로 뜨니까
+     그대로 또 나눠주게 됩니다. */
+  function kwMadeBox() {
+    var box = $('kwMade'); if (!box) return;
+    var o = A.ORDERS.filter(function (x) { return x.id === $('kwOrder').value; })[0];
+    if (!o) { box.innerHTML = ''; return; }
+    var s = kwMade(o.id);
+    if (!s.made) {
+      box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">'
+        + '<b>이 학원은 아직 키워드를 안 만들었습니다.</b> 처음 만드시는 것이 맞습니다.</div>';
+      return;
+    }
+    var done = s.up >= s.made && s.made > 0;
+    box.innerHTML = '<div class="msg ' + (done ? 'err' : 'warn') + '" style="margin:0 0 12px">'
+      + '<b>⚠️ 이 학원은 이미 키워드를 ' + s.made + '편 만들었습니다.</b> '
+      + '(주문 ' + o.total_qty + '편 · 맡긴 글 ' + s.given + '편 · 올라간 글 ' + s.up + '편'
+      + (s.idle ? ' · <b>아직 안 맡긴 글 ' + s.idle + '편</b>' : '') + ')<br>'
+      + (done
+        ? '<b>이 주문은 이미 다 썼습니다.</b> 여기서 또 만들면 학원이 시킨 것보다 많이 쓰게 됩니다. '
+        + '정말 더 만드시는 것이 맞습니까?'
+        : s.idle
+          ? '<b>먼저 「5 글 나눠주기」에서 남은 ' + s.idle + '편을 맡기세요.</b> '
+          + '여기서 또 만들면 같은 학원 글이 두 배로 늘어납니다.'
+          : '더 만들면 주문 편수를 넘길 수 있습니다. 정말 더 만드시는 것이 맞습니까?')
+      + ' <button class="link" data-goassign="' + o.id + '">5번으로 가기 →</button></div>';
+  }
+
   /* 입금 전이면 글을 만들 수 없습니다 — 다 만들고 나서 알면 늦으니 미리 알려줍니다 */
   function kwPaidCheck() {
     var o = A.ORDERS.filter(function (x) { return x.id === $('kwOrder').value; })[0];
@@ -847,12 +896,44 @@
     $('k4').value = (o.target_purposes || []).join(', ');
     $('kwN').value = o.total_qty;
     kwPaidCheck();
+    kwMadeBox();
   };
   /* ── 말이 안 되는 조합 걸러내기 ──
      네 축을 그냥 곱하면 "영어내신 수학학원", "송림고 예비중" 같은 게 나옵니다.
      학부모가 그렇게 검색하지 않으니 글을 써도 헛일입니다. */
-  var GRADE_LV = { '초등': 1, '예비중': 2, '중등': 3, '예비고': 4, '고등': 5, '고3': 5, '재수': 5 };
-  var SUBJ_LV = { '초등': 1, '중등': 3, '고등': 5, '수능': 5, '내신고': 5 };
+  /* 학교급을 1~5로 봅니다 — 1 초등 · 2 예비중 · 3 중등 · 4 예비고 · 5 고등/수능.
+     긴 말부터 찾아야 '예비중'이 '중등'보다 먼저 잡힙니다. */
+  var LV_WORDS = [
+    ['예비고', 4], ['예비중', 2], ['초등', 1], ['중등', 3], ['고등', 5],
+    ['수능', 5], ['재수', 5], ['정시', 5], ['모의고사', 5],
+    ['초1', 1], ['초2', 1], ['초3', 1], ['초4', 1], ['초5', 1], ['초6', 1],
+    ['중1', 3], ['중2', 3], ['중3', 3], ['고1', 5], ['고2', 5], ['고3', 5]
+  ];
+  function lvOf(text) {
+    var t = String(text || ''), lv = 0;
+    for (var i = 0; i < LV_WORDS.length; i++) {
+      if (t.indexOf(LV_WORDS[i][0]) >= 0) { lv = LV_WORDS[i][1]; break; }
+    }
+    return lv;
+  }
+  /* 지역 자리에 학교 이름이 들어오면(영일초·매원중·태장고) 그 학교급을 봅니다 */
+  function schoolLv(region) {
+    var t = String(region || '').trim();
+    if (t.length < 2) return 0;
+    var last = t.slice(-1);
+    if (last === '초') return 1;
+    if (last === '중') return 3;
+    if (last === '고') return 5;
+    if (/초등학교$/.test(t)) return 1;
+    if (/중학교$/.test(t)) return 3;
+    if (/고등학교$/.test(t)) return 5;
+    return 0;
+  }
+  /* 두 학교급이 같이 쓰일 수 있나 — 한 칸 차이(예비중↔중등)까지는 봐줍니다 */
+  function lvClash(a, b) {
+    if (!a || !b) return false;
+    return Math.abs(a - b) >= 2;
+  }
 
   function badCombo(region, grade, subject, purpose) {
     var whole = [region, grade, subject, purpose];
@@ -868,35 +949,45 @@
       }
     }
 
-    /* ② 과목이 학년을 품고 있는데 고른 학년과 어긋남 (중등국어논술 + 고등) */
-    var sLv = 0;
-    Object.keys(SUBJ_LV).forEach(function (k) { if (subject.indexOf(k) >= 0) sLv = SUBJ_LV[k]; });
-    var gLv = GRADE_LV[grade] || 0;
-    if (sLv && gLv) {
-      /* 예비고(중3)는 고등 과목을 미리 볼 수 있으니 한 칸까지는 봐줍니다 */
-      if (sLv >= 5 && gLv <= 3) return '수능·고등 과목인데 중등';
-      if (sLv <= 3 && gLv >= 4) return '중등 과목인데 고등';
-      if (sLv === 1 && gLv >= 3) return '초등 과목인데 중등 이상';
+    /* ①-2 서로를 품지는 않지만 같은 낱말이 두 번 나오는 것
+           (「수능영어」 + 「수능 대비」 → 제목에 수능이 두 번) */
+    var DUP = ['수능', '내신', '정시', '재수', '레벨테스트'];
+    for (var k = 0; k < DUP.length; k++) {
+      var hit = whole.filter(function (t) { return String(t || '').indexOf(DUP[k]) >= 0; });
+      if (hit.length >= 2) return '「' + DUP[k] + '」이 두 번';
     }
 
-    /* ③ 학교 이름과 학년이 어긋남 (송림고 + 예비중 / 이매초 + 고등) */
-    var last = region.slice(-1);
-    if (gLv) {
-      if (last === '초' && gLv >= 4) return '초등학교인데 고등';
-      if (last === '중' && gLv >= 5) return '중학교인데 고등';
-      if (last === '고' && gLv <= 3) return '고등학교인데 중등 이하';
-    }
+    var sLv = lvOf(subject), gLv = lvOf(grade), pLv = lvOf(purpose), rLv = schoolLv(region);
 
-    /* ④ 과목과 '○○학원' 목적이 서로 다른 과목 (영어내신 + 수학학원) */
-    var FIELDS = ['영어', '수학', '국어', '논술', '과학', '사회', '한국사', '코딩', '중국어', '일본어'];
-    var pField = null;
-    FIELDS.forEach(function (f) { if (purpose.indexOf(f) >= 0) pField = f; });
-    if (pField && subject.indexOf(pField) < 0) {
-      var sHas = FIELDS.some(function (f) { return subject.indexOf(f) >= 0; });
-      if (sHas) return '과목과 다른 과목 학원';
+    /* ② 과목이 품은 학년 vs 고른 학년 (중등국어논술 + 고등 / 수능영어 + 초등) */
+    if (lvClash(sLv, gLv)) return '과목과 학년이 안 맞음';
+
+    /* ③ 학교 이름 vs 학년 (송림고 + 예비중 / 이매초 + 고등) */
+    if (lvClash(rLv, gLv)) return '학교와 학년이 안 맞음';
+
+    /* ④ 학교 이름 vs 과목 — 「영일초 수능영어」가 여기서 걸립니다.
+          예전에는 이 대조가 아예 없어서 그대로 통과했습니다. */
+    if (lvClash(rLv, sLv)) return '학교와 과목이 안 맞음';
+
+    /* ⑤ 목적이 품은 학년 vs 나머지 (초등 대상인데 '수능 대비') */
+    if (lvClash(pLv, gLv) || lvClash(pLv, sLv) || lvClash(pLv, rLv))
+      return '목적과 학년이 안 맞음';
+
+    /* ⑥ 과목과 '○○학원' 목적이 서로 다른 과목 (영어내신 + 수학학원) */
+    var FIELDS = ['영어', '수학', '국어', '논술', '과학', '사회', '한국사', '코딩',
+      '중국어', '일본어', '미술', '음악', '체육'];
+    function fieldsIn(t) {
+      return FIELDS.filter(function (f) { return String(t || '').indexOf(f) >= 0; });
     }
+    var pF = fieldsIn(purpose), sF = fieldsIn(subject);
+    if (pF.length && sF.length && !pF.some(function (f) { return sF.indexOf(f) >= 0; }))
+      return '과목과 다른 과목 학원';
+
+    /* ⑦ 지역 자리에 학교가 왔는데 목적이 다른 과목 학원인 경우는 그냥 둡니다
+          (「영일초 영어학원」은 학부모가 실제로 이렇게 검색합니다) */
     return null;
   }
+  A.badCombo = badCombo;   /* 화면에서 골라낸 것만 저장할 때도 씁니다 */
 
   $('kwGo').onclick = function () {
     var a = splitv('k1'), b = splitv('k2'), c = splitv('k3'), d = splitv('k4');
@@ -971,7 +1062,13 @@
     var already = POSTS.filter(function (p) { return p.order_id === oid; }).length;
     var replace = false;
     if (already) {
-      var nm = (A.ORDERS.filter(function (x) { return x.id === oid; })[0] || {}).academy_name || '';
+      var ord = A.ORDERS.filter(function (x) { return x.id === oid; })[0] || {};
+      var nm = ord.academy_name || '';
+      var st = kwMade(oid);
+      if (st.up >= st.made && st.made > 0
+        && !confirm('⚠️ 「' + nm + '」은 이미 ' + st.made + '편을 다 써서 올렸습니다.\n\n'
+          + '여기서 또 만들면 학원이 주문한 ' + (ord.total_qty || '?') + '편보다 많이 쓰게 됩니다.\n'
+          + '정말 더 만드시겠습니까?')) { A.toast('취소했습니다'); return; }
       var ans = window.prompt(
         '「' + nm + '」에는 이미 글이 ' + already + '편 있습니다'
         + (exist.length ? ' (그중 아직 안 맡긴 글 ' + exist.length + '편)' : '') + '.\n\n'
@@ -1015,6 +1112,22 @@
       + Object.keys(weeks).sort(function (a, b) { return a - b; }).map(function (w) {
         return '<option value="' + w + '"' + (wk === w ? ' selected' : '') + '>' + w + '주차</option>';
       }).join('');
+
+    /* 주문 편수보다 많이 만들어졌으면 여기서 잡아야 합니다.
+       「맡길 글 있음」만 보고 그냥 나눠주면 학원이 시킨 것보다 많이 쓰게 됩니다. */
+    (function () {
+      var box = $('asOver'); if (!box) return;
+      var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+      var made = POSTS.filter(function (p) { return p.order_id === oid; }).length;
+      var over = o ? made - o.total_qty : 0;
+      box.innerHTML = (o && over > 0)
+        ? '<div class="msg err" style="margin:0 0 12px">'
+        + '<b>⚠️ 주문은 ' + o.total_qty + '편인데 글이 ' + made + '편 만들어져 있습니다 (' + over + '편 초과).</b><br>'
+        + '키워드를 두 번 만드신 것 같습니다. 이대로 나눠주면 학원이 시킨 것보다 많이 쓰게 됩니다. '
+        + '아래에서 <b>남는 ' + over + '편은 빼고</b> 맡기시거나, 「4 키워드 만들기」에서 '
+        + '<b>안 맡긴 글을 지우고 새로</b> 만들어 주세요.</div>'
+        : '';
+    })();
 
     /* 비어 있을 때 왜 비었는지 알려줍니다 — 그냥 '없습니다'만 뜨면 답답합니다 */
     function whyEmpty() {
@@ -1264,6 +1377,18 @@
   function rvBack() { if (RV_COMM) openComm(RV_COMM); else if (RV_ORDER) openAcad(RV_ORDER); }
   A.refreshReview = function () { if (POSTS.length) renderReview(); };
 
+  /* 시연용으로 넣어둔 가짜 주소는 눌러도 열리지 않습니다 — 발표 중 404가 뜨지 않게
+     링크 대신 「시연용」 배지를 보여줍니다. 진짜 주소는 그대로 링크가 됩니다. */
+  function isDemoUrl(u) { return /demo_blog\d/.test(String(u || '')); }
+  function postLink(u, label) {
+    if (!u) return '';
+    if (isDemoUrl(u))
+      return '<span class="chip c-wait" title="시연용으로 넣어둔 주소입니다. 실제로는 블로거가 넣은 진짜 주소가 들어갑니다">'
+        + '시연용 주소</span>';
+    return '<a class="mono" href="' + esc(u) + '" target="_blank" rel="noopener">' + label + '</a>';
+  }
+  A.postLink = postLink; A.isDemoUrl = isDemoUrl;
+
   /* 원고 표 — 학원별·공동체별 둘 다 같은 모양을 씁니다 */
   function rvHead(byComm) {
     return '<thead><tr><th>' + (byComm ? '학원' : '공동체') + '</th><th>누가</th>'
@@ -1280,7 +1405,8 @@
       var done = ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
       out.push((p.status === 'rework'
         ? '<b style="color:var(--bad)">돌려보냄</b>'
-        : done ? '<b style="color:var(--ok)">원고 통과</b>' : '검수함')
+        : done ? '<b style="color:var(--ok)">원고 통과</b>'
+          : p.rework_count > 0 ? '<b style="color:var(--bad)">지난번에 돌려보냄</b>' : '검수함')
         + ' · ' + esc(who) + ' · ' + A.fdate(p.reviewed_at));
     } else if (p.rework_count > 0) {
       out.push('<b style="color:var(--bad)">' + p.rework_count + '번 돌려보냄</b>');
@@ -1328,7 +1454,7 @@
       + '<td><div class="row">'
       + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">원고 열기 ↗</a>' : '')
       + (dim ? '' : '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
-        + '<button class="btn btn-s" data-openrj="' + p.id + '">수정 요청</button>')
+        + '<button class="btn btn-s" data-openrj="' + p.id + '">돌려보내기</button>')
       + '</div></td></tr>';
   }
 
@@ -1400,7 +1526,10 @@
           return '<div class="card" style="margin-bottom:10px"><div class="row" style="gap:14px;align-items:flex-start">'
             + '<div style="flex:1;min-width:200px"><h4 style="font-size:14.5px">' + esc(p.keyword || '') + '</h4>'
             + '<div class="mono" style="margin:5px 0 10px">' + esc((p.published_url || '').slice(0, 52)) + '</div>'
-            + '<div class="row"><a class="btn btn-s" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 열어보기 ↗</a>'
+            + '<div class="row">'
+            + (isDemoUrl(p.published_url)
+              ? '<span class="chip c-wait">시연용 주소 — 실제로는 블로거가 넣은 진짜 주소가 열립니다</span>'
+              : '<a class="btn btn-s" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 열어보기 ↗</a>')
             + '<a class="btn btn-s" href="https://search.naver.com/search.naver?query=' + encodeURIComponent(p.keyword || '')
             + '" target="_blank" rel="noopener">이 검색어로 검색해보기 ↗</a></div></div>'
             + '<div style="min-width:180px"><label class="f">몇 번째에 나왔나요</label>'
@@ -1421,7 +1550,7 @@
       await A.rpc('post_review', {
         p_post: RJ_POST, p_ok: false, p_reasons: reasons, p_note: $('rjNote').value.trim() || null
       });
-      A.toast('수정 요청을 보냈습니다');
+      A.toast('돌려보냈습니다');
       document.querySelectorAll('.rj').forEach(function (c) { c.checked = false; });
       $('rjNote').value = '';
       await A.loadAdmin(); rvBack();
@@ -1448,7 +1577,7 @@
     PG_ROWS = rows;
     var c = function (s) { return POSTS.filter(function (p) { return (!oid || p.order_id === oid) && p.status === s; }).length; };
     $('pgStats').innerHTML = st(c('pending'), '담당자 미정')
-      + st(c('writing') + c('assigned'), '쓰는 중') + st(c('rework'), '수정 요청', c('rework') > 0)
+      + st(c('writing') + c('assigned'), '쓰는 중') + st(c('rework'), '돌려보낸 글', c('rework') > 0)
       + st(c('submitted') + c('published'), '검수 대기')
       + st(c('verified') + c('paid'), '확인 끝');
 
@@ -1467,7 +1596,7 @@
           + '<td>' + (b ? esc(b.name) : '<span style="color:var(--muted)">아직 없음</span>') + '</td>'
           + '<td>' + A.stChip(p.status) + '</td>'
           + '<td class="mono' + (late ? '" style="color:var(--bad)' : '') + '">' + (p.due_date || '-') + '</td>'
-          + '<td>' + (p.published_url ? '<a class="mono" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 보기 ↗</a>' : '') + '</td></tr>';
+          + '<td>' + postLink(p.published_url, '글 보기 ↗') + '</td></tr>';
       }).join('') + '</tbody></table></div>'
       + (rows.length > 300 ? '<div class="mono" style="margin-top:8px">앞의 300개만 보여드립니다. 필터를 좁혀 주세요.</div>' : '')
       : A.empty('해당하는 글이 없습니다.');
@@ -1704,7 +1833,7 @@
 
   /* 알림 종류 이름 — 화면에 보이는 말 */
   var KIND_KO = {
-    assigned: '글 배정', due1: '마감 임박', overdue: '마감 지남', rework: '수정 요청',
+    assigned: '글 배정', due1: '마감 임박', overdue: '마감 지남', rework: '다시 쓰기',
     payout: '정산 확정', approved: '신청 승인', rejected: '신청 거절', edu_wait: '교육 미이수',
     submitted: '검수할 원고', overdue_admin: '마감 지난 글', unpaid_order: '입금 지연',
     unassigned: '미배정 남음', academy_note: '학원 전달사항', custom: '직접 쓴 알림',
@@ -2083,7 +2212,7 @@
           p_post: pid, p_ok: ok, p_rank: rk && rk.value ? Number(rk.value) : null,
           p_note: ok ? null : '올라간 글에 문제가 있습니다'
         });
-        A.toast(ok ? '확인 완료. 이제 정산 대상입니다' : '수정 요청으로 되돌렸습니다');
+        A.toast(ok ? '확인 완료. 이제 정산 대상입니다' : '돌려보낸 것으로 되돌렸습니다');
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
@@ -2240,6 +2369,13 @@
       return;
     }
 
+    /* 「5번으로 가기」 — 남은 글을 먼저 맡기라고 보낼 때 */
+    if ((t = e.target.closest('[data-goassign]'))) {
+      var ael = $('asOrder');
+      if (ael) { ael.value = t.dataset.goassign; if (ael.onchange) ael.onchange(); }
+      A.show('assign');
+      return;
+    }
     /* 「3번으로 가기」 · 「4번으로 가기」 — 그 주문을 골라 둔 채로 넘어갑니다 */
     if ((t = e.target.closest('[data-gopay]'))) {
       A.show('orders');

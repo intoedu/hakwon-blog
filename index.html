@@ -375,6 +375,7 @@
           <label class="f" style="margin:0">주문</label>
           <select class="inp" id="kwOrder" style="width:auto;flex:1;min-width:200px"></select>
         </div>
+        <div id="kwMade"></div>
         <div id="kwPaid"></div>
         <div class="grid g4" style="gap:12px">
           <div><label class="f">지역 (쉼표로 구분)</label><input class="inp" id="k1" placeholder="성수동, 성수역, 뚝섬"></div>
@@ -400,8 +401,10 @@
         <b>이런 것을 자동으로 뺍니다</b> —
         「영어내신 <b>수학학원</b>」처럼 과목이 서로 안 맞는 것,
         「송림<b>고</b> <b>예비중</b>」처럼 학교와 학년이 안 맞는 것,
+        「영일<b>초</b> <b>수능</b>영어」처럼 <b>학교와 과목</b>이 안 맞는 것,
         「<b>중등</b>국어논술 <b>고등</b>」처럼 학년이 두 번 나오며 어긋나는 것,
-        「중등수학<b>내신</b> <b>내신</b>」처럼 같은 말이 겹치는 것.<br>
+        「초등영어 <b>수능</b> 대비」처럼 목적이 학년과 안 맞는 것,
+        「중등수학<b>내신</b> <b>내신</b>」·「<b>수능</b>영어 <b>수능</b> 대비」처럼 같은 말이 두 번 나오는 것.<br>
         <b>다 걸러내지는 못합니다.</b> 아래 표를 한 번 훑어보시고 이상한 줄은
         <b>왼쪽 체크를 풀어</b> 빼주세요. 체크된 것만 글로 만들어집니다.
       </div>
@@ -425,6 +428,7 @@
         <select class="inp" id="asOrder" style="width:auto;flex:1;min-width:200px"></select>
         <select class="inp" id="asWeek" style="width:auto"><option value="">전체 주차</option></select>
       </div>
+      <div id="asOver"></div>
       <div class="pickwrap">
         <div class="picklist">
           <div class="pickhead">
@@ -483,13 +487,13 @@
             <b style="color:var(--ink)" id="rvAcadName"></b><span class="mono" id="rvAcadMeta"></span></div>
           <div class="note warn" style="margin-bottom:14px">
             <b style="background:var(--hl);padding:1px 5px;border-radius:3px">노란 줄이 그어진 글</b>
-            은 전에 수정 요청했던 글입니다. 왜 돌려보냈는지가 옆에 적혀 있습니다.
+            은 전에 돌려보냈던 글입니다. 왜 돌려보냈는지가 옆에 적혀 있습니다.
           </div>
           <div id="rvPosts"></div>
         </div>
         <div class="dv" data-view="reject">
           <div class="crumb"><button data-back="acad-posts">← 글 목록</button><span>/</span>
-            <b style="color:var(--ink)">수정 요청</b></div>
+            <b style="color:var(--ink)">돌려보내기</b></div>
           <div class="card">
             <div style="font-size:14px;margin-bottom:12px" id="rjWho"></div>
             <div class="checks">
@@ -505,7 +509,7 @@
             <label class="f">더 할 말 (안 쓰셔도 됩니다)</label>
             <textarea class="inp" id="rjNote" placeholder="예: 세 번째 문단이 다른 분 글과 거의 같습니다"></textarea>
             <div class="row" style="margin-top:14px">
-              <button class="btn btn-p" id="btnReject">수정 요청 보내기</button>
+              <button class="btn btn-p" id="btnReject">돌려보내기</button>
               <button class="btn" data-back="acad-posts">취소</button>
             </div>
           </div>
@@ -534,7 +538,7 @@
         <label class="ck"><input type="checkbox" value="assigned"> 배정됨</label>
         <label class="ck"><input type="checkbox" value="writing"> 쓰는 중</label>
         <label class="ck"><input type="checkbox" value="submitted"> 원고 냄</label>
-        <label class="ck"><input type="checkbox" value="rework"> 수정 요청</label>
+        <label class="ck"><input type="checkbox" value="rework"> 다시 쓰기</label>
         <label class="ck"><input type="checkbox" value="approved"> 원고 통과</label>
         <label class="ck"><input type="checkbox" value="published"> 올림 · 확인 전</label>
         <label class="ck"><input type="checkbox" value="verified"> 확인 끝</label>

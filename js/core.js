@@ -79,7 +79,7 @@ window.ESC = (function () {
   A.ST = {
     pending: ['기다리는 중', 'c-off'], assigned: ['배정됨', 'c-info'],
     writing: ['쓰는 중', 'c-wait'], submitted: ['원고 냄', 'c-info'],
-    rework: ['수정 요청', 'c-bad'], approved: ['원고 통과', 'c-info'],
+    rework: ['다시 쓰기', 'c-bad'], approved: ['원고 통과', 'c-info'],
     published: ['올림 · 확인 전', 'c-info'], verified: ['확인 끝', 'c-ok'],
     paid: ['정산 완료', 'c-ok'], cancelled: ['취소', 'c-off']
   };

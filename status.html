@@ -291,7 +291,11 @@
             + '<td class="mono">' + fdate(p.at) + '</td>'
             + '<td>' + rank(p.rank) + '</td>'
             + '<td style="white-space:nowrap">'
-            + (u ? '<a class="btn btn-s" href="' + esc(u) + '" target="_blank" rel="noopener nofollow">글 보기 ↗</a> ' : '')
+            + (u
+              ? (/demo_blog\d/.test(u)      /* 시연용으로 넣어둔 주소는 눌러도 안 열립니다 */
+                ? '<span class="btn btn-s" style="opacity:.6;cursor:default">시연용 주소</span> '
+                : '<a class="btn btn-s" href="' + esc(u) + '" target="_blank" rel="noopener nofollow">글 보기 ↗</a> ')
+              : '')
             + (kw ? '<a class="btn btn-s" target="_blank" rel="noopener nofollow" href="https://search.naver.com/search.naver?query='
               + encodeURIComponent(kw) + '">검색 ↗</a>' : '')
             + '</td></tr>';

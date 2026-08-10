@@ -172,7 +172,7 @@
         + '<h4>' + esc(p.keyword || '') + '</h4>'
         + '<div class="meta">' + esc(p.academy_name) + ' · ' + won(p.payout_rate) + '원 · '
         + (p.status === 'rework'
-          ? '<b style="color:var(--bad)">수정 요청 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
+          ? '<b style="color:var(--bad)">다시 쓰기 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
           : A.ST[p.status] ? A.ST[p.status][0] : p.status) + '</div></div>'
         + '<div class="right">'
         + '<span class="dday' + (late ? '' : ' calm') + '">' + (p.due_date || '-')
@@ -234,16 +234,72 @@
      예전에는 「봤습니다」 버튼 하나로 끝나서 안 보고도 누를 수 있었습니다.
      지금은 ① 이 페이지 안에서 영상이 재생되고 ② 실제로 본 시간을 재고
      ③ 요약을 직접 써서 내면 ④ 관리자·검수자가 읽고 통과시켜야 이수됩니다. */
-  var WATCH = {}, PASTED = {}, OPEN = null, TICK = null;
+  var PASTED = {}, OPEN = null, TICK = null;
+  var SEEN = {};        /* 영상id → { 초: 1 } — 실제로 재생된 "서로 다른 초"만 셉니다 */
+  var DUR = {};         /* 영상id → 실제 길이(초). 유튜브가 알려줍니다 */
+  var PLAYER = null;    /* 지금 열려 있는 유튜브 플레이어 */
+  var LOOSE = {};       /* 유튜브 API가 안 뜨면 화면에 띄워둔 시간으로 대신 잽니다 */
 
-  function wkey(id) { return 'esc_watch_' + (A.ME ? A.ME.id : '') + '_' + id; }
-  function watched(id) {
-    if (WATCH[id] == null) WATCH[id] = parseInt(localStorage.getItem(wkey(id)) || '0', 10) || 0;
-    return WATCH[id];
+  /* 「본 시간」은 화면을 켜 둔 시간이 아니라 **실제로 재생된 구간**입니다.
+     0.5초마다 재생 위치를 찍어 초 단위로 모으므로,
+     ① 틀어놓고 자리를 비우면 → 재생 중이 아니면 안 셉니다
+     ② 막대를 끝으로 끌면   → 지나친 구간은 안 찍혀서 안 셉니다 */
+  function skey(id) { return 'esc_seen_' + (A.ME ? A.ME.id : '') + '_' + id; }
+  function seenOf(id) {
+    if (!SEEN[id]) {
+      SEEN[id] = {};
+      try {
+        (JSON.parse(localStorage.getItem(skey(id)) || '[]') || [])
+          .forEach(function (s) { SEEN[id][s] = 1; });
+      } catch (e) { /* 사파리 시크릿 모드 */ }
+    }
+    return SEEN[id];
   }
-  function bumpWatch(id) {
-    WATCH[id] = watched(id) + 1;
-    try { localStorage.setItem(wkey(id), WATCH[id]); } catch (e) { /* 사파리 시크릿 모드 */ }
+  function watched(id) { return Object.keys(seenOf(id)).length; }
+  function markSec(id, sec) {
+    var s = seenOf(id);
+    if (s[sec]) return false;
+    s[sec] = 1;
+    try { localStorage.setItem(skey(id), JSON.stringify(Object.keys(s).map(Number))); } catch (e) { }
+    return true;
+  }
+
+  /* 유튜브 조작용 스크립트를 한 번만 불러옵니다 */
+  var YT_WAIT = [];
+  function ytApi(cb) {
+    if (window.YT && window.YT.Player) { cb(); return; }
+    YT_WAIT.push(cb);
+    if (document.getElementById('ytapi')) return;
+    var s = document.createElement('script');
+    s.id = 'ytapi';
+    s.src = 'https://www.youtube.com/iframe_api';
+    s.onerror = function () { YT_WAIT.splice(0).forEach(function (f) { f('fail'); }); };
+    document.head.appendChild(s);
+    window.onYouTubeIframeAPIReady = function () {
+      YT_WAIT.splice(0).forEach(function (f) { f(); });
+    };
+    setTimeout(function () { YT_WAIT.splice(0).forEach(function (f) { f('fail'); }); }, 6000);
+  }
+
+  function mountPlayer(id, vid) {
+    ytApi(function (fail) {
+      if (OPEN !== id) return;
+      if (fail || !window.YT || !window.YT.Player) { LOOSE[id] = true; paint(id); return; }
+      try {
+        PLAYER = new YT.Player('ytp-' + id, {
+          videoId: vid,
+          playerVars: { rel: 0, playsinline: 1, modestbranding: 1 },
+          events: {
+            onReady: function (e) { DUR[id] = Math.round(e.target.getDuration() || 0); paint(id); },
+            onStateChange: function () { paint(id); }
+          }
+        });
+      } catch (e) { LOOSE[id] = true; paint(id); }
+    });
+  }
+  function killPlayer() {
+    if (PLAYER && PLAYER.destroy) { try { PLAYER.destroy(); } catch (e) { } }
+    PLAYER = null;
   }
   /* 유튜브 주소 여러 형태에서 영상 id 뽑기 */
   function ytId(url) {
@@ -254,7 +310,9 @@
     s = Math.max(0, Math.round(s));
     return Math.floor(s / 60) + '분 ' + ('0' + (s % 60)).slice(-2) + '초';
   }
-  function needSec(m) { return m.minutes ? Math.round(m.minutes * 60 * 0.7) : 0; }
+  /* 봐야 하는 최소 시간 — 유튜브가 알려준 실제 길이를 먼저 쓰고, 없으면 등록된 분수로 */
+  function fullSec(m) { return DUR[m.id] || (m.minutes ? m.minutes * 60 : 0); }
+  function needSec(m) { return Math.round(fullSec(m) * 0.7); }
   function matOf(id) { return MATS.filter(function (m) { return m.id === id; })[0]; }
 
   function matRow(m) {
@@ -284,11 +342,10 @@
 
     box.innerHTML =
       (vid
-        ? '<div class="ytwrap" id="mp-' + id + '"><iframe src="https://www.youtube-nocookie.com/embed/'
-        + esc(vid) + '?rel=0" title="' + esc(m.title) + '" allowfullscreen '
-        + 'allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>'
-        + '<div class="mono" style="margin-top:6px">화면이 비어 있으면 '
-        + '<a href="' + esc(m.url) + '" target="_blank" rel="noopener">유튜브에서 열기 ↗</a> 를 눌러 주세요.</div>'
+        ? '<div class="ytwrap" id="mp-' + id + '"><div id="ytp-' + id + '"></div></div>'
+        + '<div class="mono" style="margin-top:6px">여기서 바로 보시면 됩니다. '
+        + '<b>재생하는 동안만 시간이 올라갑니다</b> — 틀어놓고 자리를 비우거나 '
+        + '막대를 끝으로 끌면 올라가지 않습니다.</div>'
         : '<div class="note warn" id="mp-' + id + '">유튜브 영상이 아니라 여기서 바로 못 틉니다. '
         + '<a href="' + esc(m.url) + '" target="_blank" rel="noopener">자료 열기 ↗</a></div>')
       + '<div id="wt-' + id + '" class="wbar"></div>'
@@ -315,6 +372,8 @@
       setTimeout(function () { paint(id); }, 0);
     });
     $('sb-' + id).onclick = function () { submitSummary(id); };
+    killPlayer();
+    if (vid) mountPlayer(id, vid); else LOOSE[id] = true;
     paint(id);
     startTick();
     if (!keep) box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -325,11 +384,13 @@
   function paint(id) {
     var m = matOf(id); if (!m || OPEN !== id) return;
     var need = needSec(m), got = watched(id), ok = !need || got >= need;
+    var playing = !!(PLAYER && PLAYER.getPlayerState && PLAYER.getPlayerState() === 1);
     var bar = $('wt-' + id);
     if (bar) bar.innerHTML = need
       ? '<div class="wfill" style="width:' + Math.min(100, Math.round(got / need * 100)) + '%"></div>'
-      + '<span>' + (ok ? '✓ 충분히 보셨습니다' : '본 시간 ' + mmss(got) + ' / 최소 ' + mmss(need))
-      + '</span>'
+      + '<span>' + (ok ? '✓ 충분히 보셨습니다'
+        : (playing ? '▶ ' : '') + '본 부분 ' + mmss(got) + ' / ' + mmss(fullSec(m)) + ' 중 '
+        + mmss(need) + ' 이상') + '</span>'
       : '<span>영상을 끝까지 보신 뒤 요약해 주세요.</span>';
 
     var ta = $('sum-' + id); if (!ta) return;
@@ -344,17 +405,30 @@
     btn.textContent = why || '요약 내기';
   }
 
-  /* 화면에 떠 있고 탭이 보이는 동안만 1초씩 셉니다 (뒤로 돌려놓으면 멈춥니다) */
+  /* 0.5초마다 재생 위치를 찍습니다. 재생 중일 때만 찍히므로
+     틀어만 놓거나 건너뛴 구간은 쌓이지 않습니다. */
   function startTick() {
     if (TICK) return;
     TICK = setInterval(function () {
-      if (!OPEN || document.hidden) return;
+      if (!OPEN) return;
       var scr = document.querySelector('.screen[data-screen="b-edu"]');
       if (!scr || !scr.classList.contains('on')) return;
       if (!$('mp-' + OPEN)) return;
-      bumpWatch(OPEN); paint(OPEN);
-    }, 1000);
+
+      if (PLAYER && PLAYER.getPlayerState) {
+        if (!DUR[OPEN] && PLAYER.getDuration) DUR[OPEN] = Math.round(PLAYER.getDuration() || 0);
+        if (PLAYER.getPlayerState() !== 1) return;          /* 1 = 재생 중 */
+        if (markSec(OPEN, Math.floor(PLAYER.getCurrentTime() || 0))) paint(OPEN);
+        return;
+      }
+      /* 유튜브 조작 스크립트가 막힌 환경 — 화면을 보고 있는 동안만 어림잡아 셉니다 */
+      if (LOOSE[OPEN] && !document.hidden) {
+        HALF = !HALF; if (!HALF) return;                    /* 0.5초 × 2 = 1초 */
+        if (markSec(OPEN, watched(OPEN))) paint(OPEN);
+      }
+    }, 500);
   }
+  var HALF = false;
 
   async function submitSummary(id) {
     if (PREVIEW) { A.toast('미리보기에서는 낼 수 없습니다'); return; }
@@ -608,8 +682,9 @@
     var pl = e.target.closest('[data-play]');
     if (pl) {
       var id = pl.dataset.play;
-      if (OPEN === id) { OPEN = null; renderEdu(); }   /* 접기 */
-      else { OPEN = id; renderEdu(); }
+      killPlayer();
+      OPEN = (OPEN === id) ? null : id;                /* 같은 걸 또 누르면 접기 */
+      renderEdu();
     }
   });
 })(window.ESC);
