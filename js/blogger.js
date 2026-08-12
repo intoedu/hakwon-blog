@@ -301,11 +301,7 @@
     if (PLAYER && PLAYER.destroy) { try { PLAYER.destroy(); } catch (e) { } }
     PLAYER = null;
   }
-  /* 유튜브 주소 여러 형태에서 영상 id 뽑기 */
-  function ytId(url) {
-    var m = String(url || '').match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{6,})/);
-    return m ? m[1] : '';
-  }
+  var ytId = A.ytId;      /* 주소에서 영상 id 뽑기 — 썸네일과 같은 것을 씁니다 (core.js) */
   function mmss(s) {
     s = Math.max(0, Math.round(s));
     return Math.floor(s / 60) + '분 ' + ('0' + (s % 60)).slice(-2) + '초';
@@ -322,7 +318,7 @@
       : st === 'submitted' ? '<span style="color:var(--wait)">요약 냄 · 확인 기다리는 중</span>'
         : st === 'rejected' ? '<b style="color:var(--bad)">다시 써 주세요</b>'
           : '<span style="color:var(--wait)">아직 안 보셨습니다</span>';
-    return '<div class="mat"><div class="thumb">▶</div><div style="flex:1;min-width:150px">'
+    return '<div class="mat">' + A.ytThumb(m.url) + '<div style="flex:1;min-width:150px">'
       + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '') + '</h4>'
       + '<div class="meta">' + (m.minutes ? m.minutes + '분 · ' : '') + tag + '</div></div>'
       + (st === 'approved' ? '<span class="chip c-ok">✓</span>'

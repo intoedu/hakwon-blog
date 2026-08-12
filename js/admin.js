@@ -650,7 +650,7 @@
     $('eduMaterials').innerHTML = MATS.length ? '<div class="matlist">' + MATS.map(function (m) {
       var done = TPROG.filter(function (g) { return g.material_id === m.id && g.status === 'approved'; }).length;
       var wait = TPROG.filter(function (g) { return g.material_id === m.id && g.status === 'submitted'; }).length;
-      return '<div class="mat"><div class="thumb">▶</div><div style="flex:1;min-width:140px">'
+      return '<div class="mat">' + A.ytThumb(m.url) + '<div style="flex:1;min-width:140px">'
         + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '') + '</h4>'
         + '<div class="meta">' + (m.minutes ? m.minutes + '분 · 최소 ' + Math.round(m.minutes * 0.7) + '분 시청 · ' : '')
         + '요약 ' + (m.min_chars || 150) + '자 · ' + done + '명 이수'

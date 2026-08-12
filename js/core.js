@@ -60,6 +60,21 @@ window.ESC = (function () {
   };
   A.empty = function (t) { return '<div class="empty">' + A.esc(t) + '</div>'; };
 
+  /* 유튜브 주소에서 영상 id 뽑기 (youtu.be · watch?v= · embed · shorts · live) */
+  A.ytId = function (url) {
+    var m = String(url || '')
+      .match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{6,})/);
+    return m ? m[1] : '';
+  };
+  /* 자료 목록의 썸네일 — 유튜브가 주는 그림을 그대로 씁니다.
+     못 불러오면(주소가 유튜브가 아니거나 그림이 막히면) 원래 ▶ 네모로 돌아갑니다. */
+  A.ytThumb = function (url) {
+    var id = A.ytId(url);
+    if (!id) return '<div class="thumb">▶</div>';
+    return '<div class="thumb"><img src="https://i.ytimg.com/vi/' + A.esc(id) + '/mqdefault.jpg"'
+      + ' alt="" loading="lazy" onerror="this.remove()"><span class="pl">▶</span></div>';
+  };
+
   /* 서버가 막으면 예외가 올라옵니다 */
   A.rpc = async function (fn, args) {
     var r = await A.sb.rpc(fn, args);
