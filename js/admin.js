@@ -235,11 +235,13 @@
         + '<button class="btn btn-s" data-bulk="rejected" disabled>거절</button>')
       + '</div>';
   }
-  function picked() {
+  /* ⚠️ 이름을 pickedApply 로 둡니다 — 아래 5번 화면에 picked(cls) 가 따로 있어서
+        같은 이름을 쓰면 나중 것이 이겨 조용히 안 먹습니다 */
+  function pickedApply() {
     return [].map.call(document.querySelectorAll('.pk-apply:checked'), function (c) { return c.value; });
   }
   function refreshBulk() {
-    var n = picked().length, box = $('bulkBar');
+    var n = pickedApply().length, box = $('bulkBar');
     if (!box) return;
     var all = document.querySelectorAll('.pk-apply').length;
     $('bulkCnt').innerHTML = n ? '<b>' + n + '명</b> 골랐습니다' : '아직 안 고르셨습니다';
@@ -2271,7 +2273,7 @@
 
     /* 여러 명 한꺼번에 처리 */
     if ((t = e.target.closest('[data-bulk]'))) {
-      var ids = picked();
+      var ids = pickedApply();
       if (!ids.length) { A.toast('먼저 사람을 골라 주세요'); return; }
       var act = t.dataset.bulk;
       var word = act === 'approved' ? '승인' : act === 'hold' ? '보류'
