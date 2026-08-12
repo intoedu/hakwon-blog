@@ -72,7 +72,7 @@ window.ESC = (function () {
     var id = A.ytId(url);
     if (!id) return '<div class="thumb">▶</div>';
     return '<div class="thumb"><img src="https://i.ytimg.com/vi/' + A.esc(id) + '/mqdefault.jpg"'
-      + ' alt="" loading="lazy" onerror="this.remove()"><span class="pl">▶</span></div>';
+      + ' alt="" referrerpolicy="no-referrer" onerror="this.remove()"><span class="pl">▶</span></div>';
   };
 
   /* 서버가 막으면 예외가 올라옵니다 */
