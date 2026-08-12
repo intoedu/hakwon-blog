@@ -215,8 +215,39 @@
         : SUBTAB === 'hold' ? '보류함이 비어 있습니다.' : '거절한 신청이 없습니다.');
       return;
     }
-    $('applyList').innerHTML = '<div class="people">' + rows.map(applyCard).join('') + '</div>';
+    /* 한꺼번에 많이 들어올 때 한 명씩 누르면 끝이 없어서, 체크해서 한 번에 처리합니다 */
+    $('applyList').innerHTML = bulkBar(rows.length)
+      + '<div class="people">' + rows.map(applyCard).join('') + '</div>';
+    refreshBulk();
   }
+
+  function bulkBar(total) {
+    var reject = SUBTAB === 'rejected';
+    return '<div class="bulkbar" id="bulkBar">'
+      + '<label class="row" style="gap:8px;cursor:pointer;margin:0">'
+      + '<input type="checkbox" id="bulkAll"> <b>전체 선택</b>'
+      + '<span class="mono">(' + total + '명)</span></label>'
+      + '<span class="mono" id="bulkCnt" style="margin-left:auto">아직 안 고르셨습니다</span>'
+      + (reject
+        ? '<button class="btn btn-s" data-bulk="pending" disabled>다시 대기로</button>'
+        : '<button class="btn btn-a btn-s" data-bulk="approved" disabled>선택한 사람 승인</button>'
+        + '<button class="btn btn-s" data-bulk="hold" disabled>보류</button>'
+        + '<button class="btn btn-s" data-bulk="rejected" disabled>거절</button>')
+      + '</div>';
+  }
+  function picked() {
+    return [].map.call(document.querySelectorAll('.pk-apply:checked'), function (c) { return c.value; });
+  }
+  function refreshBulk() {
+    var n = picked().length, box = $('bulkBar');
+    if (!box) return;
+    var all = document.querySelectorAll('.pk-apply').length;
+    $('bulkCnt').innerHTML = n ? '<b>' + n + '명</b> 골랐습니다' : '아직 안 고르셨습니다';
+    box.querySelectorAll('[data-bulk]').forEach(function (b) { b.disabled = !n; });
+    var a = $('bulkAll');
+    if (a) { a.checked = n > 0 && n === all; a.indeterminate = n > 0 && n < all; }
+  }
+  A.refreshBulkApply = refreshBulk;
 
   function applyCard(p) {
     var chip = p.status === 'pending' ? '<span class="chip c-wait">기다리는 중</span>'
@@ -230,9 +261,13 @@
       + '<button class="btn btn-s" data-act="low" data-id="' + p.id + '">저품질로 표시</button>';
 
     return '<div class="person">'
-      + '<div class="row" style="justify-content:space-between"><div><h4>' + esc(p.name)
+      + '<div class="row" style="justify-content:space-between">'
+      + '<label class="row" style="gap:10px;margin:0;cursor:pointer;align-items:flex-start">'
+      + '<input type="checkbox" class="pk-apply" value="' + p.id + '" style="margin-top:5px">'
+      + '<span><h4>' + esc(p.name)
       + (p.age ? ' <span class="mono">' + p.age + '세</span>' : '') + '</h4>'
-      + '<div class="meta">' + esc(A.commName(p.community_id)) + ' · ' + A.fdate(p.created_at) + ' 신청</div></div>'
+      + '<span class="meta">' + esc(A.commName(p.community_id)) + ' · ' + A.fdate(p.created_at) + ' 신청</span>'
+      + '</span></label>'
       + chip + '</div>'
       + '<dl class="kv">'
       + '<dt>블로그</dt><dd><a class="mono" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
@@ -2234,6 +2269,38 @@
       t.disabled = false; return;
     }
 
+    /* 여러 명 한꺼번에 처리 */
+    if ((t = e.target.closest('[data-bulk]'))) {
+      var ids = picked();
+      if (!ids.length) { A.toast('먼저 사람을 골라 주세요'); return; }
+      var act = t.dataset.bulk;
+      var word = act === 'approved' ? '승인' : act === 'hold' ? '보류'
+        : act === 'rejected' ? '거절' : '대기로 되돌리기';
+      var why = null;
+      if (act === 'rejected') {
+        why = prompt('고르신 ' + ids.length + '명 모두에게 같은 사유가 갑니다.\n'
+          + '신청한 분 화면에 그대로 보입니다.',
+          '블로그를 시작한 지 얼마 되지 않았습니다. 3개월 뒤 다시 신청하실 수 있습니다.');
+        if (why === null) return;
+        if (!why.trim()) { A.toast('사유를 적어 주세요'); return; }
+      } else if (!confirm(ids.length + '명을 ' + word + '할까요?'
+        + (act === 'approved' ? '\n\n모두 1단계로 시작하고, 승인 알림이 각자에게 만들어집니다.' : ''))) return;
+
+      var btns = document.querySelectorAll('[data-bulk]');
+      btns.forEach(function (b) { b.disabled = true; });
+      t.textContent = '처리 중…';
+      try {
+        var n = await A.rpc('bloggers_decide_many', { p_ids: ids, p_status: act, p_reason: why });
+        A.toast(n + '명을 ' + word + '했습니다');
+        await A.loadAdmin();
+      } catch (err) {
+        A.toast('실패: ' + err.message);
+        btns.forEach(function (b) { b.disabled = false; });
+        t.textContent = word;
+      }
+      return;
+    }
+
     if ((t = e.target.closest('[data-savenb]'))) {
       var el = document.querySelector('[data-nb="' + t.dataset.savenb + '"]');
       if (!el || el.value === '') { A.toast('숫자를 넣어 주세요'); return; }
@@ -2564,6 +2631,14 @@
   };
 
   document.addEventListener('change', async function (e) {
+    /* 신청 목록 — 전체 선택 / 낱개 체크 */
+    if (e.target.id === 'bulkAll') {
+      var on = e.target.checked;
+      document.querySelectorAll('.pk-apply').forEach(function (c) { c.checked = on; });
+      refreshBulk();
+    }
+    if (e.target.classList.contains('pk-apply')) refreshBulk();
+
     if (e.target.id === 'allPosts')
       document.querySelectorAll('.pk-post').forEach(function (c) { c.checked = e.target.checked; });
     if (e.target.id === 'allPeople')

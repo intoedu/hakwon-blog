@@ -210,7 +210,15 @@ select.inp{cursor:pointer}
 .people{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
 .person{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
 .person h4{font-size:15px;font-weight:700}
-.person .meta{color:var(--muted);font-size:12.5px;margin-top:2px}
+.person .meta{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.person input.pk-apply{accent-color:var(--amber);width:17px;height:17px;flex:none}
+.person:has(.pk-apply:checked){border-color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
+
+/* 여러 명 한꺼번에 처리하는 줄 — 신청이 몰릴 때 씁니다 */
+.bulkbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+     background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+     padding:11px 14px;margin-bottom:14px}
+.bulkbar input[type=checkbox]{accent-color:var(--amber);width:17px;height:17px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;margin:12px 0}
 .kv dt{color:var(--muted)} .kv dd{margin:0}
 .checks{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:11px 13px;margin:12px 0}
