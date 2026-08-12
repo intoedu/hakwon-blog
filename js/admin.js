@@ -243,17 +243,7 @@
       + '<dt>이메일</dt><dd class="mono">' + esc(p.email) + '</dd>'
       + (p.reject_reason ? '<dt>거절 사유</dt><dd>' + esc(p.reject_reason) + '</dd>' : '')
       + '</dl>'
-      + (p.status === 'rejected' ? '' :
-        '<div class="checks"><p>1분 확인 — 세 개 다 되면 승인</p>'
-        + chk(p, 1, p.chk_posts30, '글이 30개 이상 있다')
-        + chk(p, 2, p.chk_recent3m, '최근 3개월 안에 글을 썼다')
-        + chk(p, 3, p.chk_searchable, '블로그 이름을 네이버에 검색하면 나온다')
-        + '</div>')
       + '<div class="row">' + btns + '</div></div>';
-  }
-  function chk(p, n, v, label) {
-    return '<label><input type="checkbox" data-chk="' + n + '" data-id="' + p.id + '"'
-      + (v ? ' checked' : '') + '> ' + label + '</label>';
   }
   function neighborCell(p) {
     return '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span> '
@@ -2235,13 +2225,7 @@
           await A.rpc('blogger_decide', { p_id: id, p_status: 'rejected', p_reason: why });
           A.toast('거절했습니다');
         } else {
-          var c1 = null, c2 = null, c3 = null;
-          document.querySelectorAll('[data-id="' + id + '"][data-chk]').forEach(function (x) {
-            if (x.dataset.chk === '1') c1 = x.checked;
-            if (x.dataset.chk === '2') c2 = x.checked;
-            if (x.dataset.chk === '3') c3 = x.checked;
-          });
-          await A.rpc('blogger_decide', { p_id: id, p_status: act, p_reason: null, p_c1: c1, p_c2: c2, p_c3: c3 });
+          await A.rpc('blogger_decide', { p_id: id, p_status: act, p_reason: null });
           A.toast(act === 'approved' ? '승인했습니다' : act === 'hold' ? '보류함으로 옮겼습니다'
             : act === 'paused' ? '쉬는 중으로 바꿨습니다' : '대기로 되돌렸습니다');
         }
