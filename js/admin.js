@@ -1323,6 +1323,9 @@
     var f = A.FORM || {};
     $('dailyLimit').value = String(f.daily_limit || 1);
     $('sameAcad').checked = f.same_academy_daily !== 0;
+    var cap = Number(A.MONTH_CAP) || 30;
+    $('monthCap').value = String(cap);
+    $('capNow').textContent = String(cap);
   }
   if ($('ruleSave')) $('ruleSave').onclick = async function () {
     var lines = $('adLines').value.split('\n')
@@ -1336,12 +1339,15 @@
       daily_limit: Number($('dailyLimit').value) || 1,
       same_academy_daily: $('sameAcad').checked ? 1 : 0
     });
+    /* 월 상한은 posts_auto_assign 이 settings.month_cap 을 직접 읽습니다 (form 안이 아닙니다) */
+    v.month_cap = Math.max(1, Number($('monthCap').value) || 30);
     var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
     this.disabled = false;
     if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
-    A.AD_LINES = lines; A.FORM = v.form;
-    A.toast('저장했습니다 — 문구 ' + lines.length + '개 · 하루 ' + v.form.daily_limit + '편');
-    renderOrders();
+    A.AD_LINES = lines; A.FORM = v.form; A.MONTH_CAP = v.month_cap;
+    A.toast('저장했습니다 — 문구 ' + lines.length + '개 · 하루 ' + v.form.daily_limit
+      + '편 · 월 ' + v.month_cap + '편');
+    renderRules(); renderOrders();
   };
 
   /* ═══ 5 글 나눠주기 ═══ */

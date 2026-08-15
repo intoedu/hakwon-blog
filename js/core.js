@@ -301,7 +301,10 @@ window.ESC = (function () {
 
     var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
     var full = (s.data && s.data.value) || null;
-    if (full) A.REVIEW_RATE = full.review || { approve: 250, verify: 250 };
+    if (full) {
+      A.REVIEW_RATE = full.review || { approve: 250, verify: 250 };
+      A.MONTH_CAP = Number(full.month_cap) || 30;   /* posts_auto_assign 이 쓰는 한 사람 월 상한 */
+    }
   };
 
   /* ── 시작 ── */
