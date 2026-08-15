@@ -1126,6 +1126,89 @@
     this.disabled = false;
   };
 
+  /* ── 학원이 보낸 글감을 「소재」로 잘라 글마다 나눠줍니다 ──
+     통째로 뿌리면 같은 학원 글끼리 비슷해져 유사문서로 걸립니다. */
+  var TOPICS = [];
+  function tpFill() {
+    var el = $('tpOrder'); if (!el) return;
+    var k = el.value;
+    el.innerHTML = A.ORDERS.map(function (o) {
+      return '<option value="' + o.id + '">' + esc(o.academy_name) + '</option>';
+    }).join('') || '<option value="">주문이 없습니다</option>';
+    if (k) el.value = k;
+  }
+  async function tpLoad() {
+    var oid = $('tpOrder').value; if (!oid) return;
+    TOPICS = await A.sel('blog_topics', { eq: { order_id: oid }, order: 'sort' });
+    if (!TOPICS.length) TOPICS = [{ title: '', body: '' }];
+    tpRender();
+    var mine = POSTS.filter(function (p) { return p.order_id === oid; });
+    var got = mine.filter(function (p) { return p.topic_id; }).length;
+    $('tpInfo').innerHTML = mine.length
+      ? '이 주문 글 ' + mine.length + '편 중 <b>' + got + '편</b>에 소재가 붙어 있습니다'
+      : '아직 글이 없습니다. 위에서 글을 먼저 만드세요';
+  }
+  function tpRender() {
+    $('tpList').innerHTML = TOPICS.map(function (t, i) {
+      return '<div class="tprow"><div class="row" style="margin-bottom:6px">'
+        + '<span class="tpn">' + (i + 1) + '</span>'
+        + '<input class="inp" data-tpt="' + i + '" placeholder="소재 제목 — 예) [영어] 수행평가 감점 케어" '
+        + 'value="' + esc(t.title || '') + '" style="flex:1">'
+        + '<button class="xdel" data-tpdel="' + i + '" title="지우기">×</button></div>'
+        + '<textarea class="inp" data-tpb="' + i + '" rows="4" '
+        + 'placeholder="블로거가 읽을 내용을 붙여넣으세요">' + esc(t.body || '') + '</textarea></div>';
+    }).join('');
+  }
+  function tpCollect() {
+    var out = [];
+    TOPICS.forEach(function (t, i) {
+      var ti = document.querySelector('[data-tpt="' + i + '"]');
+      var bo = document.querySelector('[data-tpb="' + i + '"]');
+      out.push({ title: ti ? ti.value.trim() : '', body: bo ? bo.value.trim() : '' });
+    });
+    return out;
+  }
+  if ($('tpOrder')) {
+    $('tpOrder').onchange = tpLoad;
+    $('tpAdd').onclick = function () { TOPICS = tpCollect(); TOPICS.push({ title: '', body: '' }); tpRender(); };
+    $('tpSave').onclick = async function () {
+      var items = tpCollect().filter(function (t) { return t.title && t.body; });
+      if (!items.length) { A.toast('제목과 내용을 채운 소재가 하나도 없습니다'); return; }
+      this.disabled = true;
+      try {
+        var n = await A.rpc('topics_set', { p_order: $('tpOrder').value, p_items: items });
+        A.toast('소재 ' + n + '개를 저장했습니다'); await tpLoad();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+    $('tpSpread').onclick = async function () {
+      var all = confirm('아직 소재가 없는 글에만 배정할까요?\n\n[확인] 안 붙은 글만\n[취소] 전부 다시 배정');
+      this.disabled = true;
+      try {
+        var n = await A.rpc('topics_spread', { p_order: $('tpOrder').value, p_all: !all });
+        A.toast(n + '편에 소재를 배정했습니다');
+        await A.loadAdmin(); await tpLoad();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+    /* 학원이 진행현황에서 보낸 전달사항을 그대로 가져옵니다 */
+    $('tpLoadNote').onclick = async function () {
+      var notes = await A.sel('order_notes', { eq: { order_id: $('tpOrder').value }, order: 'created_at' });
+      $('tpNote').innerHTML = notes.length
+        ? '<div class="note" style="margin-bottom:12px"><b>학원이 보낸 전달사항 ' + notes.length + '건</b>'
+        + ' — 아래에서 필요한 부분을 골라 소재로 잘라 넣으세요.'
+        + notes.map(function (n) {
+          return '<pre class="tpnote">' + esc(n.body) + '</pre>';
+        }).join('') + '</div>'
+        : '<div class="note" style="margin-bottom:12px">이 학원이 보낸 전달사항이 없습니다.</div>';
+    };
+  }
+  document.addEventListener('click', function (e) {
+    var d = e.target.closest('[data-tpdel]');
+    if (d) { TOPICS = tpCollect(); TOPICS.splice(Number(d.dataset.tpdel), 1);
+      if (!TOPICS.length) TOPICS = [{ title: '', body: '' }]; tpRender(); }
+  });
+
   /* ═══ 5 글 나눠주기 ═══ */
   function renderAssign() {
     var oid = $('asOrder').value || (A.ORDERS[0] && A.ORDERS[0].id);
@@ -2195,7 +2278,7 @@
     if (name === 'edu') loadEdu();
     if (name === 'pay') loadPay();
     if (name === 'review') A.view('acad-list');
-    if (name === 'kw' && $('kwOrder').value) $('kwOrder').onchange();  /* 주문 글감을 자동으로 채웁니다 */
+    if (name === 'kw' && $('kwOrder').value) { $('kwOrder').onchange(); tpFill(); tpLoad(); }  /* 주문 글감을 자동으로 채웁니다 */
   };
 
   /* ═══ 동작 ═══ */

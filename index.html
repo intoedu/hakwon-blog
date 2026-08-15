@@ -420,6 +420,29 @@
         <button class="btn btn-p" id="kwSave" disabled>이대로 글 만들기</button>
         <span class="mono">만들면 5번 글 나눠주기로 넘어갑니다</span>
       </div>
+
+      <div class="sec" style="margin-top:34px">학원이 보낸 글감 나누기 <small>글마다 다른 이야기를 주면 글이 안 겹칩니다</small></div>
+      <div class="note" style="margin-bottom:14px">
+        <b>학원이 보낸 전달사항을 여기에 잘라 넣으세요.</b>
+        통째로 주면 50편이 서로 비슷해져 <b>유사문서로 검색에서 통째로 빠집니다.</b>
+        주제별로 잘라 두면 글마다 하나씩 돌아가며 배정돼, 같은 학원 글이어도 내용이 서로 달라집니다.<br>
+        <span class="mono">예) 「[영어] 수행평가 감점 케어」 / 「[수학] 3.14 원장 직강」 / 「[국어] 1:1 첨삭」 …</span>
+      </div>
+      <div class="card">
+        <div class="row" style="margin-bottom:10px">
+          <label class="f" style="margin:0">주문</label>
+          <select class="inp" id="tpOrder" style="width:auto;flex:1;min-width:200px"></select>
+          <button class="btn btn-s" id="tpLoadNote">학원이 보낸 전달사항 불러오기</button>
+        </div>
+        <div id="tpNote"></div>
+        <div id="tpList"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-s" id="tpAdd">+ 소재 한 줄 추가</button>
+          <button class="btn btn-a" id="tpSave">소재 저장</button>
+          <button class="btn btn-p" id="tpSpread">글에 나눠 배정하기</button>
+          <span class="mono" id="tpInfo"></span>
+        </div>
+      </div>
     </section>
 
     <!-- 5 글 나눠주기 -->

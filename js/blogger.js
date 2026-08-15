@@ -469,6 +469,8 @@
       + '<dt>이 글이 다룰 것</dt><dd>' + esc(p.brief || '-') + '</dd>'
       + '<dt>지역</dt><dd>' + esc(p.region || '-') + '</dd>'
       + '</dl>'
+      + topicBlock(p)
+      + adBlock(p)
       + photoBlock(p)
       + (p.info_pack ? '<label class="f">정보 박스 — 글에 그대로 붙여넣으세요</label>'
         + '<textarea class="inp" id="ipk" readonly>' + esc(p.info_pack) + '</textarea>'
@@ -552,6 +554,9 @@
     if ($('workPick')) $('workPick').onchange = function () {
       CUR = MY.filter(function (x) { return x.id === this.value; }.bind(this))[0]; renderWork();
     };
+    if ($('btnCopyAd')) $('btnCopyAd').onclick = function () {
+      navigator.clipboard.writeText(adLineOf(p)).then(function () { A.toast('광고 문구를 복사했습니다'); });
+    };
     if ($('btnCopyPack')) $('btnCopyPack').onclick = function () {
       navigator.clipboard.writeText(p.info_pack || '').then(function () { A.toast('정보팩을 복사했습니다'); });
     };
@@ -582,6 +587,34 @@
     };
     lockPreview();          /* 글을 넘겨봐도 계속 잠겨 있게 */
   }
+  /* 이 글에서 다룰 이야기 — 학원이 보낸 글감 중 이 글 몫만 보여줍니다.
+     통째로 주면 50편이 서로 비슷해져 검색에서 통째로 밀립니다. */
+  function topicBlock(p) {
+    if (!p.topic_title) return '';
+    return '<div class="topicbox"><div class="tb-h">✍️ 이 글에서 다룰 이야기'
+      + '<span>학원이 알려준 내용입니다</span></div>'
+      + '<b>' + esc(p.topic_title) + '</b>'
+      + '<pre>' + esc(p.topic_body || '') + '</pre>'
+      + '<div class="tb-w"><b>그대로 붙여넣지 마세요.</b> 읽고 이해한 다음 '
+      + '<b>내 말로 풀어서</b> 써 주세요. 똑같이 옮겨 적으면 다른 분 글과 겹쳐 '
+      + '검색에 안 잡히고, 돌려보내 드립니다.</div></div>';
+  }
+  /* 광고 표시 문구 — 글마다 다른 문구가 돌아갑니다 (전부 같으면 광고글로 찍힙니다) */
+  function adLineOf(p) {
+    var L = A.AD_LINES || [];
+    if (!L.length) return '';
+    return L[((p.seq || 1) - 1) % L.length];
+  }
+  function adBlock(p) {
+    var line = adLineOf(p);
+    if (!line) return '';
+    return '<div class="adbox"><label class="f">맨 아래에 넣을 광고 표시 문구 '
+      + '<small>글마다 다릅니다 · 이 글은 이 문장을 쓰세요</small></label>'
+      + '<div class="adline" id="adLine">' + esc(line) + '</div>'
+      + '<button class="btn btn-s" id="btnCopyAd">문구 복사</button>'
+      + '<span class="mono" style="margin-left:8px">법으로 정해진 표시라 <b>꼭 넣으셔야</b> 합니다.</span></div>';
+  }
+
   /* 글마다 다른 사진이 가도록 순번으로 잘라 줍니다 (같은 사진이 여러 블로그에 겹치면
      중복으로 감지될 수 있어서 조합을 달리합니다) */
   function myPhotos(p) {
