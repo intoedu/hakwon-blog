@@ -4,6 +4,7 @@
   var $ = A.$, esc = A.esc, won = A.won;
 
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
+  var ALLTOPICS = [], NOTES = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
   var REQ_DONE = {};    /* 의뢰 id → ESC 관리자에서 '완료'로 표시됐는지 */
@@ -19,6 +20,8 @@
     A.ORDERS = await A.sel('blog_orders', { order: 'created_at', asc: false });
     PROG = await A.sel('order_progress');
     POSTS = await A.sel('blog_posts', { order: 'seq' });
+    ALLTOPICS = await A.sel('blog_topics', { order: 'sort' });   /* 주문 카드 「나가는 정보」용 */
+    NOTES = await A.sel('order_notes', { order: 'created_at' });
 
     await loadBlogStaff();
 
@@ -41,7 +44,7 @@
 
     fillSelects();
     renderDash(); renderStaffAll(); renderBlogStaff();
-    renderOrders(); renderAssign(); renderReview(); renderProgress(); renderLinks();
+    renderOrders(); renderAssign(); renderReview(); renderProgress(); renderLinks(); renderRules();
     loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
 
@@ -789,6 +792,7 @@
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
               + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
             : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>'
+        + outBox(o)
         + '<div class="sec" style="margin-top:16px">학원에 보낼 진행현황 주소 '
         + '<small>로그인 없이 열립니다 · 이 학원 것만 보입니다 · 블로거 이름·단가는 안 보입니다</small></div>'
         + '<div class="row">'
@@ -813,6 +817,108 @@
   }
   function kv(k, v) {
     return '<div><label class="f">' + k + '</label><div style="font-size:16px;font-weight:700">' + esc(v) + '</div></div>';
+  }
+
+  /* ── 「블로거에게 나가는 정보」 한눈에 보기 ──
+     블로거 화면에 실제로 뜨는 것이 넷(소재·정보팩·사진·광고문구)으로 늘어나서,
+     만드는 곳은 여기저기여도 확인은 이 주문 카드 한 곳에서 되도록 모았습니다.
+     학원이 보낸 원문까지 같이 둔 이유 — 잘라 넣은 소재가 원문을 제대로 담았는지
+     여기서 바로 비교할 수 있어야 해서입니다. */
+  function outBox(o) {
+    var mine = POSTS.filter(function (p) { return p.order_id === o.id; });
+    var tps = ALLTOPICS.filter(function (t) { return t.order_id === o.id; });
+    var notes = NOTES.filter(function (n) { return n.order_id === o.id; });
+    var ads = A.AD_LINES || [];
+    var used = {};
+    mine.forEach(function (p) { if (p.topic_id) used[p.topic_id] = (used[p.topic_id] || 0) + 1; });
+    var got = mine.filter(function (p) { return p.topic_id; }).length;
+
+    var sum = [
+      tps.length ? '소재 ' + tps.length + '개' : '소재 없음',
+      notes.length ? '학원이 보낸 글 ' + notes.length + '건' : null,
+      (o.photo_paths || []).length ? '사진 ' + o.photo_paths.length + '장' : null,
+      o.info_pack ? '정보팩 있음' : '정보팩 비어 있음'
+    ].filter(Boolean).join(' · ');
+
+    /* 소재 한 조각씩 — 몇 편에 붙었는지까지 보여줍니다 */
+    var tlist = tps.length
+      ? tps.map(function (t, i) {
+        var c = used[t.id] || 0;
+        return '<details class="obit' + (c ? '' : ' none') + '">'
+          + '<summary><span class="n">' + (i + 1) + '</span><b>' + esc(t.title) + '</b>'
+          + (c ? '<span class="chip c-ok">' + c + '편</span>'
+               : '<span class="chip c-wait">아직 안 붙음</span>') + '</summary>'
+          + '<pre>' + esc(t.body) + '</pre></details>';
+      }).join('')
+      : '<div class="note warn">아직 소재를 안 잘랐습니다. 학원이 보낸 글을 통째로 주면 '
+        + '같은 학원 글끼리 비슷해져 <b>유사문서로 통째로 검색에서 빠집니다.</b> '
+        + '<b>[4 키워드 만들기]</b> 아래 「학원이 보낸 글감 나누기」에서 잘라 주세요.</div>';
+
+    var tinfo = !tps.length ? ''
+      : mine.length
+        ? '<div class="mono" style="margin-top:8px">이 주문 글 ' + mine.length + '편 중 <b>'
+          + got + '편</b>에 소재가 붙어 있습니다'
+          + (got < mine.length ? ' — 4번 화면에서 <b>[글에 나눠 배정하기]</b>를 눌러 주세요' : '')
+          + '</div>'
+        : '<div class="mono" style="margin-top:8px">아직 글이 없습니다. '
+          + '키워드로 글을 먼저 만든 다음 <b>[글에 나눠 배정하기]</b>를 누르시면 붙습니다</div>';
+
+    return '<details class="outbox">'
+      + '<summary>📦 블로거에게 나가는 정보 한눈에 보기'
+      + '<span class="mono">— ' + esc(sum) + '</span></summary>'
+      + '<div class="obody">'
+      + '<div class="note">블로거 한 사람이 글쓰기 화면에서 보는 것은 <b>자기 글 몫 하나뿐</b>입니다. '
+      + '소재는 글마다 하나씩 돌아가고, 광고 문구도 글마다 다른 것이 뜹니다. '
+      + '정보팩과 사진은 모든 글에 같이 들어갑니다.</div>'
+
+      + '<div class="osec">1 · 학원이 보낸 원문 <small>이걸 잘라서 아래 소재를 만듭니다</small></div>'
+      + (notes.length
+        ? notes.map(function (n) {
+          return '<details class="obit"><summary><b>' + (n.created_at || '').slice(0, 10)
+            + ' 에 보낸 글</b><span class="mono">' + (n.body || '').length + '자</span></summary>'
+            + '<pre>' + esc(n.body) + '</pre></details>';
+        }).join('')
+        : '<div class="mono">학원이 진행현황 페이지에서 보낸 글이 아직 없습니다.</div>')
+
+      + '<div class="osec">2 · 소재 <small>글마다 하나씩 돌아갑니다</small></div>'
+      + tlist + tinfo
+      + '<div class="row" style="margin-top:10px">'
+      + '<button class="btn btn-s" data-gokw="' + o.id + '">소재 고치러 가기 (4번) →</button></div>'
+
+      + '<div class="osec">3 · 정보팩 <small>모든 글에 똑같이 들어갑니다 · 위에서 고칩니다</small></div>'
+      + (o.info_pack
+        ? '<pre class="tpnote" style="margin-top:0">' + esc(o.info_pack) + '</pre>'
+        : '<div class="note warn">정보팩이 비어 있습니다. 주소·전화번호가 글에 안 들어갑니다.</div>')
+
+      + '<div class="osec">4 · 사진 <small>글마다 다른 조합으로 5~8장씩</small></div>'
+      + ((o.photo_paths || []).length
+        ? '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
+          + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기</button></div>'
+        : '<div class="mono">받은 사진이 없습니다.</div>')
+
+      + '<div class="osec">5 · 광고 표시 문구 <small>법으로 정해진 표시 · 글마다 다른 문장이 뜹니다</small></div>'
+      + (ads.length
+        ? '<div class="adlist">' + ads.map(function (l) {
+            return '<div>' + esc(l) + '</div>';
+          }).join('') + '</div>'
+          + '<div class="mono" style="margin-top:7px">' + ads.length + '개를 글 단위로 섞어 나눠 줍니다. '
+          + '한 블로그의 글이 전부 같은 문구를 달면 그 블로그가 광고 채널로 분류될 수 있어 흩뜨립니다. '
+          + '고치시려면 <b>4 키워드 만들기</b> 맨 아래 <b>⚙️ 글에 같이 나가는 규칙</b>에서요.</div>'
+        : '<div class="note warn">광고 표시 문구가 하나도 없습니다. 대가성 광고 표기는 '
+          + '표시광고법상 의무입니다.</div>')
+
+      /* 학원이 뒤늦게 보낸 것을 이미 쓰고 있는 사람에게 알리는 곳 */
+      + '<div class="osec">6 · 바뀐 내용 알리기 <small>이미 글을 맡고 있는 분들에게</small></div>'
+      + '<div class="note">위의 정보팩·소재·사진을 고치면 <b>블로거 화면에는 이미 바뀐 것이 보입니다.</b> '
+      + '따로 다시 보낼 필요가 없습니다. 다만 <b>바뀐 줄 모르고 예전 내용으로 쓰고 있을 수</b> 있어, '
+      + '아래로 한 번 알려 주세요. 아직 안 올린 글을 맡은 분들에게만 갑니다.</div>'
+      + '<textarea class="inp" data-chgwhat="' + o.id + '" style="min-height:70px"'
+      + ' placeholder="예) 학원에서 수학 담당 원장님 성함과 3.14 학원 MOU 내용을 새로 보내주셨습니다. '
+      + '소재 6번을 확인해 주세요."></textarea>'
+      + '<div class="row" style="margin-top:9px">'
+      + '<button class="btn btn-a btn-s" data-chgnoti="' + o.id + '">바뀐 내용 알리기</button>'
+      + '<span class="mono">알림만 만듭니다 — 카톡으로 보내시려면 🔔 알림 보내기에서 복사하세요</span></div>'
+      + '</div></details>';
   }
 
   /* 학원이 보낸 사진을 크게 봅니다.
@@ -1208,6 +1314,35 @@
     if (d) { TOPICS = tpCollect(); TOPICS.splice(Number(d.dataset.tpdel), 1);
       if (!TOPICS.length) TOPICS = [{ title: '', body: '' }]; tpRender(); }
   });
+
+  /* ── 글에 같이 나가는 규칙 — 광고 표시 문구 · 하루 편수 ──
+     둘 다 settings key='blog' 한 줄에 들어갑니다 (ad_lines · form.daily_limit). */
+  function renderRules() {
+    if (!$('adLines') || !A.IS_ADMIN) return;
+    $('adLines').value = (A.AD_LINES || []).join('\n');
+    var f = A.FORM || {};
+    $('dailyLimit').value = String(f.daily_limit || 1);
+    $('sameAcad').checked = f.same_academy_daily !== 0;
+  }
+  if ($('ruleSave')) $('ruleSave').onclick = async function () {
+    var lines = $('adLines').value.split('\n')
+      .map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!lines.length) { A.toast('광고 표시 문구는 최소 하나는 있어야 합니다'); return; }
+    this.disabled = true;
+    var cur = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+    var v = (cur.data && cur.data.value) || {};
+    v.ad_lines = lines;
+    v.form = Object.assign({}, v.form, {
+      daily_limit: Number($('dailyLimit').value) || 1,
+      same_academy_daily: $('sameAcad').checked ? 1 : 0
+    });
+    var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
+    this.disabled = false;
+    if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+    A.AD_LINES = lines; A.FORM = v.form;
+    A.toast('저장했습니다 — 문구 ' + lines.length + '개 · 하루 ' + v.form.daily_limit + '편');
+    renderOrders();
+  };
 
   /* ═══ 5 글 나눠주기 ═══ */
   function renderAssign() {
@@ -1949,11 +2084,12 @@
     unassigned: '미배정 남음', academy_note: '학원 전달사항', custom: '직접 쓴 알림',
     order_paid: '입금 확인', first_post: '첫 글 올라감', half: '절반 진행', order_done: '전부 완료',
     approved_post: '원고 통과', edu_summary: '교육 요약 올라옴', edu_ok: '교육 이수 확인',
-    edu_no: '교육 요약 다시쓰기', photos_added: '학원이 사진 보냄', published: '올라간 글 확인'
+    edu_no: '교육 요약 다시쓰기', photos_added: '학원이 사진 보냄', published: '올라간 글 확인',
+    info_changed: '학원 내용 바뀜'
   };
   var KIND_OF = {
     blogger: ['assigned', 'due1', 'overdue', 'rework', 'approved_post', 'payout',
-      'approved', 'rejected', 'edu_wait', 'edu_ok', 'edu_no', 'custom'],
+      'approved', 'rejected', 'edu_wait', 'edu_ok', 'edu_no', 'info_changed', 'custom'],
     staff: ['submitted', 'edu_summary', 'overdue_admin', 'unpaid_order', 'unassigned',
       'academy_note', 'photos_added', 'custom'],
     academy: ['order_paid', 'first_post', 'half', 'order_done']
@@ -2415,6 +2551,23 @@
       t.disabled = false;
       if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
       A.toast('저장했습니다'); await A.loadAdmin(); await A.loadCommsPublic(); return;
+    }
+
+    /* 학원이 뒤늦게 보낸 내용을, 이미 글을 맡고 있는 분들에게 알립니다 */
+    if ((t = e.target.closest('[data-chgnoti]'))) {
+      var wbox = document.querySelector('[data-chgwhat="' + t.dataset.chgnoti + '"]');
+      var what = wbox ? wbox.value.trim() : '';
+      if (!what) { A.toast('무엇이 바뀌었는지 한 줄 적어 주세요'); wbox && wbox.focus(); return; }
+      t.disabled = true;
+      try {
+        var cnt = await A.rpc('notify_order_changed', {
+          p_order: t.dataset.chgnoti, p_what: what
+        });
+        A.toast(cnt ? cnt + '명에게 알렸습니다' : '지금 이 학원 글을 맡고 있는 분이 없습니다');
+        if (cnt) wbox.value = '';
+        await loadNoti(false);
+      } catch (err) { A.toast('실패: ' + err.message); }
+      t.disabled = false; return;
     }
 
     if ((t = e.target.closest('[data-paid]'))) {

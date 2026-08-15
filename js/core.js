@@ -60,6 +60,30 @@ window.ESC = (function () {
   };
   A.empty = function (t) { return '<div class="empty">' + A.esc(t) + '</div>'; };
 
+  /* ── 광고 표시 문구 고르기 ──
+     ⚠️ 예전에는 글 순번(seq)으로 골랐습니다. 그런데 글은 순번대로 돌아가며 배정되기 때문에,
+     블로거 수가 문구 수의 약수가 되면(문구 20개에 블로거 10명·5명·4명…) 한 사람이
+     늘 같은 문구만 받게 됩니다. 그러면 그 블로그의 글이 전부 같은 꼬리표를 달게 되고,
+     블로그 자체가 광고 채널로 분류될 위험이 커집니다 — 문구를 여러 개 둔 이유가 사라집니다.
+     그래서 글 id를 섞은 값으로 고릅니다. 사람 수와 무관하고, 같은 글은 언제 봐도 같은 문구입니다.
+
+     ⚠️ 곱셈은 Math.imul 로 합니다. 그냥 `h * 16777619` 로 하면 32비트를 넘어가면서
+     아래 자릿수가 뭉개져, 20으로 나눈 나머지가 몇몇 값에만 몰립니다(실측 10~160배 편차).
+     마지막 섞기(avalanche) 세 줄도 같은 이유로 필요합니다. */
+  A.adIndex = function (id, n) {
+    var h = 2166136261, s = String(id || ''), i;
+    for (i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    h ^= h >>> 16; h = Math.imul(h, 2246822507);
+    h ^= h >>> 13; h = Math.imul(h, 3266489909);
+    h = (h ^ (h >>> 16)) >>> 0;
+    return n > 0 ? h % n : 0;
+  };
+  A.adLine = function (p) {
+    var L = A.AD_LINES || [];
+    if (!L.length) return '';
+    return L[A.adIndex(p && p.id, L.length)];
+  };
+
   /* 유튜브 주소에서 영상 id 뽑기 (youtu.be · watch?v= · embed · shorts · live) */
   A.ytId = function (url) {
     var m = String(url || '')
@@ -262,15 +286,31 @@ window.ESC = (function () {
     }
   });
 
+  /* ── 설정 읽기 ──
+     ⚠️ `settings` 테이블은 RLS 가 is_staff() 만 열어 줍니다. staff 행이 없는 순수 블로거는
+     한 줄도 못 읽어서, 광고 표시 문구·단계 이름·글 규칙이 화면에서 통째로 빠졌습니다.
+     (블로거 셋 중 둘이 staff 겸직이라 오래 눈에 안 띄었습니다.)
+     그래서 블로거에게 필요한 셋만 돌려주는 blog_settings_public() 으로 받고,
+     판매가·검수 수당 같은 나머지는 직원일 때만 테이블에서 따로 읽습니다. */
+  A.loadSettings = async function () {
+    var p = await A.sb.rpc('blog_settings_public');
+    var v = p.data || {};
+    A.LEVELS = v.levels || [];
+    A.AD_LINES = v.ad_lines || [];
+    A.FORM = v.form || {};
+
+    var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+    var full = (s.data && s.data.value) || null;
+    if (full) A.REVIEW_RATE = full.review || { approve: 250, verify: 250 };
+  };
+
   /* ── 시작 ── */
   A.boot = async function () {
     A.gate('g-loading');
     if (!A.sb) { A.gate('g-login'); A.msg('loginMsg', '연결에 실패했습니다. 새로고침해 주세요.'); return; }
 
-    var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
-    A.LEVELS = (s.data && s.data.value && s.data.value.levels) || [];
-    A.REVIEW_RATE = (s.data && s.data.value && s.data.value.review) || { approve: 250, verify: 250 };
-    A.AD_LINES = (s.data && s.data.value && s.data.value.ad_lines) || [];
+    A.LEVELS = []; A.AD_LINES = []; A.FORM = {};
+    A.REVIEW_RATE = { approve: 250, verify: 250 };
 
     await A.loadCommsPublic();
 
@@ -279,6 +319,8 @@ window.ESC = (function () {
     var wantSignup = location.hash === '#signup';
 
     if (!A.SESSION) { A.gate(wantSignup ? 'g-signup' : 'g-login'); return; }
+
+    await A.loadSettings();
 
     var a = await A.sb.rpc('blog_admin');
     A.IS_ADMIN = a.data === true;

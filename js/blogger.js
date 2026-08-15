@@ -505,7 +505,7 @@
       act = '<div class="sec" style="color:var(--ok)">✅ 원고가 통과됐습니다 — 이제 블로그에 올려주세요</div>'
         + '<div class="card" style="border-color:var(--ok);box-shadow:inset 0 0 0 1px var(--ok)">'
         + '<div class="note" style="margin-bottom:14px"><b>올리기 전에 확인해 주세요.</b><br>'
-        + '· 오늘 이미 다른 글을 올리셨다면 내일 올려 주세요 (하루 한 편)<br>'
+        + '· ' + dailyRule() + '<br>'
         + '· 제목에 <b>' + esc(p.keyword || '') + '</b> 이 들어갔는지<br>'
         + '· 맨 아래 광고 표기가 있는지</div>'
         + '<label class="f" style="font-size:14px;color:var(--ink)">올린 글 주소를 여기에 붙여넣어 주세요</label>'
@@ -599,11 +599,20 @@
       + '<b>내 말로 풀어서</b> 써 주세요. 똑같이 옮겨 적으면 다른 분 글과 겹쳐 '
       + '검색에 안 잡히고, 돌려보내 드립니다.</div></div>';
   }
-  /* 광고 표시 문구 — 글마다 다른 문구가 돌아갑니다 (전부 같으면 광고글로 찍힙니다) */
-  function adLineOf(p) {
-    var L = A.AD_LINES || [];
-    if (!L.length) return '';
-    return L[((p.seq || 1) - 1) % L.length];
+  /* 광고 표시 문구 — 글마다 다른 문구가 돌아갑니다 (전부 같으면 광고글로 찍힙니다).
+     고르는 규칙은 core.js A.adLine 에 있습니다 (관리자 화면과 같은 것을 씁니다) */
+  function adLineOf(p) { return A.adLine(p); }
+
+  /* 하루에 몇 편까지 올릴지 — 관리자가 4번 화면 ⚙️에서 정합니다.
+     막지는 못합니다(본인 블로그라). 안내만 정확히 해 둡니다. */
+  function dailyRule() {
+    var f = A.FORM || {};
+    var n = Number(f.daily_limit) || 1;
+    if (n <= 1) return '오늘 이미 다른 글을 올리셨다면 내일 올려 주세요 <b>(하루 한 편)</b>';
+    return '하루에 <b>' + n + '편까지</b> 올리실 수 있습니다'
+      + (f.same_academy_daily === 0 ? ''
+        : ' — 다만 <b>같은 학원 글은 하루 한 편만</b> 올려 주세요. '
+          + '한 블로그에 같은 학원 글이 몰리면 광고 블로그로 보여 둘 다 검색에서 밀립니다');
   }
   function adBlock(p) {
     var line = adLineOf(p);

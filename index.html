@@ -443,6 +443,49 @@
           <span class="mono" id="tpInfo"></span>
         </div>
       </div>
+
+      <details id="ruleBox" style="margin-top:26px" data-adminonly>
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
+          ⚙️ 글에 같이 나가는 규칙 — 광고 표시 문구 · 하루 몇 편까지
+          <span class="mono">— 평소엔 안 보셔도 됩니다</span></summary>
+        <div class="card" style="margin-top:10px">
+          <label class="f">광고 표시 문구 <small>한 줄에 하나씩 · 글마다 다른 문장이 돌아갑니다</small></label>
+          <textarea class="inp" id="adLines" style="min-height:220px;font-size:13px"></textarea>
+          <div class="note" style="margin-top:10px">
+            <b>왜 여러 개인가요?</b> 대가성 광고 표기는 표시광고법상 <b>의무</b>입니다.
+            그런데 한 블로그의 글이 전부 똑같은 문장을 달고 있으면
+            <b>그 블로그 자체가 광고 채널로 분류될 수 있습니다.</b>
+            그래서 문장을 여러 개 두고 글마다 섞어서 나눠 줍니다.
+            <b>20개 정도면 넉넉합니다.</b>
+          </div>
+
+          <div class="sec" style="margin-top:18px">하루에 몇 편까지 올리게 할까요</div>
+          <div class="row">
+            <select class="inp" id="dailyLimit" style="width:auto">
+              <option value="1">하루 1편</option>
+              <option value="2">하루 2편</option>
+              <option value="3">하루 3편</option>
+              <option value="4">하루 4편</option>
+              <option value="5">하루 5편</option>
+            </select>
+            <label class="row" style="gap:7px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="sameAcad" checked>
+              <b>같은 학원 글은 하루 1편만</b></label>
+          </div>
+          <div class="note warn" style="margin-top:10px">
+            <b>이 숫자를 올려도 같은 학원 글은 하루 1편으로 두시길 권합니다.</b>
+            한 블로그에 같은 학원 글이 하루에 여러 개 올라가면,
+            그 블로그가 그 학원 <b>광고 채널로 보이고</b> 글끼리도 서로 잡아먹습니다.
+            하루 편수를 늘리는 것이 실제로 벌이가 되려면 <b>맡을 학원이 여러 곳이어야</b> 합니다.<br>
+            그리고 이건 <b>안내 문구일 뿐 시스템이 막지는 않습니다</b> —
+            글은 블로거 본인 블로그에 올리는 것이라 우리가 막을 수 있는 지점이 없습니다.
+          </div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn btn-p btn-s" id="ruleSave">저장</button>
+            <span class="mono">저장하면 블로거 글쓰기 화면에 바로 반영됩니다</span>
+          </div>
+        </div>
+      </details>
     </section>
 
     <!-- 5 글 나눠주기 -->

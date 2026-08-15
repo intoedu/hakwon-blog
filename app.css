@@ -422,3 +422,28 @@ tr.clickme{cursor:pointer}
 .tpnote{white-space:pre-wrap;font:inherit;font-size:12.5px;line-height:1.7;margin:10px 0 0;
      background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;
      max-height:260px;overflow-y:auto}
+
+/* 주문 카드 안 「블로거에게 나가는 정보」 접이식 (3 주문 · 입금) */
+.outbox{margin-top:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:0}
+.outbox>summary{cursor:pointer;padding:13px 15px;font-size:13.5px;font-weight:750;list-style:none}
+.outbox>summary::-webkit-details-marker{display:none}
+.outbox>summary::before{content:'▸ ';color:var(--amber);font-weight:800}
+.outbox[open]>summary::before{content:'▾ '}
+.outbox>summary .mono{font-weight:500;margin-left:6px}
+.outbox .obody{padding:0 15px 16px}
+.outbox .osec{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.03em;
+     margin:16px 0 9px;text-transform:none}
+.obit{border:1px solid var(--line);border-radius:9px;background:var(--surface);margin-bottom:7px}
+.obit>summary{cursor:pointer;padding:9px 12px;font-size:13px;list-style:none;
+     display:flex;gap:9px;align-items:center}
+.obit>summary::-webkit-details-marker{display:none}
+.obit>summary b{flex:1;min-width:0;font-weight:650}
+.obit pre{white-space:pre-wrap;font:inherit;font-size:12.5px;line-height:1.75;
+     margin:0;padding:0 12px 12px;color:var(--muted)}
+.obit .n{display:grid;place-items:center;width:21px;height:21px;flex:none;border-radius:50%;
+     background:var(--amber);color:#1A1206;font-size:11px;font-weight:800}
+.obit.none .n{background:var(--line);color:var(--muted)}
+.adlist{counter-reset:ad;font-size:12.5px;line-height:1.9;color:var(--muted);
+     max-height:240px;overflow-y:auto;padding:11px 13px;background:var(--surface);
+     border:1px solid var(--line);border-radius:9px}
+.adlist div::before{counter-increment:ad;content:counter(ad) '. ';color:var(--amber);font-weight:700}
