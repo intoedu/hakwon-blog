@@ -447,3 +447,12 @@ tr.clickme{cursor:pointer}
      max-height:240px;overflow-y:auto;padding:11px 13px;background:var(--surface);
      border:1px solid var(--line);border-radius:9px}
 .adlist div::before{counter-increment:ad;content:counter(ad) '. ';color:var(--amber);font-weight:700}
+
+/* 분배표 — 비율보다 모자라거나 적자인 줄 */
+tr.badrow{background:var(--bad-bg)}
+td.num.bad{color:var(--bad)}
+/* 학원 회원 구분 배지 — 지급 단가가 여기서 갈리므로 눈에 띄게 둡니다 */
+.mem{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;
+     font-size:11.5px;font-weight:800;letter-spacing:.01em}
+.mem.pre{color:var(--amber);background:color-mix(in srgb,var(--amber) 16%,transparent)}
+.mem.nor{color:var(--ok);background:color-mix(in srgb,var(--ok) 16%,transparent)}

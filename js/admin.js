@@ -11,6 +11,55 @@
   var REWORKS = {};     /* 글 id → 돌려보낸 이력 (사유가 지워져도 여기 남습니다) */
   var RPAY = [];        /* 이번 달 검수 수당 명세 */
   function revRate() { return A.REVIEW_RATE || { approve: 250, verify: 250 }; }
+  function sale() { return A.SALE || { normal: 6000, premium: 3000 }; }
+  function split() { return A.SPLIT || { esc: 2, blogger: 2, community: 1, reviewer: 1 }; }
+  function payMult() { return A.payMult(); }
+
+  /* 학원이 낸 돈이 어떻게 나뉘는지 — 정한 비율과 실제 단가가 어긋나면 여기서 보입니다.
+     ⚠️ 등급이 올라가도 판매가는 그대로라, 높은 단계일수록 ESC·공동체 몫이 사라집니다.
+     이걸 눈에 보이게 두어야 등급별 판매가를 언제 올려야 할지 알 수 있습니다. */
+  function splitBox() {
+    var sp = split(), tot = sp.esc + sp.blogger + sp.community + sp.reviewer;
+    var rows = A.LEVELS.map(function (l) {
+      return ['premium', 'normal'].map(function (k) {
+        var price = k === 'premium' ? sale().premium : sale().normal;
+        var m = k === 'premium' ? 1 : payMult();
+        var pay = Math.round(l.rate * m);
+        var rev = Math.round((revRate().approve + revRate().verify) * m);
+        var left = price - pay - rev;                 /* 공동체 + ESC 가 나눠 가질 것 */
+        var want = Math.round(price * (sp.community + sp.esc) / tot);
+        var bad = left < want;
+        return '<tr' + (left < 0 ? ' class="badrow"' : '') + '>'
+          + '<td>' + A.lvBadge(l.lv) + ' <span class="mono">' + esc(l.name) + '</span></td>'
+          + '<td>' + (k === 'premium' ? '프리미엄' : '일반') + '</td>'
+          + '<td class="num">' + won(price) + '</td>'
+          + '<td class="num">' + won(pay) + '</td>'
+          + '<td class="num">' + won(rev) + '</td>'
+          + '<td class="num' + (bad ? ' bad' : '') + '"><b>' + won(left) + '</b></td>'
+          + '<td class="num mono">' + won(want) + '</td>'
+          + '<td>' + (left < 0 ? '<span class="chip c-bad">적자</span>'
+            : bad ? '<span class="chip c-wait">비율보다 모자람</span>'
+            : '<span class="chip c-ok">맞음</span>') + '</td></tr>';
+      }).join('');
+    }).join('');
+
+    return '<details class="outbox" style="margin-top:18px"><summary>💰 학원이 낸 돈이 어떻게 나뉘는지'
+      + '<span class="mono">— ESC ' + sp.esc + ' : 블로거 ' + sp.blogger
+      + ' : 공동체 ' + sp.community + ' : 검수자 ' + sp.reviewer + '</span></summary>'
+      + '<div class="obody"><div class="tblbox tblscroll"><table>'
+      + '<thead><tr><th>단계</th><th>회원</th><th>학원이 냄</th><th>블로거</th><th>검수자</th>'
+      + '<th>공동체+ESC 남음</th><th>비율대로면</th><th></th></tr></thead><tbody>'
+      + rows + '</tbody></table></div>'
+      + '<div class="note warn" style="margin-top:12px">'
+      + '<b>1단계만 정하신 비율에 정확히 맞습니다.</b> 판매가는 그대로인데 등급이 오를수록 '
+      + '블로거 몫만 커지기 때문에, <b>3단계부터 공동체 몫이 사라지고 5단계는 적자</b>입니다.<br>'
+      + '말씀하신 <b>「등급별로 판매가를 올려 골라 담기」</b>가 있어야 풀리는 문제입니다. '
+      + '그전까지는 <b>3단계 이상으로 올리실 때 이 표를 한 번 보시는 것</b>이 안전합니다.</div>'
+      + '<div class="note" style="margin-top:10px"><b>공동체 몫은 아직 계산에 안 들어갑니다.</b> '
+      + '지금 공동체는 돈을 모아서 보내주는 창구일 뿐이고, 공동체 자체의 몫(' + sp.community
+      + '/' + tot + ')을 따로 떼는 기능은 만들지 않았습니다.</div>'
+      + '</div></details>';
+  }
 
   /* ═══ 데이터 ═══ */
   A.loadAdmin = async function () {
@@ -518,18 +567,27 @@
 
   function renderLevels() {
     $('levelBox').innerHTML = '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>단계</th><th>이름</th><th>편당 지급</th><th>올라가는 기준 (후보 추천용)</th><th>인원</th></tr></thead><tbody>'
+      + '<thead><tr><th>단계</th><th>이름</th><th>프리미엄 회원 글</th><th>일반 회원 글</th>'
+      + '<th>올라가는 기준 (후보 추천용)</th><th>인원</th></tr></thead><tbody>'
       + A.LEVELS.map(function (l) {
         var n = A.PEOPLE.filter(function (p) { return p.level === l.lv && p.status === 'approved'; }).length;
         var r = RULES.filter(function (x) { return x.lv === l.lv; })[0];
         return '<tr><td>' + A.lvBadge(l.lv) + '</td>'
           + '<td><input class="inp" style="width:110px;padding:5px 8px" data-lf="name" data-llv="' + l.lv + '" value="' + esc(l.name) + '"></td>'
           + '<td><input class="inp" style="width:95px;padding:5px 8px" type="number" data-lf="rate" data-llv="' + l.lv + '" value="' + l.rate + '"></td>'
+          + '<td class="num"><b>' + won(Math.round(l.rate * payMult())) + '</b>원'
+          + '<div class="mono">자동 계산</div></td>'
           + '<td class="mono">' + (r ? '누적 ' + r.done + '편 · 통과율 ' + r.pass + '%'
             + (r.rank ? ' · 평균 노출 ' + r.rank + '위 안' : '')
             + ' · 이웃 ' + won(r.nb) + '명 이상' : '모두 여기서 시작') + '</td>'
           + '<td class="num">' + n + '명</td></tr>';
       }).join('') + '</tbody></table></div>'
+      + '<div class="note" style="margin-top:12px">'
+      + '<b>적는 값은 프리미엄 회원 글 기준입니다.</b> 일반 회원 학원은 편당 '
+      + won(sale().normal) + '원을 내므로(프리미엄은 ' + won(sale().premium) + '원) '
+      + '블로거도 <b>' + payMult() + '배</b>를 받습니다. 오른쪽 칸은 저희가 곱해서 보여드리는 것이라 '
+      + '따로 적으실 것이 없습니다.</div>'
+      + splitBox()
       + '<div class="row" style="margin-top:12px"><button class="btn btn-p" id="btnSaveLevels">단계 설정 저장</button>'
       + '<span class="mono">기준은 자동 승급이 아니라 후보를 골라내는 용도입니다</span></div>'
 
@@ -762,10 +820,11 @@
       var p = prog(o.id);
       return '<div class="card" style="margin-bottom:12px" data-ordercard="' + o.id + '">'
         + '<div class="row" style="justify-content:space-between"><div>'
-        + '<h3 style="font-size:16.5px">' + esc(o.academy_name)
+        + '<h3 style="font-size:16.5px">' + esc(o.academy_name) + ' ' + memBadge(o)
         + (o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '') + '</h3>'
-        + '<div class="mono" style="margin-top:3px">' + esc(o.region || '지역 미입력') + ' · '
-        + (o.is_premium ? '프리미엄 회원' : '일반 회원') + '</div></div>'
+        + '<div class="mono" style="margin-top:3px">' + esc(o.region || '지역 미입력')
+        + ' · 편당 ' + won(o.sale_price) + '원 받고 <b>' + won(basePay(o)) + '원</b> 지급'
+        + '</div></div>'
         + (o.paid_at ? '<span class="chip c-ok">입금 확인됨</span>' : '<span class="chip c-wait">입금 기다리는 중</span>')
         + '</div>'
         + '<div class="grid g5" style="margin-top:15px;gap:10px">'
@@ -822,6 +881,18 @@
   }
   function kv(k, v) {
     return '<div><label class="f">' + k + '</label><div style="font-size:16px;font-weight:700">' + esc(v) + '</div></div>';
+  }
+
+  /* 이 학원이 일반이냐 프리미엄이냐 — 블로거가 받는 돈이 여기서 갈립니다 */
+  function memBadge(o) {
+    return o && o.is_premium
+      ? '<span class="mem pre">프리미엄 회원</span>'
+      : '<span class="mem nor">일반 회원 · 지급 ' + A.payMult() + '배</span>';
+  }
+  /* 1단계 블로거가 이 주문 글 한 편을 쓰면 받는 돈 (등급이 오르면 그만큼 커집니다) */
+  function basePay(o) {
+    var base = (A.LEVELS[0] && A.LEVELS[0].rate) || 1000;
+    return Math.round(base * (o && o.is_premium ? 1 : A.payMult()));
   }
 
   /* ── 「블로거에게 나가는 정보」 한눈에 보기 ──
@@ -1376,6 +1447,17 @@
       var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
       var made = POSTS.filter(function (p) { return p.order_id === oid; }).length;
       var over = o ? made - o.total_qty : 0;
+
+      /* 지금 나눠주는 글이 얼마짜리인지 — 회원 구분에 따라 지급액이 달라지니 여기서 한 번 더 */
+      var mb = $('asMember');
+      if (mb) mb.innerHTML = !o ? '' : '<div class="note" style="margin:0 0 12px">'
+        + memBadge(o) + ' <b>' + esc(o.academy_name) + '</b> — 편당 '
+        + won(o.sale_price) + '원을 받는 주문입니다. '
+        + '1단계 블로거가 한 편 쓰면 <b>' + won(basePay(o)) + '원</b>, '
+        + '단계가 오르면 그만큼 더 갑니다'
+        + (o.is_premium ? '.' : ' (일반 회원이라 프리미엄 주문의 ' + A.payMult() + '배입니다).')
+        + '</div>';
+
       box.innerHTML = (o && over > 0)
         ? '<div class="msg err" style="margin:0 0 12px">'
         + '<b>⚠️ 주문은 ' + o.total_qty + '편인데 글이 ' + made + '편 만들어져 있습니다 (' + over + '편 초과).</b><br>'

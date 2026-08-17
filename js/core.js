@@ -305,7 +305,17 @@ window.ESC = (function () {
     if (full) {
       A.REVIEW_RATE = full.review || { approve: 250, verify: 250 };
       A.MONTH_CAP = Number(full.month_cap) || 30;   /* posts_auto_assign 이 쓰는 한 사람 월 상한 */
+      A.SALE = full.sale || { normal: 6000, premium: 3000 };   /* 학원에게 받는 편당 금액 */
+      A.SPLIT = full.split || { esc: 2, blogger: 2, community: 1, reviewer: 1 };
     }
+  };
+
+  /* 일반 회원 학원은 편당 판매가가 프리미엄의 몇 배인가 — 지급액도 그만큼 커집니다.
+     서버의 blog_pay_mult() 와 같은 계산입니다 (화면에 미리 보여주려고 여기도 둡니다). */
+  A.payMult = function () {
+    var s = A.SALE || {};
+    var p = Number(s.premium) || 0, n = Number(s.normal) || 0;
+    return p > 0 && n > 0 ? n / p : 2;
   };
 
   /* ── 시작 ── */
