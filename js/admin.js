@@ -966,8 +966,23 @@
 
       + '<div class="osec">4 · 사진 <small>글마다 다른 조합으로 5~8장씩</small></div>'
       + ((o.photo_paths || []).length
-        ? '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
-          + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기</button></div>'
+        ? (function () {
+          var tg = o.photo_tags || {}, n = Object.keys(tg).length;
+          var sign = Object.keys(tg).filter(function (k) { return tg[k].t === '간판·외부'; }).length;
+          return '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
+            + (n ? '<span class="chip c-info">꼬리표 ' + n + '장</span>'
+                 : '<span class="chip c-bad">꼬리표 없음</span>')
+            + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button></div>'
+            + (n
+              ? '<div class="mono" style="margin-top:7px">'
+                + (sign ? '간판·외부 ' + sign + '장이 글마다 맨 앞에 한 장씩 들어갑니다. '
+                        : '⚠️ 간판·외부로 표시한 사진이 없습니다. ')
+                + '나머지는 그 글 소재의 과목에 맞춰 골라 나갑니다.</div>'
+              : '<div class="note warn" style="margin-top:9px">'
+                + '<b>꼬리표가 없으면 사진이 내용과 상관없이 순서대로 나눠집니다.</b> '
+                + '영어 이야기를 쓰는 글에 수학 사진이 가고, 간판 사진이 한 장도 없는 글이 생깁니다. '
+                + '<b>[🖼 사진 보기]</b> → <b>[🏷 꼬리표 달기]</b> 에서 달아 주세요.</div>');
+        })()
         : '<div class="mono">받은 사진이 없습니다.</div>')
 
       + '<div class="osec">5 · 광고 표시 문구 <small>법으로 정해진 표시 · 글마다 다른 문장이 뜹니다</small></div>'
@@ -997,27 +1012,40 @@
 
   /* 학원이 보낸 사진을 크게 봅니다.
      한 장에 1~5MB라 한꺼번에 받으면 멈춥니다 — 12장씩 끊어서 보여줍니다 */
-  var PICS = [], PSHOWN = 0;
+  var PICS = [], PSHOWN = 0, PICORDER = null, PICTAGS = {}, PICTAG_ON = false;
+
+  /* 사진 꼬리표 — 무엇을 찍었나 / 어느 과목인가.
+     이걸 달아 두면 블로거에게 글 내용에 맞는 사진이 갑니다 (blogger.js myPhotos) */
+  var PT_KIND = ['간판·외부', '강의실', '수업 장면', '교재·자료', '판서·화이트보드',
+                 '상담실·로비', '학생 결과물', '기타'];
+  var PT_SUBJ = ['공통', '영어', '수학', '국어', '학습코칭'];
+
   async function showPics(o) {
     var paths = o.photo_paths || [];
     if (!paths.length) { A.toast('받은 사진이 없습니다'); return; }
     var r = await A.sb.storage.from('request-photos').createSignedUrls(paths, 3600);
     if (r.error) throw new Error(r.error.message);
-    PICS = (r.data || []).filter(function (x) { return x.signedUrl; })
-      .map(function (x) { return x.signedUrl; });
+    PICS = (r.data || []).map(function (x, i) {
+      return { url: x.signedUrl, path: paths[i] };
+    }).filter(function (x) { return x.url; });
+    PICORDER = o;
+    PICTAGS = Object.assign({}, o.photo_tags || {});
     PSHOWN = 0;
     $('picTitle').textContent = o.academy_name + ' — 학원이 보낸 사진 ' + PICS.length + '장';
     $('picBody').innerHTML = '';
     morePics();
+    paintTagBar();
     $('picModal').classList.add('on');
   }
   function morePics() {
     var next = PICS.slice(PSHOWN, PSHOWN + 12);
-    $('picBody').insertAdjacentHTML('beforeend', next.map(function (u, i) {
+    $('picBody').insertAdjacentHTML('beforeend', next.map(function (x, i) {
       var n = PSHOWN + i + 1;
-      return '<a href="' + esc(u) + '" target="_blank" rel="noopener" class="picitem">'
-        + '<img src="' + esc(u) + '" loading="lazy" alt="사진 ' + n + '">'
-        + '<span>' + n + '</span></a>';
+      return '<div class="piccell">'
+        + '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" class="picitem">'
+        + '<img src="' + esc(x.url) + '" alt="사진 ' + n + '">'
+        + '<span>' + n + '</span></a>'
+        + tagRow(x.path) + '</div>';
     }).join(''));
     PSHOWN += next.length;
     var m = $('picMore');
@@ -1025,7 +1053,140 @@
       ? '<button class="btn" id="picMoreBtn">더 보기 (남은 ' + (PICS.length - PSHOWN) + '장)</button>'
       : '<span class="mono">' + PICS.length + '장을 모두 보셨습니다</span>';
     if ($('picMoreBtn')) $('picMoreBtn').onclick = morePics;
+    applyTagMode();
   }
+  function tagRow(path) {
+    var t = PICTAGS[path] || {};
+    return '<div class="pictag">'
+      + '<select data-ptk="' + esc(path) + '"><option value="">종류…</option>'
+      + PT_KIND.map(function (k) {
+        return '<option value="' + esc(k) + '"' + (t.t === k ? ' selected' : '') + '>' + esc(k) + '</option>';
+      }).join('') + '</select>'
+      + '<select data-pts="' + esc(path) + '"><option value="">과목…</option>'
+      + PT_SUBJ.map(function (s) {
+        return '<option value="' + esc(s) + '"' + (t.s === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+      }).join('') + '</select></div>';
+  }
+  function applyTagMode() {
+    document.querySelectorAll('.pictag').forEach(function (el) {
+      el.classList.toggle('hide', !PICTAG_ON);
+    });
+  }
+  function paintTagBar() {
+    var bar = $('picTagBar'); if (!bar) return;
+    bar.classList.toggle('hide', !PICTAG_ON);
+    if (!PICTAG_ON) return;
+    var done = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t; }).length;
+    var sign = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t === '간판·외부'; }).length;
+    bar.innerHTML = '<div class="note' + (sign ? '' : ' warn') + '">'
+      + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
+      + (sign ? '간판·외부 사진 ' + sign + '장 — 글마다 맨 앞에 한 장씩 들어갑니다.'
+              : '<b>간판·외부 사진이 아직 없습니다.</b> 글의 첫 사진은 간판이 좋습니다.')
+      + '<div class="row" style="margin-top:10px">'
+      + '<button class="btn btn-p btn-s" id="picTagSave">꼬리표 저장</button>'
+      + '<span class="mono">종류만 달아도 됩니다. 과목을 비우면 「공통」으로 봅니다</span></div></div>';
+    $('picTagSave').onclick = async function () {
+      this.disabled = true;
+      try {
+        var n = await A.rpc('order_set_photo_tags', { p_order: PICORDER.id, p_tags: PICTAGS });
+        PICORDER.photo_tags = Object.assign({}, PICTAGS);
+        A.toast('사진 ' + n + '장에 꼬리표를 저장했습니다');
+        renderOrders();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+  }
+
+  /* ── 사진 한꺼번에 받기 ──
+     한 장씩 우클릭해서 받는 것이 72장이면 72번입니다. ZIP 하나로 묶어 드립니다.
+     바깥 라이브러리를 안 쓰려고 압축 없이(store) 담습니다 — 어차피 JPEG 라 더 안 줄어듭니다. */
+  var CRCT = null;
+  function crc32(buf) {
+    if (!CRCT) {
+      CRCT = new Int32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRCT[n] = c;
+      }
+    }
+    var crc = -1;
+    for (var i = 0; i < buf.length; i++) crc = (crc >>> 8) ^ CRCT[(crc ^ buf[i]) & 0xFF];
+    return (crc ^ -1) >>> 0;
+  }
+  function zipStore(files) {                 /* [{name, data:Uint8Array}] → Blob */
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+    files.forEach(function (f) {
+      var nameBuf = enc.encode(f.name), c = crc32(f.data), len = f.data.length;
+      var lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0, true);
+      lh.setUint32(14, c, true); lh.setUint32(18, len, true); lh.setUint32(22, len, true);
+      lh.setUint16(26, nameBuf.length, true); lh.setUint16(28, 0, true);
+      parts.push(new Uint8Array(lh.buffer), nameBuf, f.data);
+
+      var ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+      ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+      ch.setUint16(12, 0, true); ch.setUint16(14, 0, true);
+      ch.setUint32(16, c, true); ch.setUint32(20, len, true); ch.setUint32(24, len, true);
+      ch.setUint16(28, nameBuf.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true);
+      ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true);
+      ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), nameBuf);
+      offset += 30 + nameBuf.length + len;
+    });
+    var cSize = central.reduce(function (a, b) { return a + b.length; }, 0);
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(4, 0, true); end.setUint16(6, 0, true);
+    end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cSize, true); end.setUint32(16, offset, true); end.setUint16(20, 0, true);
+    return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+  }
+  async function downloadAllPics() {
+    if (!PICS.length) { A.toast('받을 사진이 없습니다'); return; }
+    var btn = $('picZip'); btn.disabled = true;
+    var files = [], nm = (PICORDER && PICORDER.academy_name) || '사진';
+    try {
+      for (var i = 0; i < PICS.length; i++) {
+        btn.textContent = '받는 중… ' + (i + 1) + '/' + PICS.length;
+        var res = await fetch(PICS[i].url);
+        if (!res.ok) continue;
+        var buf = new Uint8Array(await res.arrayBuffer());
+        var base = PICS[i].path.split('/').pop();
+        var tag = PICTAGS[PICS[i].path] || {};
+        /* 꼬리표를 달아 두셨으면 파일 이름에 넣어 드립니다 — 폴더에서 바로 구분됩니다 */
+        var pre = ('00' + (i + 1)).slice(-3) + (tag.t ? '_' + tag.t : '') + (tag.s && tag.s !== '공통' ? '_' + tag.s : '');
+        files.push({ name: nm + '/' + pre + '_' + base, data: buf });
+      }
+      if (!files.length) { A.toast('사진을 받지 못했습니다'); return; }
+      var url = URL.createObjectURL(zipStore(files));
+      var a = document.createElement('a');
+      a.href = url; a.download = nm + ' 사진 ' + files.length + '장.zip';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      A.toast(files.length + '장을 ZIP 으로 받았습니다');
+    } catch (e) {
+      A.toast('실패: ' + e.message);
+    }
+    btn.textContent = '⬇ 전부 받기 (ZIP)'; btn.disabled = false;
+  }
+  if ($('picZip')) $('picZip').onclick = downloadAllPics;
+  if ($('picTagMode')) $('picTagMode').onclick = function () {
+    PICTAG_ON = !PICTAG_ON;
+    this.classList.toggle('btn-a', PICTAG_ON);
+    applyTagMode(); paintTagBar();
+  };
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.dataset && (t.dataset.ptk || t.dataset.pts)) {
+      var path = t.dataset.ptk || t.dataset.pts;
+      var cur = PICTAGS[path] || {};
+      if (t.dataset.ptk) cur.t = t.value || undefined; else cur.s = t.value || undefined;
+      if (!cur.t && !cur.s) delete PICTAGS[path]; else PICTAGS[path] = cur;
+      paintTagBar();
+    }
+  });
   function fld(o, f, label) {
     return '<div><label class="f">' + label + '</label><input class="inp" data-of="' + f
       + '" data-oid="' + o.id + '" value="' + esc((o[f] || []).join(', ')) + '"></div>';
@@ -1334,6 +1495,12 @@
         + '<span class="tpn">' + (i + 1) + '</span>'
         + '<input class="inp" data-tpt="' + i + '" placeholder="소재 제목 — 예) [영어] 수행평가 감점 케어" '
         + 'value="' + esc(t.title || '') + '" style="flex:1">'
+        /* 과목을 정해 두면 그 과목 사진이 이 소재를 맡은 글에 갑니다 */
+        + '<select class="inp" data-tpsub="' + i + '" style="width:auto" title="이 소재의 과목 — 사진을 맞춰 줍니다">'
+        + ['', '공통', '영어', '수학', '국어', '학습코칭'].map(function (s) {
+          return '<option value="' + s + '"' + ((t.subject || '') === s ? ' selected' : '') + '>'
+            + (s || '과목…') + '</option>';
+        }).join('') + '</select>'
         + '<button class="xdel" data-tpdel="' + i + '" title="지우기">×</button></div>'
         + '<textarea class="inp" data-tpb="' + i + '" rows="4" '
         + 'placeholder="블로거가 읽을 내용을 붙여넣으세요">' + esc(t.body || '') + '</textarea></div>';
@@ -1344,7 +1511,9 @@
     TOPICS.forEach(function (t, i) {
       var ti = document.querySelector('[data-tpt="' + i + '"]');
       var bo = document.querySelector('[data-tpb="' + i + '"]');
-      out.push({ title: ti ? ti.value.trim() : '', body: bo ? bo.value.trim() : '' });
+      var su = document.querySelector('[data-tpsub="' + i + '"]');
+      out.push({ title: ti ? ti.value.trim() : '', body: bo ? bo.value.trim() : '',
+                 subject: su ? su.value : (t.subject || '') });
     });
     return out;
   }

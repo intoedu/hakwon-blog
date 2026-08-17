@@ -846,8 +846,11 @@
 <div class="picwrap" id="picModal">
   <div class="picbox">
     <div class="pichead"><b id="picTitle">사진</b>
-      <span class="mono" style="margin-left:auto">사진을 누르면 원본이 열립니다</span>
-      <button class="btn btn-s" id="picClose">닫기</button></div>
+      <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-s" id="picTagMode">🏷 꼬리표 달기</button>
+        <button class="btn btn-p btn-s" id="picZip">⬇ 전부 받기 (ZIP)</button>
+        <button class="btn btn-s" id="picClose">닫기</button></span></div>
+    <div id="picTagBar" class="hide" style="padding:0 16px 12px"></div>
     <div class="picgrid" id="picBody"></div>
     <div id="picMore" style="padding:0 16px 18px;text-align:center"></div>
   </div>

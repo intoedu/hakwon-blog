@@ -637,15 +637,63 @@
       + '<span class="mono" style="margin-left:8px">법으로 정해진 표시라 <b>꼭 넣으셔야</b> 합니다.</span></div>';
   }
 
-  /* 글마다 다른 사진이 가도록 순번으로 잘라 줍니다 (같은 사진이 여러 블로그에 겹치면
-     중복으로 감지될 수 있어서 조합을 달리합니다) */
+  /* ── 이 글에 줄 사진 고르기 ──
+     예전엔 순번으로 잘라 주기만 해서, 영어 이야기를 쓰는 글에 수학 사진이 가고
+     간판 사진이 한 장도 없는 글이 생겼습니다. 이제 꼬리표를 보고 맞춰 줍니다.
+       ① 간판·외부 한 장을 맨 앞에 (글의 첫 사진은 간판이어야 합니다)
+       ② 이 글 소재와 같은 과목 사진
+       ③ 모자라면 과목이 안 적힌(공통) 사진
+       ④ 그래도 모자라면 남은 것에서
+     같은 사진이 여러 블로그에 겹치면 중복으로 잡히므로, 각 묶음 안에서는
+     글 순번만큼 밀어서 글마다 다른 조합이 나가게 합니다.
+     꼬리표를 하나도 안 달았으면 예전처럼 순번으로만 자릅니다. */
   function myPhotos(p) {
     var all = p.photo_paths || [];
     if (!all.length) return [];
     var per = Math.min(8, Math.max(5, Math.floor(all.length / 6) || 5));
-    var start = ((p.seq || 1) - 1) * per % all.length;
-    var out = [];
-    for (var i = 0; i < Math.min(per, all.length); i++) out.push(all[(start + i) % all.length]);
+    per = Math.min(per, all.length);
+    var tags = p.photo_tags || {};
+    var seq = (p.seq || 1) - 1;
+
+    /* 글마다 다른 데서 시작합니다. 한 칸씩이 아니라 한 글에 쓰는 장수(per)만큼 건너뛰어야
+       옆 순번 글과 사진이 거의 안 겹칩니다 (한 칸씩 밀면 8장 중 6장이 같았습니다). */
+    function rotate(list) {
+      if (!list.length) return [];
+      var s = (seq * per) % list.length;
+      return list.slice(s).concat(list.slice(0, s));
+    }
+    var tagged = all.filter(function (x) { return tags[x] && tags[x].t; });
+    if (!tagged.length) {                      /* 꼬리표가 없으면 예전 방식 그대로 */
+      var out0 = [], start = seq * per % all.length;
+      for (var i = 0; i < per; i++) out0.push(all[(start + i) % all.length]);
+      return out0;
+    }
+
+    var subj = p.topic_subject || '';
+    var signs = rotate(all.filter(function (x) { return (tags[x] || {}).t === '간판·외부'; }));
+    var rest = all.filter(function (x) { return (tags[x] || {}).t !== '간판·외부'; });
+    var mine = rotate(rest.filter(function (x) { return subj && (tags[x] || {}).s === subj; }));
+    var common = rotate(rest.filter(function (x) {
+      var s = (tags[x] || {}).s;
+      return !s || s === '공통';
+    }));
+    var other = rotate(rest.filter(function (x) {
+      var s = (tags[x] || {}).s;
+      return s && s !== '공통' && s !== subj;
+    }));
+
+    var out = [], seen = {};
+    function take(list, n) {
+      for (var i = 0; i < list.length && n > 0; i++) {
+        if (seen[list[i]]) continue;
+        seen[list[i]] = 1; out.push(list[i]); n--;
+      }
+    }
+    take(signs, 1);                            /* 간판 한 장은 반드시 맨 앞 */
+    take(mine, per - out.length);
+    take(common, per - out.length);
+    take(other, per - out.length);
+    take(all, per - out.length);               /* 그래도 모자라면 아무거나 */
     return out;
   }
   function photoBlock(p) {
