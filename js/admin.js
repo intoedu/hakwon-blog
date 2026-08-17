@@ -15,49 +15,47 @@
   function split() { return A.SPLIT || { esc: 2, blogger: 2, community: 1, reviewer: 1 }; }
   function payMult() { return A.payMult(); }
 
-  /* 학원이 낸 돈이 어떻게 나뉘는지 — 정한 비율과 실제 단가가 어긋나면 여기서 보입니다.
-     ⚠️ 등급이 올라가도 판매가는 그대로라, 높은 단계일수록 ESC·공동체 몫이 사라집니다.
-     이걸 눈에 보이게 두어야 등급별 판매가를 언제 올려야 할지 알 수 있습니다. */
+  /* 학원이 낸 돈이 어떻게 나뉘는지 —
+     기준은 「블로거가 받는 돈 × 3 = 학원이 내는 돈」입니다. 그래서 어느 단계든 비율이 그대로입니다.
+     ⚠️ 단, 판매가는 주문을 만들 때 정해져 굳습니다. 지금은 주문 화면에 1단계 값만 있어서,
+     2단계 이상 블로거에게 맡기려면 「몇 단계 몇 편」으로 값을 매기는 화면이 먼저 필요합니다. */
   function splitBox() {
     var sp = split(), tot = sp.esc + sp.blogger + sp.community + sp.reviewer;
     var rows = A.LEVELS.map(function (l) {
       return ['premium', 'normal'].map(function (k) {
-        var price = k === 'premium' ? sale().premium : sale().normal;
-        var m = k === 'premium' ? 1 : payMult();
-        var pay = Math.round(l.rate * m);
-        var rev = Math.round((revRate().approve + revRate().verify) * m);
-        var left = price - pay - rev;                 /* 공동체 + ESC 가 나눠 가질 것 */
-        var want = Math.round(price * (sp.community + sp.esc) / tot);
-        var bad = left < want;
-        return '<tr' + (left < 0 ? ' class="badrow"' : '') + '>'
-          + '<td>' + A.lvBadge(l.lv) + ' <span class="mono">' + esc(l.name) + '</span></td>'
+        var pay = Math.round(l.rate * (k === 'premium' ? 1 : payMult()));
+        var price = pay * tot / sp.blogger;             /* 블로거 몫 × 3 = 학원이 내는 돈 */
+        var one = price / tot;
+        return '<tr><td>' + A.lvBadge(l.lv) + ' <span class="mono">' + esc(l.name) + '</span></td>'
           + '<td>' + (k === 'premium' ? '프리미엄' : '일반') + '</td>'
-          + '<td class="num">' + won(price) + '</td>'
-          + '<td class="num">' + won(pay) + '</td>'
-          + '<td class="num">' + won(rev) + '</td>'
-          + '<td class="num' + (bad ? ' bad' : '') + '"><b>' + won(left) + '</b></td>'
-          + '<td class="num mono">' + won(want) + '</td>'
-          + '<td>' + (left < 0 ? '<span class="chip c-bad">적자</span>'
-            : bad ? '<span class="chip c-wait">비율보다 모자람</span>'
-            : '<span class="chip c-ok">맞음</span>') + '</td></tr>';
+          + '<td class="num"><b>' + won(price) + '</b></td>'
+          + '<td class="num">' + won(one * sp.esc) + '</td>'
+          + '<td class="num"><b>' + won(pay) + '</b></td>'
+          + '<td class="num">' + won(one * sp.community) + '</td>'
+          + '<td class="num">' + won(one * sp.reviewer) + '</td></tr>';
       }).join('');
     }).join('');
 
     return '<details class="outbox" style="margin-top:18px"><summary>💰 학원이 낸 돈이 어떻게 나뉘는지'
       + '<span class="mono">— ESC ' + sp.esc + ' : 블로거 ' + sp.blogger
       + ' : 공동체 ' + sp.community + ' : 검수자 ' + sp.reviewer + '</span></summary>'
-      + '<div class="obody"><div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>단계</th><th>회원</th><th>학원이 냄</th><th>블로거</th><th>검수자</th>'
-      + '<th>공동체+ESC 남음</th><th>비율대로면</th><th></th></tr></thead><tbody>'
+      + '<div class="obody">'
+      + '<div class="note"><b>블로거가 받는 돈 × 3 = 학원이 내는 돈.</b> '
+      + '단계가 올라가면 학원 값도 같이 올라가므로 비율은 어느 단계에서나 그대로입니다.</div>'
+      + '<div class="tblbox tblscroll"><table>'
+      + '<thead><tr><th>단계</th><th>회원</th><th>학원이 냄</th>'
+      + '<th>ESC</th><th>블로거</th><th>공동체</th><th>검수자</th></tr></thead><tbody>'
       + rows + '</tbody></table></div>'
       + '<div class="note warn" style="margin-top:12px">'
-      + '<b>1단계만 정하신 비율에 정확히 맞습니다.</b> 판매가는 그대로인데 등급이 오를수록 '
-      + '블로거 몫만 커지기 때문에, <b>3단계부터 공동체 몫이 사라지고 5단계는 적자</b>입니다.<br>'
-      + '말씀하신 <b>「등급별로 판매가를 올려 골라 담기」</b>가 있어야 풀리는 문제입니다. '
-      + '그전까지는 <b>3단계 이상으로 올리실 때 이 표를 한 번 보시는 것</b>이 안전합니다.</div>'
-      + '<div class="note" style="margin-top:10px"><b>공동체 몫은 아직 계산에 안 들어갑니다.</b> '
-      + '지금 공동체는 돈을 모아서 보내주는 창구일 뿐이고, 공동체 자체의 몫(' + sp.community
-      + '/' + tot + ')을 따로 떼는 기능은 만들지 않았습니다.</div>'
+      + '<b>아직 못 하는 것 — 주문에 단계를 섞어 담기.</b> 지금 주문 화면은 편당 값이 하나뿐이라 '
+      + '<b>1단계 값(' + won(sale().premium) + ' / ' + won(sale().normal) + ')으로만 주문이 만들어집니다.</b> '
+      + '「50편 = 1단계 40편 + 2단계 10편」처럼 담으시려면 그 화면을 먼저 만들어야 합니다.<br>'
+      + '그전까지는 <b>2단계 이상 블로거에게 맡기면 학원에게는 1단계 값만 받은 상태</b>가 되니, '
+      + '승급하신 분께 글을 맡기기 전에 말씀해 주세요.</div>'
+      + '<div class="note" style="margin-top:10px"><b>공동체 몫과 검수자 수당은 아직 이 표대로 안 나갑니다.</b> '
+      + '공동체는 지금 돈을 모아 보내주는 창구일 뿐 자기 몫(' + sp.community + '/' + tot + ')을 안 떼고, '
+      + '검수 수당은 단계와 무관하게 ' + won(revRate().approve + revRate().verify) + '원 고정입니다. '
+      + '등급별 값을 만들 때 같이 맞추면 됩니다.</div>'
       + '</div></details>';
   }
 
@@ -583,9 +581,9 @@
           + '<td class="num">' + n + '명</td></tr>';
       }).join('') + '</tbody></table></div>'
       + '<div class="note" style="margin-top:12px">'
-      + '<b>적는 값은 프리미엄 회원 글 기준입니다.</b> 일반 회원 학원은 편당 '
-      + won(sale().normal) + '원을 내므로(프리미엄은 ' + won(sale().premium) + '원) '
-      + '블로거도 <b>' + payMult() + '배</b>를 받습니다. 오른쪽 칸은 저희가 곱해서 보여드리는 것이라 '
+      + '<b>적는 값은 프리미엄 회원 글 기준입니다.</b> 일반 회원 학원은 편당 값이 '
+      + payMult() + '배라(' + won(sale().normal) + ' / ' + won(sale().premium) + ') '
+      + '블로거도 그만큼 더 받습니다. 오른쪽 칸은 저희가 곱해서 보여드리는 것이라 '
       + '따로 적으실 것이 없습니다.</div>'
       + splitBox()
       + '<div class="row" style="margin-top:12px"><button class="btn btn-p" id="btnSaveLevels">단계 설정 저장</button>'
