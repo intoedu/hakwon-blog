@@ -369,6 +369,7 @@
       var role = s.role === 'owner' ? 'owner' : (s.perms && s.perms.blog_admin) ? 'admin' : 'review';
       return { id: s.id, name: s.name, email: s.email, phone: s.phone,
                role: role, blogRole: ROLE_KO[role], escRole: s.role, perms: s.perms || {},
+               home: s.community_id || null,        /* 소속 — null 이면 ESC 본부 */
                comms: (s.perms && s.perms.blog_comms) || [] };
     });
     var b = $('tcStaff'); if (b) b.textContent = A.BLOGSTAFF.length;
@@ -413,7 +414,7 @@
       return;
     }
     $('blogStaffBox').innerHTML = '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>이름</th><th>직분</th><th>연락처</th><th>블로거 병행</th>'
+      + '<thead><tr><th>이름</th><th>소속</th><th>직분</th><th>연락처</th><th>블로거 병행</th>'
       + '<th style="min-width:220px">담당 공동체</th><th>이번 달 쓴 글</th><th></th></tr></thead><tbody>'
       + rows.map(function (s) {
         var p = A.PEOPLE.filter(function (x) { return x.id === s.id; })[0];
@@ -421,6 +422,10 @@
         var locked = s.role === 'owner' || !p;   /* 최고관리자·블로거가 아닌 ESC 직원은 여기서 못 바꿈 */
         return '<tr><td><b>' + esc(s.name || s.email) + '</b>'
           + '<div class="mono">' + esc(s.email || '') + '</div></td>'
+          /* 소속은 ESC 관리자 페이지에서 정합니다 (직원 정보라 거기가 원본) */
+          + '<td>' + (s.home
+            ? '<span class="chip">' + esc(A.commName(s.home)) + '</span>'
+            : '<span class="mono">ESC</span>') + '</td>'
           + '<td><span class="chip ' + (s.role === 'owner' ? 'c-ok' : s.role === 'admin' ? 'c-info' : 'c-wait')
           + '">' + s.blogRole + '</span></td>'
           + '<td class="mono">' + esc(s.phone || '-') + '</td>'

@@ -10,6 +10,19 @@
   A.loadBloggerPreview = async function (id) {
     var who = A.PEOPLE.filter(function (x) { return x.id === id; })[0];
     if (!who) { A.toast('블로거를 고르세요'); return; }
+
+    /* 자기 자신을 고른 것이면 미리보기가 아니라 「내 블로거 화면」입니다 — 잠그지 않습니다.
+       관리자가 블로거를 병행할 때 자기 글을 실제로 쓰고 낼 수 있어야 하니까요.
+       (서버는 my_posts 뷰와 RPC 가 전부 auth.uid() 기준이라 남의 것은 어차피 못 건드립니다) */
+    if (A.SESSION && A.SESSION.user && id === A.SESSION.user.id) {
+      A.ME = who; CUR = null;
+      A.$('previewBar').classList.add('hide');
+      A.$('meRole').textContent = '내 블로거 화면';
+      await A.loadBlogger();          /* PREVIEW 를 false 로 되돌리고 진짜 내 것을 읽습니다 */
+      A.openApp('b-inbox');
+      return;
+    }
+
     PREVIEW = true; A.ME = who; CUR = null;
     A.$('previewName').textContent = who.name;
 
