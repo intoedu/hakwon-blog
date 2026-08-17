@@ -654,6 +654,10 @@
     per = Math.min(per, all.length);
     var tags = p.photo_tags || {};
     var seq = (p.seq || 1) - 1;
+    /* 「쓰지 않음」으로 빼 둔 사진은 아예 후보에서 뺍니다 (겹친 사진·못 쓸 사진) */
+    all = all.filter(function (x) { return !(tags[x] && tags[x].x); });
+    if (!all.length) return [];
+    per = Math.min(per, all.length);
 
     /* 글마다 다른 데서 시작합니다. 한 칸씩이 아니라 한 글에 쓰는 장수(per)만큼 건너뛰어야
        옆 순번 글과 사진이 거의 안 겹칩니다 (한 칸씩 밀면 8장 중 6장이 같았습니다). */
@@ -709,6 +713,9 @@
       + '<div class="mono" style="margin-bottom:8px">글마다 다른 사진이 가도록 나눠 뒀습니다. '
       + '<b>맨 앞 사진이 간판·바깥</b>이니 글의 첫 사진으로 쓰세요. '
       + '다른 분과 같은 사진을 쓰면 검색에 안 걸릴 수 있으니 받으신 것만 쓰세요.</div>'
+      + '<div class="note warn" style="margin-bottom:8px"><b>학생 얼굴이 나온 사진은 '
+      + '올리시기 전에 모자이크(흐리게) 처리해 주세요.</b> 네이버 블로그 사진 편집에 '
+      + '「모자이크」가 있습니다. 얼굴이 그대로 올라가면 학원이 곤란해집니다.</div>'
       + '<div class="row">'
       + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 ' + mine.length + '장 보기</button>'
       + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'
@@ -771,12 +778,16 @@
       g.disabled = false; g.textContent = '사진 ' + paths.length + '장 보기';
       if (r.error) { A.toast('사진을 불러오지 못했습니다: ' + r.error.message); return; }
       var box = A.$('picBox');
+      var gtags = post.photo_tags || {};
       box.innerHTML = '<div class="row" style="gap:10px">'
         + r.data.map(function (x, i) {
           if (!x.signedUrl) return '';
+          /* 누운 사진은 여기서도 돌려 보여줍니다 (받으시면 파일 자체가 바로 서 있습니다) */
+          var rot = (gtags[paths[i]] || {}).r || 0;
           return '<a href="' + x.signedUrl + '" target="_blank" rel="noopener" '
             + 'style="display:block;width:96px"><img src="' + x.signedUrl
-            + '" style="width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">'
+            + '" style="width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)'
+            + (rot ? ';transform:rotate(' + rot + 'deg)' : '') + '">'
             + '<span class="mono">' + (i + 1) + '번' + (i === 0 ? ' · 첫 사진' : '') + '</span></a>';
         }).join('') + '</div>'
         + '<div class="mono" style="margin-top:8px">한 장씩 받으시려면 사진을 누르세요. '
@@ -800,8 +811,9 @@
       var items = (zr.data || []).filter(function (x) { return x.signedUrl; })
         .map(function (x, i) {
           var t = tg[zpaths[i]] || {};
-          /* 파일 이름 앞에 순서를 붙여 둡니다 — 1번이 간판이라 글 맨 위에 넣으시면 됩니다 */
-          return { url: x.signedUrl,
+          /* 파일 이름 앞에 순서를 붙여 둡니다 — 1번이 간판이라 글 맨 위에 넣으시면 됩니다.
+             누운 사진은 rotate 로 바로 세워서 담습니다 (core.js zipDownload) */
+          return { url: x.signedUrl, rotate: t.r || 0,
                    name: (i + 1) + '번' + (t.t ? '_' + t.t : '') + '_' + zpaths[i].split('/').pop() };
         });
       try {

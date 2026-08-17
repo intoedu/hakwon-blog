@@ -133,14 +133,41 @@ window.ESC = (function () {
     end.setUint32(12, cSize, true); end.setUint32(16, offset, true); end.setUint16(20, 0, true);
     return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
   }
-  /* items = [{url, name}] · onStep(현재, 전체) 로 진행 상황을 알려줍니다 */
+  /* ── 누운 사진 바로 세우기 ──
+     학원이 보낸 사진 중에는 방향 정보가 없어 90도 누운 것이 섞여 있습니다.
+     화면에서만 돌려 보여주면 블로거가 받는 파일은 그대로 누워 있으므로,
+     내려받을 때 **파일 자체를 다시 그려서** 바로 선 채로 내보냅니다. */
+  A.rotateBlob = async function (blob, deg) {
+    deg = ((Number(deg) || 0) % 360 + 360) % 360;
+    if (!deg) return blob;
+    var bmp;
+    try { bmp = await createImageBitmap(blob); } catch (e) { return blob; }
+    var swap = (deg === 90 || deg === 270);
+    var w = swap ? bmp.height : bmp.width, h = swap ? bmp.width : bmp.height;
+    var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    var cx = cv.getContext('2d');
+    cx.translate(w / 2, h / 2);
+    cx.rotate(deg * Math.PI / 180);
+    cx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
+    if (bmp.close) bmp.close();
+    return await new Promise(function (res) {
+      cv.toBlob(function (b) { res(b || blob); }, 'image/jpeg', 0.92);
+    });
+  };
+
+  /* items = [{url, name, rotate}] · onStep(현재, 전체) 로 진행 상황을 알려줍니다 */
   A.zipDownload = async function (items, zipName, onStep) {
     var files = [];
     for (var i = 0; i < items.length; i++) {
       if (onStep) onStep(i + 1, items.length);
       var res = await fetch(items[i].url);
       if (!res.ok) continue;
-      files.push({ name: items[i].name, data: new Uint8Array(await res.arrayBuffer()) });
+      var name = items[i].name, body = await res.blob();
+      if (items[i].rotate) {
+        body = await A.rotateBlob(body, items[i].rotate);
+        name = name.replace(/\.(png|webp|heic)$/i, '.jpg');   /* 다시 그리면 JPEG 입니다 */
+      }
+      files.push({ name: name, data: new Uint8Array(await body.arrayBuffer()) });
     }
     if (!files.length) throw new Error('한 장도 받지 못했습니다');
     var url = URL.createObjectURL(zipStore(files));

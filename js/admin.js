@@ -1041,9 +1041,9 @@
     var next = PICS.slice(PSHOWN, PSHOWN + 12);
     $('picBody').insertAdjacentHTML('beforeend', next.map(function (x, i) {
       var n = PSHOWN + i + 1;
-      return '<div class="piccell">'
+      return '<div class="piccell" data-pcell="' + esc(x.path) + '">'
         + '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" class="picitem">'
-        + '<img src="' + esc(x.url) + '" alt="사진 ' + n + '">'
+        + '<img src="' + esc(x.url) + '" alt="사진 ' + n + '" style="' + rotStyle(x.path) + '">'
         + '<span>' + n + '</span></a>'
         + tagRow(x.path) + '</div>';
     }).join(''));
@@ -1055,6 +1055,11 @@
     if ($('picMoreBtn')) $('picMoreBtn').onclick = morePics;
     applyTagMode();
   }
+  /* 화면에서 미리 돌려 보여줍니다. 실제 파일은 내려받을 때 돌아갑니다 (core.js rotateBlob) */
+  function rotStyle(path) {
+    var r = (PICTAGS[path] || {}).r || 0;
+    return r ? 'transform:rotate(' + r + 'deg)' : '';
+  }
   function tagRow(path) {
     var t = PICTAGS[path] || {};
     return '<div class="pictag">'
@@ -1065,7 +1070,13 @@
       + '<select data-pts="' + esc(path) + '"><option value="">과목…</option>'
       + PT_SUBJ.map(function (s) {
         return '<option value="' + esc(s) + '"' + (t.s === s ? ' selected' : '') + '>' + esc(s) + '</option>';
-      }).join('') + '</select></div>';
+      }).join('') + '</select></div>'
+      + '<div class="pictag">'
+      + '<button class="btn btn-s" data-ptrot="' + esc(path) + '" title="90도씩 돌립니다">↻ '
+      + (t.r ? t.r + '°' : '돌리기') + '</button>'
+      + '<label class="pcx' + (t.x ? ' on' : '') + '">'
+      + '<input type="checkbox" data-ptx="' + esc(path) + '"' + (t.x ? ' checked' : '') + '>'
+      + '쓰지 않음</label></div>';
   }
   function applyTagMode() {
     document.querySelectorAll('.pictag').forEach(function (el) {
@@ -1078,10 +1089,14 @@
     if (!PICTAG_ON) return;
     var done = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t; }).length;
     var sign = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t === '간판·외부'; }).length;
+    var out = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).x; }).length;
+    var rot = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).r; }).length;
     bar.innerHTML = '<div class="note' + (sign ? '' : ' warn') + '">'
       + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
       + (sign ? '간판·외부 사진 ' + sign + '장 — 글마다 맨 앞에 한 장씩 들어갑니다.'
               : '<b>간판·외부 사진이 아직 없습니다.</b> 글의 첫 사진은 간판이 좋습니다.')
+      + (out ? ' <b>' + out + '장은 빼 뒀습니다</b>(블로거에게 안 갑니다).' : '')
+      + (rot ? ' <b>' + rot + '장은 돌려 뒀습니다</b> — 블로거가 받을 때 바로 선 파일로 나갑니다.' : '')
       + '<div class="row" style="margin-top:10px">'
       + '<button class="btn btn-p btn-s" id="picTagSave">꼬리표 저장</button>'
       + '<span class="mono">종류만 달아도 됩니다. 과목을 비우면 「공통」으로 봅니다</span></div></div>';
@@ -1108,8 +1123,10 @@
       var tag = PICTAGS[x.path] || {};
       /* 꼬리표를 달아 두셨으면 파일 이름에 넣어 드립니다 — 폴더에서 바로 구분됩니다 */
       var pre = ('00' + (i + 1)).slice(-3)
+        + (tag.x ? '_쓰지않음' : '')
         + (tag.t ? '_' + tag.t : '') + (tag.s && tag.s !== '공통' ? '_' + tag.s : '');
-      return { url: x.url, name: nm + '/' + pre + '_' + x.path.split('/').pop() };
+      return { url: x.url, rotate: tag.r || 0,
+               name: nm + '/' + pre + '_' + x.path.split('/').pop() };
     });
     try {
       var n = await A.zipDownload(items, nm + ' 사진 ' + items.length + '장.zip', function (i, t) {
@@ -1127,13 +1144,30 @@
   };
   document.addEventListener('change', function (e) {
     var t = e.target;
-    if (t.dataset && (t.dataset.ptk || t.dataset.pts)) {
-      var path = t.dataset.ptk || t.dataset.pts;
+    if (t.dataset && (t.dataset.ptk || t.dataset.pts || t.dataset.ptx)) {
+      var path = t.dataset.ptk || t.dataset.pts || t.dataset.ptx;
       var cur = PICTAGS[path] || {};
-      if (t.dataset.ptk) cur.t = t.value || undefined; else cur.s = t.value || undefined;
-      if (!cur.t && !cur.s) delete PICTAGS[path]; else PICTAGS[path] = cur;
+      if (t.dataset.ptk) cur.t = t.value || undefined;
+      else if (t.dataset.pts) cur.s = t.value || undefined;
+      else {
+        cur.x = t.checked ? true : undefined;
+        var lb = t.closest('label'); if (lb) lb.classList.toggle('on', t.checked);
+      }
+      if (!cur.t && !cur.s && !cur.r && !cur.x) delete PICTAGS[path]; else PICTAGS[path] = cur;
       paintTagBar();
     }
+  });
+  /* ↻ 누를 때마다 90도씩. 저장을 눌러야 실제로 반영됩니다 */
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-ptrot]'); if (!b) return;
+    e.preventDefault();
+    var path = b.dataset.ptrot, cur = PICTAGS[path] || {};
+    cur.r = (((cur.r || 0) + 90) % 360) || undefined;
+    if (!cur.t && !cur.s && !cur.r && !cur.x) delete PICTAGS[path]; else PICTAGS[path] = cur;
+    b.textContent = '↻ ' + (cur.r ? cur.r + '°' : '돌리기');
+    var cell = document.querySelector('[data-pcell="' + path.replace(/"/g, '\\"') + '"] img');
+    if (cell) cell.style.transform = cur.r ? 'rotate(' + cur.r + 'deg)' : '';
+    paintTagBar();
   });
   function fld(o, f, label) {
     return '<div><label class="f">' + label + '</label><input class="inp" data-of="' + f
