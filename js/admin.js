@@ -1092,83 +1092,31 @@
         PICORDER.photo_tags = Object.assign({}, PICTAGS);
         A.toast('사진 ' + n + '장에 꼬리표를 저장했습니다');
         renderOrders();
+        if (RV_ORDER && RV_ORDER === PICORDER.id) openAcad(RV_ORDER);   /* 검수 화면도 새로 그립니다 */
       } catch (e) { A.toast('실패: ' + e.message); }
       this.disabled = false;
     };
   }
 
-  /* ── 사진 한꺼번에 받기 ──
-     한 장씩 우클릭해서 받는 것이 72장이면 72번입니다. ZIP 하나로 묶어 드립니다.
-     바깥 라이브러리를 안 쓰려고 압축 없이(store) 담습니다 — 어차피 JPEG 라 더 안 줄어듭니다. */
-  var CRCT = null;
-  function crc32(buf) {
-    if (!CRCT) {
-      CRCT = new Int32Array(256);
-      for (var n = 0; n < 256; n++) {
-        var c = n;
-        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-        CRCT[n] = c;
-      }
-    }
-    var crc = -1;
-    for (var i = 0; i < buf.length; i++) crc = (crc >>> 8) ^ CRCT[(crc ^ buf[i]) & 0xFF];
-    return (crc ^ -1) >>> 0;
-  }
-  function zipStore(files) {                 /* [{name, data:Uint8Array}] → Blob */
-    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
-    files.forEach(function (f) {
-      var nameBuf = enc.encode(f.name), c = crc32(f.data), len = f.data.length;
-      var lh = new DataView(new ArrayBuffer(30));
-      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
-      lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0, true);
-      lh.setUint32(14, c, true); lh.setUint32(18, len, true); lh.setUint32(22, len, true);
-      lh.setUint16(26, nameBuf.length, true); lh.setUint16(28, 0, true);
-      parts.push(new Uint8Array(lh.buffer), nameBuf, f.data);
-
-      var ch = new DataView(new ArrayBuffer(46));
-      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
-      ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
-      ch.setUint16(12, 0, true); ch.setUint16(14, 0, true);
-      ch.setUint32(16, c, true); ch.setUint32(20, len, true); ch.setUint32(24, len, true);
-      ch.setUint16(28, nameBuf.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true);
-      ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true);
-      ch.setUint32(42, offset, true);
-      central.push(new Uint8Array(ch.buffer), nameBuf);
-      offset += 30 + nameBuf.length + len;
-    });
-    var cSize = central.reduce(function (a, b) { return a + b.length; }, 0);
-    var end = new DataView(new ArrayBuffer(22));
-    end.setUint32(0, 0x06054b50, true); end.setUint16(4, 0, true); end.setUint16(6, 0, true);
-    end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
-    end.setUint32(12, cSize, true); end.setUint32(16, offset, true); end.setUint16(20, 0, true);
-    return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
-  }
+  /* 사진 전부를 ZIP 하나로 (꼬리표 달 때 눈으로 보려면 받아 놓는 편이 빠릅니다).
+     묶는 일 자체는 core.js A.zipDownload 가 합니다 — 블로거 화면에서도 같은 것을 씁니다. */
   async function downloadAllPics() {
     if (!PICS.length) { A.toast('받을 사진이 없습니다'); return; }
     var btn = $('picZip'); btn.disabled = true;
-    var files = [], nm = (PICORDER && PICORDER.academy_name) || '사진';
+    var nm = (PICORDER && PICORDER.academy_name) || '사진';
+    var items = PICS.map(function (x, i) {
+      var tag = PICTAGS[x.path] || {};
+      /* 꼬리표를 달아 두셨으면 파일 이름에 넣어 드립니다 — 폴더에서 바로 구분됩니다 */
+      var pre = ('00' + (i + 1)).slice(-3)
+        + (tag.t ? '_' + tag.t : '') + (tag.s && tag.s !== '공통' ? '_' + tag.s : '');
+      return { url: x.url, name: nm + '/' + pre + '_' + x.path.split('/').pop() };
+    });
     try {
-      for (var i = 0; i < PICS.length; i++) {
-        btn.textContent = '받는 중… ' + (i + 1) + '/' + PICS.length;
-        var res = await fetch(PICS[i].url);
-        if (!res.ok) continue;
-        var buf = new Uint8Array(await res.arrayBuffer());
-        var base = PICS[i].path.split('/').pop();
-        var tag = PICTAGS[PICS[i].path] || {};
-        /* 꼬리표를 달아 두셨으면 파일 이름에 넣어 드립니다 — 폴더에서 바로 구분됩니다 */
-        var pre = ('00' + (i + 1)).slice(-3) + (tag.t ? '_' + tag.t : '') + (tag.s && tag.s !== '공통' ? '_' + tag.s : '');
-        files.push({ name: nm + '/' + pre + '_' + base, data: buf });
-      }
-      if (!files.length) { A.toast('사진을 받지 못했습니다'); return; }
-      var url = URL.createObjectURL(zipStore(files));
-      var a = document.createElement('a');
-      a.href = url; a.download = nm + ' 사진 ' + files.length + '장.zip';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-      A.toast(files.length + '장을 ZIP 으로 받았습니다');
-    } catch (e) {
-      A.toast('실패: ' + e.message);
-    }
+      var n = await A.zipDownload(items, nm + ' 사진 ' + items.length + '장.zip', function (i, t) {
+        btn.textContent = '받는 중… ' + i + '/' + t;
+      });
+      A.toast(n + '장을 ZIP 으로 받았습니다');
+    } catch (e) { A.toast('실패: ' + e.message); }
     btn.textContent = '⬇ 전부 받기 (ZIP)'; btn.disabled = false;
   }
   if ($('picZip')) $('picZip').onclick = downloadAllPics;
@@ -2002,6 +1950,23 @@
     $('rvAcadMeta').innerHTML = o.total_qty + '편 주문 · <b style="color:var(--amber)">마감 '
       + (o.deadline || '-') + (d == null ? '' : d >= 0 ? ' (' + d + '일 남음)' : ' (지났습니다)')
       + '</b> · 봐야 할 원고 ' + todo.length + '편 · 만든 글 ' + all.length + '편';
+
+    /* 사진 꼬리표는 검수자도 답니다 — 원고를 읽는 사람이 사진도 같이 보는 게 자연스럽고,
+       관리자 한 명이 다 하면 병목이 됩니다 (서버도 blog_reviewer 로 열어 뒀습니다) */
+    var pbox = $('rvAcadPics');
+    if (pbox) {
+      var tg = o.photo_tags || {}, tn = Object.keys(tg).length;
+      var np = (o.photo_paths || []).length;
+      pbox.innerHTML = !np ? ''
+        : '<div class="note' + (tn ? '' : ' warn') + '" style="margin-bottom:14px">'
+        + '<b>학원이 보낸 사진 ' + np + '장</b> — '
+        + (tn ? '그중 ' + tn + '장에 꼬리표가 달려 있습니다. '
+              : '<b>꼬리표가 없어 사진이 글 내용과 상관없이 나가고 있습니다.</b> ')
+        + '꼬리표를 달면 영어 글에는 영어 사진이, 맨 앞에는 간판 사진이 갑니다.'
+        + '<div class="row" style="margin-top:10px">'
+        + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button>'
+        + '</div></div>';
+    }
 
     $('rvPosts').innerHTML =
       (todo.length ? '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'

@@ -707,8 +707,12 @@
     }
     return '<div style="margin:12px 0"><label class="f">이 글에 쓸 사진 ' + mine.length + '장</label>'
       + '<div class="mono" style="margin-bottom:8px">글마다 다른 사진이 가도록 나눠 뒀습니다. '
+      + '<b>맨 앞 사진이 간판·바깥</b>이니 글의 첫 사진으로 쓰세요. '
       + '다른 분과 같은 사진을 쓰면 검색에 안 걸릴 수 있으니 받으신 것만 쓰세요.</div>'
-      + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 ' + mine.length + '장 받기</button>'
+      + '<div class="row">'
+      + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 ' + mine.length + '장 보기</button>'
+      + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'
+      + '</div>'
       + '<div id="picBox" style="margin-top:10px"></div></div>';
   }
 
@@ -764,18 +768,51 @@
       g.disabled = true; g.textContent = '불러오는 중…';
       var paths = myPhotos(post);
       var r = await A.sb.storage.from('request-photos').createSignedUrls(paths, 3600);
-      g.disabled = false; g.textContent = '사진 ' + paths.length + '장 받기';
+      g.disabled = false; g.textContent = '사진 ' + paths.length + '장 보기';
       if (r.error) { A.toast('사진을 불러오지 못했습니다: ' + r.error.message); return; }
       var box = A.$('picBox');
       box.innerHTML = '<div class="row" style="gap:10px">'
         + r.data.map(function (x, i) {
           if (!x.signedUrl) return '';
-          return '<a href="' + x.signedUrl + '" target="_blank" rel="noopener" download '
+          return '<a href="' + x.signedUrl + '" target="_blank" rel="noopener" '
             + 'style="display:block;width:96px"><img src="' + x.signedUrl
             + '" style="width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">'
-            + '<span class="mono">' + (i + 1) + '번</span></a>';
+            + '<span class="mono">' + (i + 1) + '번' + (i === 0 ? ' · 첫 사진' : '') + '</span></a>';
         }).join('') + '</div>'
-        + '<div class="mono" style="margin-top:8px">사진을 눌러 저장하세요. 링크는 1시간 동안 유효합니다.</div>';
+        + '<div class="mono" style="margin-top:8px">한 장씩 받으시려면 사진을 누르세요. '
+        + '<b>한번에 받으시려면 위의 [⬇ 한번에 받기]</b>가 편합니다. 링크는 1시간 동안 유효합니다.</div>';
+      return;
+    }
+
+    /* 내 글 몫 사진을 ZIP 하나로 — 한 장씩 우클릭해서 받지 않아도 됩니다 */
+    var z = e.target.closest('[data-zippics]');
+    if (z) {
+      var zp = MY.filter(function (x) { return x.id === z.dataset.zippics; })[0];
+      if (!zp) return;
+      var zpaths = myPhotos(zp);
+      z.disabled = true; z.textContent = '주소 만드는 중…';
+      var zr = await A.sb.storage.from('request-photos').createSignedUrls(zpaths, 3600);
+      if (zr.error) {
+        A.toast('사진을 불러오지 못했습니다: ' + zr.error.message);
+        z.disabled = false; z.textContent = '⬇ ' + zpaths.length + '장 한번에 받기'; return;
+      }
+      var tg = zp.photo_tags || {};
+      var items = (zr.data || []).filter(function (x) { return x.signedUrl; })
+        .map(function (x, i) {
+          var t = tg[zpaths[i]] || {};
+          /* 파일 이름 앞에 순서를 붙여 둡니다 — 1번이 간판이라 글 맨 위에 넣으시면 됩니다 */
+          return { url: x.signedUrl,
+                   name: (i + 1) + '번' + (t.t ? '_' + t.t : '') + '_' + zpaths[i].split('/').pop() };
+        });
+      try {
+        /* 파일 이름에 못 쓰는 글자를 걸러 냅니다 (esc 는 HTML 용이라 여기 쓰면 안 됩니다) */
+        var safe = ((zp.academy_name || '') + ' - ' + (zp.keyword || '글'))
+          .replace(/[\\/:*?"<>|]/g, ' ').trim();
+        var n = await A.zipDownload(items, safe + ' 사진.zip',
+          function (i, t) { z.textContent = '받는 중… ' + i + '/' + t; });
+        A.toast(n + '장을 받았습니다. 압축을 풀어서 쓰세요');
+      } catch (err) { A.toast('실패: ' + err.message); }
+      z.disabled = false; z.textContent = '⬇ ' + zpaths.length + '장 한번에 받기';
       return;
     }
     var pl = e.target.closest('[data-play]');

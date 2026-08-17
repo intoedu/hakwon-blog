@@ -85,6 +85,72 @@ window.ESC = (function () {
     return L[A.adIndex(p && p.id, L.length)];
   };
 
+  /* ── 사진 여러 장을 ZIP 하나로 묶어 내려받기 ──
+     한 장씩 우클릭해서 받으면 72장이면 72번입니다. 관리자(꼬리표용 전체)와
+     블로거(자기 글 몫 5~8장) 양쪽에서 씁니다.
+     바깥 라이브러리를 안 쓰려고 압축 없이(store) 담습니다 — 어차피 JPEG 라 더 안 줄어듭니다.
+     ⚠️ 한글 파일 이름이 깨지지 않으려면 general purpose flag 에 0x0800(UTF-8) 을 켜야 합니다. */
+  var CRCT = null;
+  function crc32(buf) {
+    if (!CRCT) {
+      CRCT = new Int32Array(256);
+      for (var n = 0; n < 256; n++) {
+        var c = n;
+        for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        CRCT[n] = c;
+      }
+    }
+    var crc = -1;
+    for (var i = 0; i < buf.length; i++) crc = (crc >>> 8) ^ CRCT[(crc ^ buf[i]) & 0xFF];
+    return (crc ^ -1) >>> 0;
+  }
+  function zipStore(files) {                 /* [{name, data:Uint8Array}] → Blob */
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+    files.forEach(function (f) {
+      var nameBuf = enc.encode(f.name), c = crc32(f.data), len = f.data.length;
+      var lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(8, 0, true); lh.setUint16(10, 0, true); lh.setUint16(12, 0, true);
+      lh.setUint32(14, c, true); lh.setUint32(18, len, true); lh.setUint32(22, len, true);
+      lh.setUint16(26, nameBuf.length, true); lh.setUint16(28, 0, true);
+      parts.push(new Uint8Array(lh.buffer), nameBuf, f.data);
+
+      var ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+      ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+      ch.setUint16(12, 0, true); ch.setUint16(14, 0, true);
+      ch.setUint32(16, c, true); ch.setUint32(20, len, true); ch.setUint32(24, len, true);
+      ch.setUint16(28, nameBuf.length, true); ch.setUint16(30, 0, true); ch.setUint16(32, 0, true);
+      ch.setUint16(34, 0, true); ch.setUint16(36, 0, true); ch.setUint32(38, 0, true);
+      ch.setUint32(42, offset, true);
+      central.push(new Uint8Array(ch.buffer), nameBuf);
+      offset += 30 + nameBuf.length + len;
+    });
+    var cSize = central.reduce(function (a, b) { return a + b.length; }, 0);
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(4, 0, true); end.setUint16(6, 0, true);
+    end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cSize, true); end.setUint32(16, offset, true); end.setUint16(20, 0, true);
+    return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+  }
+  /* items = [{url, name}] · onStep(현재, 전체) 로 진행 상황을 알려줍니다 */
+  A.zipDownload = async function (items, zipName, onStep) {
+    var files = [];
+    for (var i = 0; i < items.length; i++) {
+      if (onStep) onStep(i + 1, items.length);
+      var res = await fetch(items[i].url);
+      if (!res.ok) continue;
+      files.push({ name: items[i].name, data: new Uint8Array(await res.arrayBuffer()) });
+    }
+    if (!files.length) throw new Error('한 장도 받지 못했습니다');
+    var url = URL.createObjectURL(zipStore(files));
+    var a = document.createElement('a');
+    a.href = url; a.download = zipName;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    return files.length;
+  };
+
   /* 유튜브 주소에서 영상 id 뽑기 (youtu.be · watch?v= · embed · shorts · live) */
   A.ytId = function (url) {
     var m = String(url || '')
