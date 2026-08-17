@@ -55,6 +55,7 @@ window.ESC = (function () {
     return '<span class="lv' + (lv >= 5 ? ' l5' : lv === 4 ? ' l4' : '') + '">' + lv + '</span>';
   };
   A.commName = function (id) {
+    if (!id) return 'ESC';        /* 공동체가 비어 있으면 ESC 소속입니다 */
     var f = A.COMMS.filter(function (c) { return c.id === id; })[0];
     return f ? f.name : '-';
   };

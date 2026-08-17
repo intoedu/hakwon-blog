@@ -8,6 +8,17 @@
     $('su_email').value = A.SESSION.user.email;
     $('su_email').disabled = true;
     $('su_pwWrap').classList.add('hide');
+
+    /* ESC 직원이 블로거를 병행할 때는 공동체가 아니라 ESC 소속입니다.
+       공동체 칸 맨 위에 「ESC」를 넣어 두고 그것을 고르게 합니다 (community_id 는 빈 값). */
+    if (A.IS_ADMIN || A.IS_REVIEWER) {
+      var sel = $('su_comm');
+      if (sel && !sel.dataset.esc) {
+        sel.insertAdjacentHTML('afterbegin', '<option value="esc">ESC (직원)</option>');
+        sel.dataset.esc = '1';
+        sel.value = 'esc';
+      }
+    }
   };
 
   $('btnBackAdmin').onclick = function () {
@@ -33,6 +44,7 @@
     var email = v('su_email'), pw = $('su_pw').value, pw2 = $('su_pw2').value;
 
     if (!comm) { A.msg('suMsg', '공동체를 골라 주세요.'); return; }
+    if (comm === 'esc') comm = null;      /* ESC 직원 — 공동체 없음 */
     if (!name) { A.msg('suMsg', '이름을 입력해 주세요.'); return; }
     if (!nid) { A.msg('suMsg', '블로그 네이버 아이디를 입력해 주세요.'); return; }
     if (/[^\w.-]/.test(nid)) { A.msg('suMsg', '네이버 아이디만 넣어 주세요. 주소 전체가 아니라 아이디 부분입니다.'); return; }
@@ -61,7 +73,7 @@
     var ins = await A.sb.from('bloggers').insert({
       id: uid, email: email || (A.SESSION && A.SESSION.user.email),
       name: name, phone: phone, age: age ? Number(age) : null,
-      community_id: comm, naver_id: nid, blog_alias: alias || null,
+      community_id: comm, naver_id: nid, blog_alias: alias || null,   /* null 이면 ESC 소속 */
       blog_url: 'https://blog.naver.com/' + nid,
       neighbors_band: band
     }).select();
