@@ -333,6 +333,32 @@
       + '</dl>'
       + '<div class="row">' + btns + '</div></div>';
   }
+  /* ── 블로거 목록의 이웃 수 칸 ──
+     ⚠️ 예전엔 승인 대기 카드에서만 고칠 수 있어서, 승인하고 나면 고칠 데가 없었습니다.
+     시간이 지나 이웃이 늘거나 승인할 때 안 적어 두었으면 손댈 방법이 없었습니다.
+     숫자를 누르면 그 자리에서 고쳐집니다. */
+  function nbCell(p) {
+    var has = p.neighbors != null;
+    return '<button class="nbbtn' + (has ? '' : ' none') + '" data-nbopen="' + p.id + '" '
+      + 'title="눌러서 고치기">'
+      + (has ? won(p.neighbors) : esc(p.neighbors_band || '-'))
+      + '</button>'
+      + (p.neighbors_checked_at
+        ? '<div class="mono" style="font-size:10.5px">' + A.fdate(p.neighbors_checked_at) + '</div>'
+        : has ? '' : '<div class="mono" style="font-size:10.5px">본인 신고</div>');
+  }
+  /* 숫자를 누르면 그 칸이 입력칸으로 바뀝니다 */
+  function nbEdit(td, p) {
+    td.innerHTML = '<div class="row" style="gap:4px;justify-content:flex-end">'
+      + '<input class="inp" style="width:78px;padding:4px 6px;font-size:12px;text-align:right" '
+      + 'data-nb="' + p.id + '" type="number" placeholder="숫자" '
+      + 'value="' + (p.neighbors == null ? '' : p.neighbors) + '">'
+      + '<button class="btn btn-a btn-s" data-savenb="' + p.id + '" style="padding:4px 8px">저장</button>'
+      + '</div>'
+      + '<div class="mono" style="font-size:10.5px">본인 신고 ' + esc(p.neighbors_band || '-') + '</div>';
+    var i = td.querySelector('input'); if (i) { i.focus(); i.select(); }
+  }
+
   function neighborCell(p) {
     return '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span> '
       + '<input class="inp" style="width:110px;display:inline-block;padding:4px 8px;font-size:13px" '
@@ -370,7 +396,7 @@
           + '<div class="mono">' + esc(p.phone || '') + '</div></td>'
           + '<td>' + esc(A.commName(p.community_id)) + '</td>'
           + '<td>' + A.lvBadge(p.level) + '</td><td class="num">' + won(lv.rate) + '</td>'
-          + '<td class="num">' + (p.neighbors == null ? '<span class="mono">' + esc(p.neighbors_band || '-') + '</span>' : won(p.neighbors)) + '</td>'
+          + '<td class="num">' + nbCell(p) + '</td>'
           + '<td class="num">' + pass + '</td>'
           + '<td class="num">' + (s.avg_rank == null ? '-' : s.avg_rank + '위') + '</td>'
           + '<td class="num">' + (s.done_month || 0) + '</td><td class="num">' + (s.done_total || 0) + '</td>'
@@ -2897,6 +2923,11 @@
       return;
     }
 
+    if ((t = e.target.closest('[data-nbopen]'))) {
+      var who = A.PEOPLE.filter(function (x) { return x.id === t.dataset.nbopen; })[0];
+      if (who) nbEdit(t.closest('td'), who);
+      return;
+    }
     if ((t = e.target.closest('[data-savenb]'))) {
       var el = document.querySelector('[data-nb="' + t.dataset.savenb + '"]');
       if (!el || el.value === '') { A.toast('숫자를 넣어 주세요'); return; }

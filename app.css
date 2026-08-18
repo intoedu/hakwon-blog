@@ -495,3 +495,9 @@ td.num.bad{color:var(--bad)}
 .step.done .sn{background:var(--ok);color:#fff}
 .step.lock{opacity:.72}
 .step.lock .inp{background:var(--ground);color:var(--muted);cursor:not-allowed}
+
+/* 블로거 목록의 이웃 수 — 눌러서 그 자리에서 고칩니다 */
+.nbbtn{background:none;border:1px dashed var(--line);border-radius:6px;padding:2px 8px;
+     font:inherit;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:650}
+.nbbtn:hover{border-color:var(--amber);color:var(--amber);border-style:solid}
+.nbbtn.none{color:var(--muted);font-weight:500}
