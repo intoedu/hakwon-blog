@@ -444,6 +444,34 @@
         </div>
       </div>
 
+      <div class="sec" style="margin-top:34px">태그 정하기 <small>글마다 태그 조합이 달라야 서로 안 묶입니다</small></div>
+      <div class="note" style="margin-bottom:14px">
+        태그는 <b>제목·본문만큼 세지는 않지만</b>, 학원이 강조하는 말을 계속 물고 가는 역할을 합니다.
+        <b>50편이 전부 같은 태그를 달면</b> 네이버가 한 덩어리로 보기 쉬우니
+        <b>고정 몇 개 + 나머지는 돌려쓰기</b>로 갑니다.
+      </div>
+      <div class="card">
+        <div class="row" style="margin-bottom:10px">
+          <label class="f" style="margin:0">주문</label>
+          <select class="inp" id="tgOrder" style="width:auto;flex:1;min-width:200px"></select>
+          <button class="btn btn-s" id="tgSuggest">글감에서 태그 뽑기</button>
+        </div>
+        <div>
+          <label class="f">모든 글에 넣을 태그 <small>학원 이름·지역처럼 꼭 물고 가야 할 것 · 2~4개</small></label>
+          <input class="inp" id="tgFixed" placeholder="혼공기적학원, 이매동학원, 분당학원">
+        </div>
+        <div style="margin-top:12px">
+          <label class="f">돌려쓸 태그 <small>여기서 글마다 다르게 뽑아 갑니다 · 20~40개면 넉넉합니다</small></label>
+          <textarea class="inp" id="tgPool" style="min-height:110px"
+            placeholder="쉼표로 구분해서 넣으세요"></textarea>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn btn-a" id="tgSave">태그 저장</button>
+          <span class="mono" id="tgInfo"></span>
+        </div>
+        <div id="tgPrev" style="margin-top:14px"></div>
+      </div>
+
       <details id="ruleBox" style="margin-top:26px" data-adminonly>
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
           ⚙️ 글에 같이 나가는 규칙 — 광고 표시 문구 · 하루 몇 편까지

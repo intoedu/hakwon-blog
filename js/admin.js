@@ -92,6 +92,7 @@
     fillSelects();
     renderDash(); renderStaffAll(); renderBlogStaff();
     renderOrders(); renderAssign(); renderReview(); renderProgress(); renderLinks(); renderRules();
+    tgFill(); tgLoad();
     loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
 
@@ -1485,7 +1486,10 @@
         }).join('') + '</select>'
         + '<button class="xdel" data-tpdel="' + i + '" title="지우기">×</button></div>'
         + '<textarea class="inp" data-tpb="' + i + '" rows="4" '
-        + 'placeholder="블로거가 읽을 내용을 붙여넣으세요">' + esc(t.body || '') + '</textarea></div>';
+        + 'placeholder="블로거가 읽을 내용을 붙여넣으세요">' + esc(t.body || '') + '</textarea>'
+        + '<input class="inp" data-tptag="' + i + '" style="margin-top:6px;font-size:12.5px" '
+        + 'placeholder="이 소재에만 붙일 태그 (쉼표로 구분 · 안 쓰셔도 됩니다)" '
+        + 'value="' + esc((t.tags || []).join(', ')) + '"></div>';
     }).join('');
   }
   function tpCollect() {
@@ -1494,8 +1498,10 @@
       var ti = document.querySelector('[data-tpt="' + i + '"]');
       var bo = document.querySelector('[data-tpb="' + i + '"]');
       var su = document.querySelector('[data-tpsub="' + i + '"]');
+      var tg = document.querySelector('[data-tptag="' + i + '"]');
       out.push({ title: ti ? ti.value.trim() : '', body: bo ? bo.value.trim() : '',
-                 subject: su ? su.value : (t.subject || '') });
+                 subject: su ? su.value : (t.subject || ''),
+                 tags: tg ? splitTags(tg.value) : (t.tags || []) });
     });
     return out;
   }
@@ -1574,6 +1580,116 @@
       + '편 · 월 ' + v.month_cap + '편');
     renderRules(); renderOrders();
   };
+
+  /* ── 태그 정하기 ──
+     예전엔 작성 폼에 「태그 7~10개」라고만 적혀 있어서 블로거가 알아서 달았습니다.
+     그러면 학원이 강조하는 말이 태그에서 빠지고, 50편이 같은 태그를 달 위험도 있습니다.
+     여기서 정해 두면 글마다 조합을 달리해 내려갑니다 (규칙은 core.js A.tagsFor). */
+  function tgFill() {
+    var el = $('tgOrder'); if (!el) return;
+    var k = el.value;
+    el.innerHTML = A.ORDERS.map(function (o) {
+      return '<option value="' + o.id + '">' + esc(o.academy_name) + '</option>';
+    }).join('') || '<option value="">주문이 없습니다</option>';
+    if (k) el.value = k;
+  }
+  function tgOrderNow() {
+    var id = $('tgOrder') && $('tgOrder').value;
+    return A.ORDERS.filter(function (o) { return o.id === id; })[0] || null;
+  }
+  function splitTags(v) {
+    return String(v || '').split(/[,\n]/)
+      .map(function (t) { return t.trim().replace(/^#+/, ''); })
+      .filter(Boolean);
+  }
+  function tgLoad() {
+    var o = tgOrderNow(); if (!o) return;
+    var t = o.tags || {};
+    $('tgFixed').value = (t.fixed || []).join(', ');
+    $('tgPool').value = (t.pool || []).join(', ');
+    tgPreview();
+  }
+  /* 이대로 저장하면 글 1·2·3번에 무엇이 붙는지 바로 보여줍니다 */
+  function tgPreview() {
+    var o = tgOrderNow(); if (!o || !$('tgPrev')) return;
+    var cfg = { fixed: splitTags($('tgFixed').value), pool: splitTags($('tgPool').value) };
+    var mine = POSTS.filter(function (p) { return p.order_id === o.id; }).slice(0, 3);
+    if (!mine.length) {
+      mine = [1, 2, 3].map(function (n) { return { seq: n, keyword: '(검색어 예시 ' + n + ')' }; });
+    }
+    $('tgInfo').textContent = '고정 ' + cfg.fixed.length + '개 · 돌려쓰기 ' + cfg.pool.length + '개';
+    $('tgPrev').innerHTML = '<div class="sec">이렇게 나갑니다</div>'
+      + mine.map(function (p) {
+        var tg = A.tagsFor({
+          tags: cfg, keyword: p.keyword, seq: p.seq,
+          topic_tags: topicTagsOf(p)
+        });
+        return '<div class="obit" style="padding:10px 12px"><b style="font-size:12.5px">'
+          + esc(p.keyword || '') + '</b><div class="tagline">'
+          + tg.map(function (x) { return '<span>#' + esc(x) + '</span>'; }).join('') + '</div></div>';
+      }).join('')
+      + '<div class="mono" style="margin-top:6px">앞쪽 고정 태그는 모든 글에 같이 가고, '
+      + '뒤쪽은 글마다 다르게 뽑힙니다.</div>';
+  }
+  function topicTagsOf(p) {
+    var t = ALLTOPICS.filter(function (x) { return x.id === p.topic_id; })[0];
+    return (t && t.tags) || [];
+  }
+  /* 주문에 이미 들어 있는 글감(지역·과목·학년·목적)에서 태그 후보를 만들어 줍니다.
+     ⚠️ 조합을 그냥 곱하면 「안말초 수능영어」처럼 말이 안 되는 것이 쏟아집니다.
+     키워드 만들 때 쓰는 badCombo() 를 그대로 재사용해 걸러 냅니다. */
+  function tgSuggest() {
+    var o = tgOrderNow(); if (!o) { A.toast('주문을 먼저 고르세요'); return; }
+    var reg = o.target_regions || [], sub = o.target_subjects || [];
+    var gra = o.target_grades || [], pur = o.target_purposes || [];
+
+    /* 학교 이름은 그 자체로 좋은 태그이고, 동네 이름은 조합에 씁니다 */
+    var school = reg.filter(function (r) { return /(초|중|고)$/.test(r); });
+    var area = reg.filter(function (r) { return school.indexOf(r) < 0; });
+
+    var fixed = [o.academy_name].concat(area.slice(0, 2).map(function (r) { return r + '학원'; }));
+    var pool = [];
+    area.forEach(function (r) {
+      sub.forEach(function (x) { if (!badCombo(r, '', x, '')) pool.push(r + x); });
+      gra.forEach(function (g) { if (!badCombo(r, g, '', '')) pool.push(r + g + '학원'); });
+      pool.push(r + '학원추천');
+    });
+    sub.forEach(function (x) {
+      gra.forEach(function (g) { if (!badCombo('', g, x, '')) pool.push(g + x); });
+      pur.forEach(function (u) { if (!badCombo('', '', x, u)) pool.push(x + u); });
+    });
+    school.forEach(function (sc) { pool.push(sc + '학원'); pool.push(sc + '내신'); });
+
+    var seen = {}, out = [];
+    fixed.forEach(function (t) { seen[String(t).replace(/\s+/g, '')] = 1; });
+    pool.concat(sub, school).forEach(function (t) {
+      t = String(t || '').replace(/\s+/g, '');
+      if (t && !seen[t]) { seen[t] = 1; out.push(t); }
+    });
+    $('tgFixed').value = fixed.filter(Boolean).join(', ');
+    $('tgPool').value = out.join(', ');
+    tgPreview();
+    A.toast('글감에서 ' + out.length + '개를 뽑았습니다. 이상한 건 지우세요');
+  }
+  if ($('tgOrder')) {
+    $('tgOrder').onchange = tgLoad;
+    $('tgFixed').oninput = tgPreview;
+    $('tgPool').oninput = tgPreview;
+    $('tgSuggest').onclick = tgSuggest;
+    $('tgSave').onclick = async function () {
+      var o = tgOrderNow(); if (!o) return;
+      var body = { fixed: splitTags($('tgFixed').value), pool: splitTags($('tgPool').value) };
+      if (!body.fixed.length && !body.pool.length) { A.toast('태그를 하나라도 넣어 주세요'); return; }
+      this.disabled = true;
+      try {
+        var n = await A.rpc('order_set_tags', { p_order: o.id, p_tags: body });
+        o.tags = body;
+        A.toast('태그 ' + n + '개를 저장했습니다');
+        renderOrders();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+  }
 
   /* ═══ 5 글 나눠주기 ═══ */
   function renderAssign() {

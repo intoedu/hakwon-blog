@@ -178,6 +178,40 @@ window.ESC = (function () {
     return files.length;
   };
 
+  /* ── 이 글에 달 태그 고르기 ──
+     예전엔 「7~10개」라고만 적어 두고 블로거가 알아서 달았습니다. 그러면
+     ①학원이 강조하는 말이 태그에 안 들어가고 ②50편이 전부 같은 태그를 달아
+     한 학원 글끼리 묶여 버립니다. 그래서 세 갈래로 만들어 내려 줍니다.
+       ① 고정 태그 — 학원명·지역처럼 모든 글에 들어가야 하는 것
+       ② 그 글 검색어 — 제목에 쓰는 말을 붙여서 하나
+       ③ 소재 태그 — 그 글이 다루는 이야기에만 붙는 것
+       ④ 돌려쓰는 태그 — 글 순번으로 밀어가며 뽑아, 글마다 조합이 달라지게
+     ⚠️ 순번을 한 칸씩 밀면 옆 글과 거의 같아지므로 뽑는 개수만큼 건너뜁니다
+     (사진 고르기와 같은 이유입니다). */
+  A.tagsFor = function (p, max) {
+    max = max || 10;
+    var cfg = (p && p.tags) || {}, out = [], seen = {};
+    function add(t) {
+      t = String(t == null ? '' : t).trim().replace(/^#+/, '').replace(/\s+/g, ' ');
+      if (!t || seen[t] || out.length >= max) return;
+      seen[t] = 1; out.push(t);
+    }
+    (cfg.fixed || []).forEach(add);
+    if (p && p.keyword) add(String(p.keyword).replace(/\s+/g, ''));
+    (p && p.topic_tags || []).forEach(add);
+
+    var pool = (cfg.pool || []).filter(function (t) {
+      return t && !seen[String(t).trim().replace(/^#+/, '')];
+    });
+    if (pool.length) {
+      var want = Math.max(0, max - out.length);
+      var step = Math.max(1, want);
+      var start = (((p && p.seq || 1) - 1) * step) % pool.length;
+      for (var i = 0; i < pool.length && out.length < max; i++) add(pool[(start + i) % pool.length]);
+    }
+    return out;
+  };
+
   /* 유튜브 주소에서 영상 id 뽑기 (youtu.be · watch?v= · embed · shorts · live) */
   A.ytId = function (url) {
     var m = String(url || '')

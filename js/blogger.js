@@ -483,6 +483,7 @@
       + '<dt>지역</dt><dd>' + esc(p.region || '-') + '</dd>'
       + '</dl>'
       + topicBlock(p)
+      + tagBlock(p)
       + adBlock(p)
       + photoBlock(p)
       + (p.info_pack ? '<label class="f">정보 박스 — 글에 그대로 붙여넣으세요</label>'
@@ -504,7 +505,8 @@
       + fl('정보 박스', '위의 [정보팩 복사] 눌러서 그대로 붙여넣기')
       + fl('지도', '네이버 지도에서 학원 검색해서 넣기 · 30초')
       + fl('마무리', '2줄 + 학원 홈페이지 링크 1개')
-      + fl('태그', '7~10개')
+      + fl('태그', tagCount(p) ? '아래에 정해 둔 ' + tagCount(p) + '개를 그대로 넣으세요'
+        : '7~10개')
       + fl('광고 표기', '맨 아래 한 줄 — 정보팩에 들어 있습니다')
       + '</div>'
       + '<div class="grid g2" style="margin-top:14px">'
@@ -567,6 +569,10 @@
     if ($('workPick')) $('workPick').onchange = function () {
       CUR = MY.filter(function (x) { return x.id === this.value; }.bind(this))[0]; renderWork();
     };
+    if ($('btnCopyTag')) $('btnCopyTag').onclick = function () {
+      var txt = A.tagsFor(p).map(function (x) { return '#' + x; }).join(' ');
+      navigator.clipboard.writeText(txt).then(function () { A.toast('태그를 복사했습니다'); });
+    };
     if ($('btnCopyAd')) $('btnCopyAd').onclick = function () {
       navigator.clipboard.writeText(adLineOf(p)).then(function () { A.toast('광고 문구를 복사했습니다'); });
     };
@@ -612,6 +618,21 @@
       + '<b>내 말로 풀어서</b> 써 주세요. 똑같이 옮겨 적으면 다른 분 글과 겹쳐 '
       + '검색에 안 잡히고, 돌려보내 드립니다.</div></div>';
   }
+  /* 이 글에 달 태그 — 글마다 조합이 다릅니다 (규칙은 core.js A.tagsFor) */
+  function tagCount(p) { return A.tagsFor(p).length; }
+  function tagBlock(p) {
+    var tg = A.tagsFor(p);
+    if (!tg.length) return '';
+    return '<div class="tagbox"><label class="f">이 글에 달 태그 '
+      + '<small>글마다 다릅니다 · 이대로 넣어 주세요</small></label>'
+      + '<div class="tagline" id="tagLine">'
+      + tg.map(function (x) { return '<span>#' + esc(x) + '</span>'; }).join('') + '</div>'
+      + '<button class="btn btn-s" id="btnCopyTag">태그 복사</button>'
+      + '<span class="mono" style="margin-left:8px">'
+      + '<b>태그를 바꾸거나 더 넣지 말아 주세요.</b> 다른 분 글과 겹치지 않게 짠 것입니다.'
+      + '</span></div>';
+  }
+
   /* 광고 표시 문구 — 글마다 다른 문구가 돌아갑니다 (전부 같으면 광고글로 찍힙니다).
      고르는 규칙은 core.js A.adLine 에 있습니다 (관리자 화면과 같은 것을 씁니다) */
   function adLineOf(p) { return A.adLine(p); }
