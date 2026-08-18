@@ -727,15 +727,28 @@
   }
   function renderEdu() {
     $('eduSessions').innerHTML = SESSIONS.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>교육</th><th>날짜</th><th>실시간</th><th>녹화본</th><th>줌 링크</th><th></th></tr></thead><tbody>'
+      + '<thead><tr><th>교육</th><th>날짜</th><th>실시간</th><th>녹화본</th><th>줌 링크</th><th>녹화본 주소</th><th></th></tr></thead><tbody>'
       + SESSIONS.map(function (s) {
         var live = ATT.filter(function (a) { return a.session_id === s.id && a.mode === 'live'; }).length;
         var vid = ATT.filter(function (a) { return a.session_id === s.id && a.mode === 'video'; }).length;
+        /* 녹화본으로 봤다고 낸 사람 중 아직 확인 안 한 건 — 이게 관리자가 할 일입니다 */
+        var wait = ATT.filter(function (a) {
+          return a.session_id === s.id && a.mode === 'video' && !a.confirmed_at;
+        }).length;
         return '<tr><td><b>' + (s.kind === 't1' ? '1차 교육' : '2차 교육') + '</b></td>'
           + '<td class="mono">' + A.fdt(s.held_at) + '</td>'
-          + '<td class="num">' + live + '명</td><td class="num">' + vid + '명</td>'
-          + '<td class="mono">' + esc((s.zoom_url || '').slice(0, 30)) + '</td>'
-          + '<td><button class="btn btn-s" data-att="' + s.id + '">참석 체크</button></td></tr>';
+          + '<td class="num">' + live + '명</td>'
+          + '<td class="num">' + vid + '명'
+          + (wait ? ' <span class="chip c-wait">확인 ' + wait + '</span>' : '') + '</td>'
+          + '<td class="mono">' + esc((s.zoom_url || '').slice(0, 24)) + '</td>'
+          + '<td><div class="row" style="gap:4px">'
+          + '<input class="inp" style="width:150px;padding:4px 7px;font-size:12px" '
+          + 'data-rp="' + s.id + '" placeholder="유튜브 일부공개 주소" '
+          + 'value="' + esc(s.replay_url || '') + '">'
+          + '<button class="btn btn-s" data-saverp="' + s.id + '" style="padding:4px 8px">저장</button>'
+          + '</div></td>'
+          + '<td><button class="btn btn-s' + (wait ? ' btn-a' : '') + '" data-att="' + s.id + '">'
+          + (wait ? '확인할 것 ' + wait + '건' : '참석 체크') + '</button></td></tr>';
       }).join('') + '</tbody></table></div>' : A.empty('줌 일정이 없습니다. 아래에서 추가하세요.');
 
     $('eduMaterials').innerHTML = MATS.length ? '<div class="matlist">' + MATS.map(function (m) {
@@ -3193,6 +3206,27 @@
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
+    if ((t = e.target.closest('[data-saverp]'))) {
+      var rp = document.querySelector('[data-rp="' + t.dataset.saverp + '"]');
+      t.disabled = true;
+      var r = await A.sb.from('training_sessions')
+        .update({ replay_url: rp && rp.value.trim() ? rp.value.trim() : null })
+        .eq('id', t.dataset.saverp).select();
+      t.disabled = false;
+      if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+      A.toast('녹화본 주소를 저장했습니다'); await loadEdu(); return;
+    }
+    if ((t = e.target.closest('[data-attok]')) || (t = e.target.closest('[data-attno]'))) {
+      var ok = !!t.dataset.attok;
+      var kk = (t.dataset.attok || t.dataset.attno).split('|');
+      t.disabled = true;
+      try {
+        await A.rpc('training_attend_confirm', { p_session: kk[0], p_blogger: kk[1], p_ok: ok });
+        A.toast(ok ? '이수 처리했습니다' : '되돌렸습니다');
+        await loadEdu(); await openAttend(kk[0]);
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
     if ((t = e.target.closest('[data-mark]'))) {
       var parts = t.dataset.mark.split('|');
       try { await A.rpc('training_attend', { p_session: parts[0], p_blogger: parts[1], p_mode: parts[2] });
@@ -3211,9 +3245,27 @@
       + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th><th>지금</th><th></th></tr></thead><tbody>'
       + appr.map(function (p) {
         var a = ATT.filter(function (x) { return x.session_id === sid && x.blogger_id === p.id; })[0];
-        var now = a ? (a.mode === 'live' ? '실시간 참석' : a.mode === 'video' ? '녹화본으로 이수' : '결석') : '체크 안 함';
+        var now = !a ? '<span class="mono">체크 안 함</span>'
+          : a.mode === 'live'
+            ? '<span class="chip c-ok">실시간 참석</span>'
+              + (a.self_at ? ' <span class="chip">본인 체크</span>' : '')
+            : a.mode === 'video'
+              ? (a.confirmed_at
+                ? '<span class="chip c-ok">녹화본 이수</span>'
+                : '<span class="chip c-wait">확인 기다림</span>')
+              : '<span class="chip c-bad">결석</span>';
+        /* 녹화본으로 봤다고 낸 사람은 요약을 읽고 통과시킵니다 */
+        var note = (a && a.mode === 'video' && a.note)
+          ? '<div class="note" style="margin-top:7px;font-size:12.5px">'
+            + '<b>낸 요약</b> · ' + esc(a.note)
+            + (a.confirmed_at ? '' :
+              '<div class="row" style="margin-top:8px">'
+              + '<button class="btn btn-a btn-s" data-attok="' + sid + '|' + p.id + '">이수 처리</button>'
+              + '<button class="btn btn-s" data-attno="' + sid + '|' + p.id + '">다시 보라기</button></div>')
+            + '</div>'
+          : '';
         return '<tr><td><b>' + esc(p.name) + '</b></td><td>' + esc(A.commName(p.community_id)) + '</td>'
-          + '<td>' + esc(now) + '</td><td><div class="row">'
+          + '<td>' + now + note + '</td><td><div class="row">'
           + '<button class="btn btn-s" data-mark="' + sid + '|' + p.id + '|live">실시간</button>'
           + '<button class="btn btn-s" data-mark="' + sid + '|' + p.id + '|video">녹화본</button>'
           + '<button class="btn btn-s" data-mark="' + sid + '|' + p.id + '|absent">결석</button>'

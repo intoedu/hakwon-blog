@@ -231,16 +231,10 @@
           + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
       + '<br><br><b>첫 글도 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.</div></div>';
 
-    var future = SESS.filter(function (x) { return new Date(x.held_at) >= new Date(Date.now() - 864e5); });
-    $('bEduSessions').innerHTML = future.length ? future.map(function (x) {
-      var a = ATT.filter(function (y) { return y.session_id === x.id; })[0];
-      return '<div class="job"><div><h4>' + (x.kind === 't1' ? '1차 교육 (줌)' : '2차 교육 (줌) — 내가 쓴 글 피드백') + '</h4>'
-        + '<div class="meta">' + A.fdt(x.held_at) + ' · 약 1시간'
-        + (a ? ' · <b style="color:var(--ok)">' + (a.mode === 'live' ? '참석 확인됨' : '녹화본으로 이수') + '</b>' : '') + '</div></div>'
-        + '<div class="right">'
-        + (x.zoom_url ? '<a class="btn btn-a btn-s" href="' + esc(x.zoom_url) + '" target="_blank" rel="noopener">줌 링크 ↗</a>' : '')
-        + '</div></div>';
-    }).join('') : A.empty('아직 잡힌 일정이 없습니다. 정해지면 알려드립니다.');
+    /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
+    $('bEduSessions').innerHTML = SESS.length
+      ? SESS.slice().reverse().map(sessRow).join('')
+      : A.empty('아직 잡힌 일정이 없습니다. 정해지면 알려드립니다.');
 
     $('bEduMats').innerHTML = MATS.length
       ? '<div class="matlist">' + MATS.map(matRow).join('') + '</div>'
@@ -676,6 +670,64 @@
       + '<b>내 말로 풀어서</b> 써 주세요. 똑같이 옮겨 적으면 다른 분 글과 겹쳐 '
       + '검색에 안 잡히고, 돌려보내 드립니다.</div></div>';
   }
+  /* ── 줌 한 회차 ──
+     ⚠️ 예전엔 관리자가 한 명씩 눌러 줘야 했습니다. 100명이 되면 못 합니다.
+     실시간 참석은 본인이 누르면 바로 인정하고(줌에 관리자가 같이 있었으니 대조가 됩니다),
+     녹화본은 안 보고도 누를 수 있으므로 **한 줄 요약을 받고 관리자가 확인**해야 인정합니다. */
+  function sessRow(x) {
+    var a = ATT.filter(function (y) { return y.session_id === x.id; })[0];
+    var past = new Date(x.held_at) <= new Date();
+    var title = x.kind === 't1' ? '1차 교육 (줌)' : '2차 교육 (줌) — 내가 쓴 글 피드백';
+
+    var state = !a ? ''
+      : a.mode === 'live'
+        ? '<span class="chip c-ok">참석 완료</span>'
+        : a.mode === 'video'
+          ? (a.confirmed_at
+            ? '<span class="chip c-ok">녹화본으로 이수</span>'
+            : '<span class="chip c-wait">녹화본 확인 기다리는 중</span>')
+          : '<span class="chip c-bad">결석</span>';
+
+    var right = (x.zoom_url && !past
+      ? '<a class="btn btn-a btn-s" href="' + esc(x.zoom_url) + '" target="_blank" rel="noopener">줌 링크 ↗</a>'
+      : '')
+      + (past && x.replay_url
+        ? '<a class="btn btn-s" href="' + esc(x.replay_url) + '" target="_blank" rel="noopener">녹화본 보기 ↗</a>'
+        : '');
+
+    /* 아직 체크 안 했고 이미 지난 회차면 본인이 고릅니다 */
+    var pick = (past && (!a || a.mode === 'absent'))
+      ? '<div class="attpick">'
+        + '<div class="mono" style="margin-bottom:8px"><b>이 교육을 들으셨나요?</b> 직접 체크해 주세요.</div>'
+        + '<div class="row">'
+        + '<button class="btn btn-a btn-s" data-att1="' + x.id + '">줌에 참석했습니다</button>'
+        + '<button class="btn btn-s" data-att2="' + x.id + '">못 갔습니다 — 녹화본으로 볼게요</button>'
+        + '</div>'
+        + '<div class="attvid hide" data-attbox="' + x.id + '">'
+        + (x.replay_url
+          ? '<div class="mono" style="margin:10px 0 8px">위 <b>[녹화본 보기]</b>로 끝까지 보신 뒤 '
+            + '아래에 <b>무엇을 배우셨는지 20자 이상</b> 적어 주세요. 담당자가 읽고 이수 처리해 드립니다.</div>'
+          : '<div class="note warn" style="margin:10px 0 8px">아직 녹화본이 안 올라왔습니다. '
+            + '올라오면 알려드리겠습니다.</div>')
+        + '<textarea class="inp" data-attnote="' + x.id + '" rows="3" '
+        + 'placeholder="예) 블로그 지수와 C-Rank 개념, 제목 앞쪽에 검색어를 넣어야 하는 이유를 배웠습니다"></textarea>'
+        + '<div class="row" style="margin-top:8px">'
+        + '<button class="btn btn-a btn-s" data-att3="' + x.id + '">다 봤습니다 — 요약 내기</button>'
+        + '</div></div></div>'
+      : '';
+
+    /* 되돌려진 경우(관리자가 확인을 풀었을 때) 다시 낼 수 있게 */
+    var again = (a && a.mode === 'video' && !a.confirmed_at)
+      ? '<div class="mono" style="margin-top:8px">낸 요약 — ' + esc(a.note || '') + '</div>'
+      : '';
+
+    return '<div class="job"><div><h4>' + title + ' ' + state + '</h4>'
+      + '<div class="meta">' + A.fdt(x.held_at) + ' · 약 1시간'
+      + (past ? ' · 지난 교육' : ' · 예정') + '</div>'
+      + again + pick + '</div>'
+      + '<div class="right">' + right + '</div></div>';
+  }
+
   /* 이 글에 달 태그 — 글마다 조합이 다릅니다 (규칙은 core.js A.tagsFor) */
   function tagCount(p) { return A.tagsFor(p).length; }
   function tagBlock(p) {
@@ -906,6 +958,39 @@
       z.disabled = false; z.textContent = '⬇ ' + zpaths.length + '장 한번에 받기';
       return;
     }
+    /* 줌 참석 — 본인 체크 */
+    var s1 = e.target.closest('[data-att1]');
+    if (s1) {
+      if (PREVIEW) { A.toast('미리보기에서는 바꿀 수 없습니다'); return; }
+      s1.disabled = true;
+      try {
+        await A.rpc('training_self_attend', { p_session: s1.dataset.att1, p_mode: 'live', p_note: null });
+        A.toast('참석으로 체크했습니다');
+        await A.loadBlogger();
+      } catch (err) { A.toast('실패: ' + err.message); s1.disabled = false; }
+      return;
+    }
+    var s2 = e.target.closest('[data-att2]');
+    if (s2) {
+      var box = document.querySelector('[data-attbox="' + s2.dataset.att2 + '"]');
+      if (box) box.classList.toggle('hide');
+      return;
+    }
+    var s3 = e.target.closest('[data-att3]');
+    if (s3) {
+      if (PREVIEW) { A.toast('미리보기에서는 바꿀 수 없습니다'); return; }
+      var nt = document.querySelector('[data-attnote="' + s3.dataset.att3 + '"]');
+      var txt = nt ? nt.value.trim() : '';
+      if (txt.length < 20) { A.toast('무엇을 배우셨는지 20자 이상 적어 주세요'); nt && nt.focus(); return; }
+      s3.disabled = true;
+      try {
+        await A.rpc('training_self_attend', { p_session: s3.dataset.att3, p_mode: 'video', p_note: txt });
+        A.toast('냈습니다. 담당자가 읽고 이수 처리해 드립니다');
+        await A.loadBlogger();
+      } catch (err) { A.toast('실패: ' + err.message); s3.disabled = false; }
+      return;
+    }
+
     var pl = e.target.closest('[data-play]');
     if (pl) {
       var id = pl.dataset.play;

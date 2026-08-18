@@ -501,3 +501,7 @@ td.num.bad{color:var(--bad)}
      font:inherit;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:650}
 .nbbtn:hover{border-color:var(--amber);color:var(--amber);border-style:solid}
 .nbbtn.none{color:var(--muted);font-weight:500}
+
+/* 줌 참석 본인 체크 */
+.attpick{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.attvid{margin-top:4px}
