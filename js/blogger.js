@@ -5,6 +5,11 @@
   var MY = [], SESS = [], MATS = [], MINE = [], ATT = [], PAY = [], NOTI = [], CUR = null;
   var PREVIEW = false;   /* 관리자가 블로거 화면을 들여다보는 중이면 true */
 
+  /* 글쓰기 화면에 남겨 두는 상태.
+     ⚠️ 예전엔 submitted 가 빠져 있어서 **원고를 내는 순간 글이 화면에서 사라졌습니다.**
+     검수 중인지 통과됐는지 볼 데가 없어져 「주소 넣는 곳을 못 찾겠다」가 됩니다. */
+  var WORKST = ['assigned', 'writing', 'rework', 'submitted', 'approved', 'published'];
+
   /* 관리자가 「블로거」로 전환했을 때 — 그 사람 눈으로 보이는 화면을 그대로 그립니다.
      보기만 되고 버튼은 잠급니다. (서버도 남의 글은 못 건드리게 막혀 있습니다) */
   A.loadBloggerPreview = async function (id) {
@@ -461,9 +466,7 @@
   }
 
   function renderWork() {
-    if (!CUR) CUR = MY.filter(function (p) {
-      return ['assigned', 'writing', 'rework', 'approved'].indexOf(p.status) >= 0;
-    })[0];
+    if (!CUR) CUR = MY.filter(function (p) { return WORKST.indexOf(p.status) >= 0; })[0];
     if (!CUR) { $('bWork').innerHTML = A.empty('지금 쓸 글이 없습니다. 배정되면 작업함에 뜹니다.'); return; }
     var p = MY.filter(function (x) { return x.id === CUR.id; })[0] || CUR;
     CUR = p;
@@ -515,25 +518,25 @@
       + '<div class="note warn" style="margin-top:14px"><b>가보지 않은 걸 가본 것처럼 쓰면 안 됩니다.</b> '
       + '"상담받고 왔어요"가 아니라 <b>"찾는 분들을 위해 정리해봤습니다"</b> 로 써 주세요.</div>';
 
-    var act;
-    if (p.status === 'approved') {
-      act = '<div class="sec" style="color:var(--ok)">✅ 원고가 통과됐습니다 — 이제 블로그에 올려주세요</div>'
-        + '<div class="card" style="border-color:var(--ok);box-shadow:inset 0 0 0 1px var(--ok)">'
-        + '<div class="note" style="margin-bottom:14px"><b>올리기 전에 확인해 주세요.</b><br>'
-        + '· ' + dailyRule() + '<br>'
-        + '· 제목에 <b>' + esc(p.keyword || '') + '</b> 이 들어갔는지<br>'
-        + '· 맨 아래 광고 표기가 있는지</div>'
-        + '<label class="f" style="font-size:14px;color:var(--ink)">올린 글 주소를 여기에 붙여넣어 주세요</label>'
-        + '<input class="inp" id="pubUrl" placeholder="https://blog.naver.com/…" '
-        + 'style="border-color:var(--ok)">'
-        + '<div class="mono" style="margin-top:5px">'
-        + '내 블로그에서 그 글을 열고, 주소창의 주소를 그대로 복사해 오시면 됩니다.</div>'
-        + '<div class="row" style="margin-top:14px"><button class="btn btn-a" id="btnPublish">다 올렸습니다</button>'
-        + '<span class="mono"><b>주소를 넣으셔야 정산에 잡힙니다.</b> 올리기만 하면 저희가 모릅니다</span></div></div>'
-        + '<div class="note warn" style="margin-top:14px"><b>올린 글은 1년 동안 지우지 말아 주세요.</b> '
-        + '학원이 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>';
-    } else {
-      act = '<div class="sec">다 쓰셨으면</div><div class="card">'
+    /* ── 세 단계를 늘 같이 보여줍니다 ──
+       예전엔 「원고 내기」와 「주소 넣기」가 상태에 따라 하나씩만 떴습니다. 그래서
+       원고를 내면 화면이 통째로 바뀌어 지금 어디까지 왔는지, 주소는 어디에 넣는지
+       알 수가 없었습니다. 이제 세 칸이 늘 있고 지금 할 칸만 색이 삽니다. */
+    var st = p.status;
+    var sent = ['submitted', 'approved', 'published'].indexOf(st) >= 0;   /* 원고를 냈나 */
+    var okd = ['approved', 'published'].indexOf(st) >= 0;                 /* 통과됐나 */
+    var up = st === 'published';                                          /* 올렸나 */
+
+    /* ① 원고 내기 */
+    var s1 = sent
+      ? '<div class="step done"><div class="sh"><span class="sn">1</span>원고 내기'
+        + '<span class="chip c-ok">냈습니다</span></div>'
+        + (p.content_url
+          ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">'
+            + '낸 원고 열어보기 ↗</a>' : '')
+        + '<div class="mono" style="margin-top:8px">고칠 것이 있으면 담당자가 '
+        + '돌려보내 드립니다. 그때 다시 열립니다.</div></div>'
+      : '<div class="step now"><div class="sh"><span class="sn">1</span>원고 내기</div>'
         + '<label class="f">구글 문서 링크</label>'
         + '<input class="inp" id="docUrl" value="' + esc(p.content_url || '') + '" placeholder="https://docs.google.com/…">'
         + '<div class="note warn" style="margin-top:10px"><b>링크만 보내면 저희가 못 엽니다.</b><br>'
@@ -547,11 +550,66 @@
         + '<input class="inp" id="docMemo" value="' + esc(p.memo || '') + '"></div>'
         + '<div class="row" style="margin-top:14px"><button class="btn btn-a" id="btnSubmit">원고 내기</button>'
         + '<span class="mono">아직 블로그에 올리지 마세요. 통과된 다음에 올립니다</span></div></div>';
-    }
 
-    var pick = MY.filter(function (x) {
-      return ['assigned', 'writing', 'rework', 'approved'].indexOf(x.status) >= 0;
-    });
+    /* ② 검수 */
+    var s2 = st === 'submitted'
+      ? '<div class="step wait"><div class="sh"><span class="sn">2</span>검수'
+        + '<span class="chip c-wait">보는 중</span></div>'
+        + '<div class="mono">담당자가 원고를 읽고 있습니다. <b>하루 안에</b> 결과를 알려드립니다. '
+        + '결과가 나오면 이 자리에 뜨고, 알림도 갑니다.</div></div>'
+      : st === 'rework'
+        ? '<div class="step bad"><div class="sh"><span class="sn">2</span>검수'
+          + '<span class="chip c-bad">고쳐 주세요</span></div>'
+          + '<div class="note bad"><b>고쳐야 할 것</b><br>'
+          + ((p.reject_reasons || []).map(function (r) { return '· ' + esc(r); }).join('<br>') || '·  —')
+          + (p.review_note ? '<br><br>' + esc(p.review_note) : '') + '</div>'
+          + '<div class="mono" style="margin-top:8px">고치신 뒤 위 1번에서 다시 내주세요.</div></div>'
+        : okd
+          ? '<div class="step ok"><div class="sh"><span class="sn">2</span>검수'
+            + '<span class="chip c-ok">통과</span></div>'
+            + '<div class="mono">원고가 통과됐습니다. 이제 아래 3번으로 가시면 됩니다.</div></div>'
+          : '<div class="step lock"><div class="sh"><span class="sn">2</span>검수</div>'
+            + '<div class="mono">원고를 내시면 담당자가 읽습니다.</div></div>';
+
+    /* ③ 블로그에 올리고 주소 넣기 — 칸은 처음부터 보이되 통과 전에는 잠깁니다 */
+    var s3 = '<div class="step ' + (up ? 'done' : okd ? 'ok' : 'lock') + '">'
+      + '<div class="sh"><span class="sn">3</span>블로그에 올리고 주소 넣기'
+      + (up ? '<span class="chip c-ok">넣었습니다</span>'
+           : okd ? '<span class="chip c-ok">지금 하세요</span>'
+                 : '<span class="chip">아직 잠겨 있습니다</span>') + '</div>'
+      + (okd && !up
+        ? '<div class="note" style="margin-bottom:12px"><b>올리기 전에 확인해 주세요.</b><br>'
+          + '· ' + dailyRule() + '<br>'
+          + '· 제목에 <b>' + esc(p.keyword || '') + '</b> 이 들어갔는지<br>'
+          + '· 맨 아래 광고 표기가 있는지</div>'
+        : '')
+      + '<label class="f">올린 글 주소</label>'
+      + '<input class="inp" id="pubUrl" placeholder="https://blog.naver.com/…" '
+      + 'value="' + esc(p.published_url || '') + '"'
+      + (okd && !up ? ' style="border-color:var(--ok)"' : ' disabled') + '>'
+      + (up
+        ? '<div class="row" style="margin-top:10px">'
+          + '<a class="btn btn-s" href="' + esc(p.published_url || '') + '" target="_blank" rel="noopener">'
+          + '올린 글 열어보기 ↗</a>'
+          + '<span class="mono">담당자가 검색 순위를 확인하면 정산에 잡힙니다</span></div>'
+        : okd
+          ? '<div class="mono" style="margin-top:5px">'
+            + '내 블로그에서 그 글을 열고, 주소창의 주소를 그대로 복사해 오시면 됩니다.</div>'
+            + '<div class="row" style="margin-top:14px">'
+            + '<button class="btn btn-a" id="btnPublish">다 올렸습니다</button>'
+            + '<span class="mono"><b>주소를 넣으셔야 정산에 잡힙니다.</b> 올리기만 하면 저희가 모릅니다</span></div>'
+          : '<div class="mono" style="margin-top:5px">'
+            + '<b>원고가 통과되어야 열립니다.</b> 통과 전에 올리시면 고쳐 달라고 할 때 '
+            + '이미 올라간 글을 내려야 합니다.</div>')
+      + '</div>'
+      + (up || okd
+        ? '<div class="note warn" style="margin-top:14px"><b>올린 글은 1년 동안 지우지 말아 주세요.</b> '
+          + '학원이 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>'
+        : '');
+
+    var act = '<div class="sec">여기까지 오면 끝납니다</div>' + s1 + s2 + s3;
+
+    var pick = MY.filter(function (x) { return WORKST.indexOf(x.status) >= 0; });
     var picker = pick.length > 1 ? '<div class="row" style="margin-bottom:14px">'
       + '<label class="f" style="margin:0">쓸 글 고르기</label>'
       + '<select class="inp" id="workPick" style="width:auto;flex:1;min-width:200px">'
@@ -562,7 +620,7 @@
 
     /* 원고가 통과된 뒤에는 「올린 글 주소 넣기」가 맨 위에 옵니다.
        예전에는 긴 작성 가이드 아래에 묻혀 있어서 못 찾으셨습니다. */
-    $('bWork').innerHTML = picker + head + (p.status === 'approved'
+    $('bWork').innerHTML = picker + head + (sent || st === 'rework'
       ? act + '<details class="foldguide"><summary>글 쓰는 법 다시 보기</summary>' + form + '</details>'
       : form + act);
 

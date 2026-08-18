@@ -473,3 +473,25 @@ td.num.bad{color:var(--bad)}
 .tagline{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
 .tagline span{font-size:12.5px;font-weight:650;padding:3px 9px;border-radius:999px;
      background:color-mix(in srgb,var(--amber) 13%,transparent);color:var(--amber)}
+
+/* 글쓰기 세 단계 — 지금 할 칸만 색이 살고, 끝난 칸은 회색, 아직인 칸은 잠깁니다 */
+.step{border:1px solid var(--line);border-radius:12px;background:var(--surface);
+     padding:16px 18px;margin-bottom:12px}
+.step .sh{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:750;margin-bottom:12px}
+.step .sn{display:grid;place-items:center;width:23px;height:23px;flex:none;border-radius:50%;
+     background:var(--line);color:var(--muted);font-size:12px;font-weight:800}
+.step .sh .chip{margin-left:auto}
+.step.now{border-color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
+.step.now .sn{background:var(--amber);color:#1A1206}
+.step.ok{border-color:var(--ok);box-shadow:inset 0 0 0 1px var(--ok)}
+.step.ok .sn{background:var(--ok);color:#fff}
+.step.bad{border-color:var(--bad);box-shadow:inset 0 0 0 1px var(--bad)}
+.step.bad .sn{background:var(--bad);color:#fff}
+.step.wait{border-color:var(--wait);background:var(--surface-2)}
+.step.wait .sn{background:var(--wait);color:#fff}
+/* 끝난 칸·아직인 칸은 연한 회색으로 물러나 있습니다 */
+.step.done,.step.lock{background:var(--surface-2);border-style:dashed}
+.step.done .sh,.step.lock .sh{color:var(--muted)}
+.step.done .sn{background:var(--ok);color:#fff}
+.step.lock{opacity:.72}
+.step.lock .inp{background:var(--ground);color:var(--muted);cursor:not-allowed}
