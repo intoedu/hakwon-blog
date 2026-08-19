@@ -328,6 +328,14 @@ window.ESC = (function () {
       pw.dataset.filled = key;
       pw.onchange = function () { A.pickPreview(A.VIEW_AS, this.value); };
     }
+    /* 「이 사람 화면으로 가기」로 들어온 경우 그 사람을 먼저 봅니다.
+       (안 그러면 첫 사람을 한 번 열고 나서 다시 여는 헛걸음이 생깁니다) */
+    if (A.PREVIEW_WANT && list.some(function (p) { return p.id === A.PREVIEW_WANT; })) {
+      var want = A.PREVIEW_WANT; A.PREVIEW_WANT = null;
+      A.pickPreview(mode, want); return;
+    }
+    A.PREVIEW_WANT = null;
+
     /* 아까 고른 사람이 목록에 아직 있으면 그 사람을 그대로 봅니다.
        (예전엔 무조건 첫 사람을 열어서, 고른 이름과 화면이 어긋났습니다) */
     var keep = list.some(function (p) { return p.id === cur; });

@@ -505,3 +505,11 @@ td.num.bad{color:var(--bad)}
 /* 줌 참석 본인 체크 */
 .attpick{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .attvid{margin-top:4px}
+
+/* 블로거 목록 — 이름을 눌러 신청 내용 펼치기 */
+.nmbtn{background:none;border:0;padding:0;font:inherit;font-weight:750;color:var(--ink);
+     text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+.nmbtn:hover{color:var(--amber)}
+tr.bdetail td{background:var(--surface-2);padding:0}
+.bdbox{padding:16px 18px;border-left:3px solid var(--amber)}
+.bdbox .kv{margin:0}

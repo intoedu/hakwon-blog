@@ -391,7 +391,9 @@
         var opts = A.LEVELS.map(function (l) {
           return '<option value="' + l.lv + '"' + (l.lv === p.level ? ' selected' : '') + '>' + l.lv + '단계</option>';
         }).join('');
-        return '<tr><td><b>' + esc(p.name) + '</b>'
+        return '<tr data-brow="' + p.id + '"><td>'
+          + '<button class="nmbtn" data-bopen="' + p.id + '" title="눌러서 신청 내용 보기">'
+          + esc(p.name) + '</button>'
           + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
           + '<div class="mono">' + esc(p.phone || '') + '</div></td>'
           + '<td>' + esc(A.commName(p.community_id)) + '</td>'
@@ -411,6 +413,56 @@
           + '" data-id="' + p.id + '">' + (p.status === 'approved' ? '쉬게 하기' : '다시 활동') + '</button>'
           + '</div></td></tr>';
       }).join('') + '</tbody></table></div>';
+  }
+
+  /* ── 블로거 신청 내용 펼쳐 보기 ──
+     ⚠️ 승인하고 나면 신청서에 적은 것(나이·네이버 아이디·별명·이웃 구간·이메일)을
+     볼 데가 없었습니다. 블로그 주소조차 목록에 없어서 확인하러 갈 수가 없었습니다.
+     승인 대기 카드에서 보이던 것을 승인 뒤에도 그대로 볼 수 있게 합니다. */
+  function bDetailRow(p) {
+    var role = blogRoleOf(p.id);
+    function kvrow(k, v) {
+      return '<dt>' + k + '</dt><dd>' + (v || '<span class="mono">-</span>') + '</dd>';
+    }
+    return '<tr class="bdetail" data-bdet="' + p.id + '"><td colspan="11">'
+      + '<div class="bdbox">'
+      + '<div class="sec" style="margin-top:0">신청서에 적은 것</div>'
+      + '<dl class="kv">'
+      + kvrow('공동체', esc(A.commName(p.community_id)))
+      + kvrow('이름 · 나이', esc(p.name) + (p.age ? ' · ' + p.age + '세' : ''))
+      + kvrow('네이버 아이디', p.naver_id ? '<span class="mono">' + esc(p.naver_id) + '</span>' : '')
+      + kvrow('블로그 별명', esc(p.blog_alias || ''))
+      + kvrow('블로그 주소', p.blog_url
+        ? '<a class="mono" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
+          + esc(p.blog_url.replace(/^https?:\/\//, '')) + ' ↗</a>' : '')
+      + kvrow('이웃 수', '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span>'
+        + (p.neighbors != null ? ' · 확인 <b>' + won(p.neighbors) + '명</b>'
+          + (p.neighbors_checked_at ? ' <span class="mono">(' + A.fdate(p.neighbors_checked_at) + ')</span>' : '')
+          : ' <span class="mono">· 아직 확인 안 함</span>'))
+      + kvrow('전화번호', '<span class="mono">' + esc(p.phone || '-') + '</span>')
+      + kvrow('이메일 (로그인 아이디)', '<span class="mono">' + esc(p.email || '-') + '</span>')
+      + '</dl>'
+      + '<div class="sec">우리가 기록한 것</div>'
+      + '<dl class="kv">'
+      + kvrow('신청 · 승인', A.fdate(p.created_at)
+        + (p.approved_at ? ' 신청 → ' + A.fdate(p.approved_at) + ' 승인' : ' 신청'))
+      + kvrow('단계 · 단가', p.level + '단계 · 편당 ' + won(A.levelOf(p.level).rate) + '원'
+        + (p.rate_override ? ' <b>(개인 단가 ' + won(p.rate_override) + '원)</b>' : ''))
+      + kvrow('블로그 품질', p.quality === 'low'
+        ? '<span class="chip c-bad">저품질로 표시함</span> ' + esc(p.quality_note || '')
+        : '<span class="chip c-ok">이상 없음</span>')
+      + (role ? kvrow('ESC 직분', '<b>' + esc(ROLE_KO[role] || role) + '</b>'
+        + (p.also_blogging ? ' · 블로거 병행' : ' · 글은 안 받음')) : '')
+      + (p.reject_reason ? kvrow('거절 사유', esc(p.reject_reason)) : '')
+      + (p.note ? kvrow('메모', esc(p.note)) : '')
+      + '</dl>'
+      + '<div class="row" style="margin-top:14px">'
+      + (p.blog_url
+        ? '<a class="btn btn-a btn-s" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
+          + '📝 블로그 열어보기 ↗</a>' : '')
+      + '<button class="btn btn-s" data-seeblog="' + p.id + '">👤 이 사람 화면으로 가기</button>'
+      + '<span class="mono">이 사람이 보는 화면 그대로 열립니다 (보기 전용)</span>'
+      + '</div></div></td></tr>';
   }
 
   /* ── 검수자 / 관리자 ── */
@@ -3122,6 +3174,24 @@
 
     /* 검수하기 — 학원별 / 공동체별 */
     if ((t = e.target.closest('[data-rvby]'))) { RV_BY = t.dataset.rvby; renderReview(); return; }
+
+    /* 이름을 누르면 그 아래에 신청 내용이 펼쳐집니다 */
+    if ((t = e.target.closest('[data-bopen]'))) {
+      var bid = t.dataset.bopen;
+      var open = document.querySelector('[data-bdet="' + bid + '"]');
+      if (open) { open.remove(); return; }
+      document.querySelectorAll('.bdetail').forEach(function (el) { el.remove(); });
+      var who = A.PEOPLE.filter(function (x) { return x.id === bid; })[0];
+      var row = document.querySelector('[data-brow="' + bid + '"]');
+      if (who && row) row.insertAdjacentHTML('afterend', bDetailRow(who));
+      return;
+    }
+    /* 그 블로거가 보는 화면으로 넘어갑니다 */
+    if ((t = e.target.closest('[data-seeblog]'))) {
+      A.PREVIEW_WANT = t.dataset.seeblog;   /* applyView 가 이 사람을 먼저 엽니다 */
+      A.applyView('blogger');
+      return;
+    }
 
     /* 「이 사람 화면 보기」 — 왼쪽 전환 스위치를 그 사람으로 맞춥니다 */
     if ((t = e.target.closest('[data-seeas]'))) {
