@@ -173,18 +173,35 @@
       + ' · 필수 영상 ' + r.videoDone + '/' + r.videoNeed
       + '. 다 마치셔야 글이 배정됩니다. <button class="link" data-go="b-edu">교육 받으러 가기 →</button></div>';
 
-    /* 통과된 글은 「올리고 주소 넣기」만 남았는데도 그냥 지나치기 쉬워서 맨 위에 크게 띄웁니다 */
-    var pub = todo.filter(function (p) { return p.status === 'approved'; });
+    /* 통과됐고 **오늘 올릴 날**인 글만 맨 위에 띄웁니다.
+       예정일이 아직 안 온 글까지 「올려 주세요」라고 하면 혼란만 줍니다. */
+    var today = A.today();
+    var pub = todo.filter(function (p) {
+      return p.status === 'approved' && (!p.publish_on || p.publish_on <= today);
+    });
+    var soon = todo.filter(function (p) {
+      return p.status === 'approved' && p.publish_on && p.publish_on > today;
+    });
     $('bTodo').innerHTML = (pub.length
-      ? '<div class="note ok" style="margin-bottom:14px"><b>원고 ' + pub.length + '편이 통과됐습니다 — 이제 블로그에 올려 주세요.</b><br>'
-      + '올리신 뒤에 <b>「2 글 쓰기」 맨 위</b>에서 <b>올린 글 주소</b>를 넣어 주셔야 정산에 잡힙니다. '
+      ? '<div class="note ok" style="margin-bottom:14px"><b>오늘 올릴 글이 ' + pub.length + '편 있습니다.</b><br>'
+      + '올리신 뒤에 <b>「2 글 쓰기」 3번 칸</b>에서 <b>올린 글 주소</b>를 넣어 주셔야 정산에 잡힙니다. '
       + '올리기만 하고 주소를 안 넣으시면 저희가 알 수 없습니다.<br>'
       + '<span class="mono">' + pub.map(function (p) { return esc(p.keyword || ''); }).join(' · ') + '</span></div>'
       : '')
+      + (soon.length
+      ? '<div class="note" style="margin-bottom:14px"><b>원고가 통과됐고 올릴 날을 기다리는 글이 '
+      + soon.length + '편 있습니다.</b> 그날이 되면 올리시면 됩니다.<br>'
+      + '<span class="mono">' + soon.map(function (p) {
+          return esc(p.publish_on) + ' · ' + esc(p.keyword || '');
+        }).join(' / ') + '</span></div>'
+      : '')
       + (todo.length ? todo.map(function (p) {
-      var d = A.dday(p.due_date);
-      var late = d != null && d <= 0;
-      var label = p.status === 'approved' ? '올리고 주소 넣기'
+      /* 통과된 글은 「원고 마감」이 아니라 「올릴 날」을 보여줘야 합니다 */
+      var showDate = (p.status === 'approved' && p.publish_on) ? p.publish_on : p.due_date;
+      var d = A.dday(showDate);
+      var late = d != null && d <= 0 && p.status !== 'approved';
+      var label = p.status === 'approved'
+        ? (p.publish_on && p.publish_on > today ? '내용 미리 보기' : '올리고 주소 넣기')
         : p.status === 'rework' ? '고치러 가기' : '글 쓰러 가기';
       return '<div class="job' + (late ? ' due' : '') + '"><div>'
         + '<h4>' + esc(p.keyword || '') + '</h4>'
@@ -193,7 +210,8 @@
           ? '<b style="color:var(--bad)">다시 쓰기 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
           : A.ST[p.status] ? A.ST[p.status][0] : p.status) + '</div></div>'
         + '<div class="right">'
-        + '<span class="dday' + (late ? '' : ' calm') + '">' + (p.due_date || '-')
+        + '<span class="dday' + (late ? '' : ' calm') + '">'
+        + (p.status === 'approved' && p.publish_on ? '올릴 날 ' : '') + (showDate || '-')
         + (d != null ? (d < 0 ? ' 지남' : d === 0 ? ' 오늘' : ' D-' + d) : '') + '</span>'
         + '<button class="btn btn-a btn-s" data-open="' + p.id + '">' + label + '</button></div></div>';
     }).join('') : A.empty(r.ok ? '지금 맡으신 글이 없습니다. 배정되면 여기에 뜹니다.' : '교육을 마치면 글이 배정됩니다.'));
@@ -208,8 +226,10 @@
       + (next ? '다음은 ' + next.lv + '단계(' + esc(next.name) + ' · 편당 ' + won(next.rate) + '원)입니다. '
         + '글을 꾸준히 쓰고 한 번에 통과되면 올라갑니다.' : '가장 높은 단계입니다.')
       + '</div></div></div>'
-      + '<div class="note warn" style="margin-top:14px"><b>하루에 한 편만 올려 주세요.</b> '
-      + '몰아서 올리면 블로그가 광고 블로그로 찍혀 검색에 안 나오게 됩니다. 그러면 내 블로그가 손해입니다.</div></div>';
+      + '<div class="note warn" style="margin-top:14px"><b>' + dailyRule() + '</b><br>'
+      + '몰아서 올리면 블로그가 광고 블로그로 찍혀 검색에 안 나오게 됩니다. '
+      + '그러면 내 블로그가 손해입니다. <b>글마다 올릴 날을 정해 드리니 그날 올리시면 됩니다.</b>'
+      + '</div></div>';
   }
   function s(n, label) {
     return '<div class="stat"><b>' + (typeof n === 'number' ? won(n) : esc(n)) + '</b><span>' + label + '</span></div>';
@@ -468,8 +488,10 @@
     var head = '<div class="card" style="margin-bottom:16px">'
       + '<div class="row" style="justify-content:space-between;margin-bottom:12px"><div>'
       + '<h3 style="font-size:16.5px">' + esc(p.keyword || '') + '</h3>'
-      + '<div class="mono" style="margin-top:3px">' + esc(p.academy_name) + ' · '
-      + (p.due_date || '-') + '까지 · ' + won(p.payout_rate) + '원</div></div>'
+      + '<div class="mono" style="margin-top:3px">' + esc(p.academy_name)
+      + ' · 원고 ' + (p.due_date || '-') + '까지'
+      + (p.publish_on ? ' · <b style="color:var(--amber)">' + p.publish_on + ' 발행</b>' : '')
+      + ' · ' + won(p.payout_rate) + '원</div></div>'
       + A.stChip(p.status) + '</div>'
       + (p.status === 'rework' ? '<div class="note bad" style="margin-bottom:12px"><b>고쳐야 할 것</b><br>'
         + (p.reject_reasons || []).map(function (r) { return '· ' + esc(r); }).join('<br>')
@@ -566,12 +588,28 @@
             + '<div class="mono">원고를 내시면 담당자가 읽습니다.</div></div>';
 
     /* ③ 블로그에 올리고 주소 넣기 — 칸은 처음부터 보이되 통과 전에는 잠깁니다 */
-    var s3 = '<div class="step ' + (up ? 'done' : okd ? 'ok' : 'lock') + '">'
+    /* 발행 예정일 — 이날이 되어야 올립니다. 서버에서도 막습니다(post_publish) */
+    var pon = p.publish_on || null;
+    var waitDay = pon && pon > A.today();          /* 아직 그날이 안 됨 */
+    var canPub = okd && !waitDay;
+    var dleft = pon ? A.dday(pon) : null;
+
+    var s3 = '<div class="step ' + (up ? 'done' : canPub ? 'ok' : 'lock') + '">'
       + '<div class="sh"><span class="sn">3</span>블로그에 올리고 주소 넣기'
       + (up ? '<span class="chip c-ok">넣었습니다</span>'
-           : okd ? '<span class="chip c-ok">지금 하세요</span>'
+           : canPub ? '<span class="chip c-ok">지금 하세요</span>'
+                 : waitDay ? '<span class="chip c-wait">' + pon + ' 부터</span>'
                  : '<span class="chip">아직 잠겨 있습니다</span>') + '</div>'
-      + (okd && !up
+      + (waitDay && okd
+        ? '<div class="note warn" style="margin-bottom:12px">'
+          + '<b>원고는 통과됐지만 올리는 날은 ' + esc(pon) + ' 입니다'
+          + (dleft != null ? ' (' + dleft + '일 남음)' : '') + '.</b><br>'
+          + '한 학원 글이 며칠 안에 몰려 올라가면 서로 검색어를 잡아먹고, '
+          + '그 블로그가 광고 블로그로 보입니다. 그래서 날짜를 벌려 두었습니다.<br>'
+          + '<b>그날 센터에 들어오시면 이 칸이 열립니다.</b> '
+          + '미리 예약 발행을 걸어두셔도 됩니다.</div>'
+        : '')
+      + (canPub && !up
         ? '<div class="note" style="margin-bottom:12px"><b>올리기 전에 확인해 주세요.</b><br>'
           + '· ' + dailyRule() + '<br>'
           + '· 제목에 <b>' + esc(p.keyword || '') + '</b> 이 들어갔는지<br>'
@@ -580,23 +618,25 @@
       + '<label class="f">올린 글 주소</label>'
       + '<input class="inp" id="pubUrl" placeholder="https://blog.naver.com/…" '
       + 'value="' + esc(p.published_url || '') + '"'
-      + (okd && !up ? ' style="border-color:var(--ok)"' : ' disabled') + '>'
+      + (canPub && !up ? ' style="border-color:var(--ok)"' : ' disabled') + '>'
       + (up
         ? '<div class="row" style="margin-top:10px">'
           + '<a class="btn btn-s" href="' + esc(p.published_url || '') + '" target="_blank" rel="noopener">'
           + '올린 글 열어보기 ↗</a>'
           + '<span class="mono">담당자가 검색 순위를 확인하면 정산에 잡힙니다</span></div>'
-        : okd
+        : canPub
           ? '<div class="mono" style="margin-top:5px">'
             + '내 블로그에서 그 글을 열고, 주소창의 주소를 그대로 복사해 오시면 됩니다.</div>'
             + '<div class="row" style="margin-top:14px">'
             + '<button class="btn btn-a" id="btnPublish">다 올렸습니다</button>'
             + '<span class="mono"><b>주소를 넣으셔야 정산에 잡힙니다.</b> 올리기만 하면 저희가 모릅니다</span></div>'
-          : '<div class="mono" style="margin-top:5px">'
-            + '<b>원고가 통과되어야 열립니다.</b> 통과 전에 올리시면 고쳐 달라고 할 때 '
-            + '이미 올라간 글을 내려야 합니다.</div>')
+          : waitDay
+            ? ''
+            : '<div class="mono" style="margin-top:5px">'
+              + '<b>원고가 통과되어야 열립니다.</b> 통과 전에 올리시면 고쳐 달라고 할 때 '
+              + '이미 올라간 글을 내려야 합니다.</div>')
       + '</div>'
-      + (up || okd
+      + (up || canPub
         ? '<div class="note warn" style="margin-top:14px"><b>올린 글은 1년 동안 지우지 말아 주세요.</b> '
           + '학원이 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>'
         : '');

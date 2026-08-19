@@ -1753,6 +1753,7 @@
       var over = o ? made - o.total_qty : 0;
 
       /* 지금 나눠주는 글이 얼마짜리인지 — 회원 구분에 따라 지급액이 달라지니 여기서 한 번 더 */
+      schPaint();
       var mb = $('asMember');
       if (mb) mb.innerHTML = !o ? '' : '<div class="note" style="margin:0 0 12px">'
         + memBadge(o) + ' <b>' + esc(o.academy_name) + '</b> — 편당 '
@@ -1761,6 +1762,30 @@
         + '단계가 오르면 그만큼 더 갑니다'
         + (o.is_premium ? '.' : ' (일반 회원이라 프리미엄 주문의 ' + A.payMult() + '배입니다).')
         + '</div>';
+
+      /* ⚠️ 같은 학원 글이 한 사람에게 하루 두 편 이상 간 경우.
+         배정은 후순위로 밀 뿐 막지는 않습니다 — 막으면 글이 안 나가고 마감을 못 맞춥니다.
+         사람이 모자라서 생기는 일이므로 여기서 눈에 보이게만 해 둡니다. */
+      var clash = {};
+      POSTS.filter(function (p) {
+        return p.order_id === oid && p.blogger_id && p.publish_on
+          && ['cancelled'].indexOf(p.status) < 0;
+      }).forEach(function (p) {
+        var k = p.blogger_id + '|' + p.publish_on;
+        clash[k] = (clash[k] || 0) + 1;
+      });
+      var bad = Object.keys(clash).filter(function (k) { return clash[k] > 1; });
+      var cbox = $('asClash');
+      if (cbox) cbox.innerHTML = bad.length
+        ? '<div class="note warn" style="margin:0 0 12px"><b>같은 학원 글이 하루에 두 편 이상 간 사람이 '
+          + bad.length + '건 있습니다.</b> 맡을 사람이 모자라서 생긴 일입니다. '
+          + '한 블로그에 같은 학원 글이 몰리면 서로 검색어를 잡아먹습니다.<br>'
+          + bad.map(function (k) {
+            var pr = k.split('|'), who = A.PEOPLE.filter(function (x) { return x.id === pr[0]; })[0];
+            return '· <b>' + esc(who ? who.name : '?') + '</b> — ' + pr[1] + ' 에 ' + clash[k] + '편';
+          }).join('<br>')
+          + '<br><br><b>블로거를 더 모으시거나</b> 발행 기간을 늘려 다시 까시면 풀립니다.</div>'
+        : '';
 
       box.innerHTML = (o && over > 0)
         ? '<div class="msg err" style="margin:0 0 12px">'
@@ -1771,7 +1796,57 @@
         : '';
     })();
 
-    /* 비어 있을 때 왜 비었는지 알려줍니다 — 그냥 '없습니다'만 뜨면 답답합니다 */
+    /* ── 발행 일정 짜기 ──
+     ⚠️ 예전 「주차」는 이 화면의 필터일 뿐이었고 아무 힘이 없었습니다.
+     마감일은 주차와 무관하게 「배정한 날 + 7일」로 일괄 계산돼서, 50편을 한꺼번에
+     배정하면 전부 같은 날 마감이 되고 글이 며칠 안에 다 올라갔습니다.
+     이제 글마다 발행 예정일을 깔고, 그날이 되어야 링크를 넣을 수 있습니다(서버에서 막습니다). */
+  function schPaint() {
+    var oid = $('asOrder') && $('asOrder').value;
+    var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+    if (!o || !$('schFrom')) return;
+    if (!$('schFrom').value) $('schFrom').value = o.paid_at && o.paid_at > A.today() ? o.paid_at : A.today();
+    if (!$('schTo').value) $('schTo').value = o.deadline || '';
+
+    var mine = POSTS.filter(function (p) {
+      return p.order_id === oid && ['published','verified','paid','cancelled'].indexOf(p.status) < 0;
+    });
+    var got = mine.filter(function (p) { return p.publish_on; });
+    $('schInfo').innerHTML = mine.length
+      ? '아직 안 올라간 글 <b>' + mine.length + '편</b> 중 <b>' + got.length + '편</b>에 날짜가 있습니다'
+      : '이 주문에 아직 글이 없습니다';
+
+    /* 어느 날 몇 편이 올라가는지 — 하루에 몰려 있으면 여기서 보입니다 */
+    var by = {};
+    got.forEach(function (p) { by[p.publish_on] = (by[p.publish_on] || 0) + 1; });
+    var days = Object.keys(by).sort();
+    $('schPrev').innerHTML = days.length
+      ? '<div class="sec">날짜별 편수</div><div class="tagline">'
+        + days.map(function (d) {
+          return '<span' + (by[d] > 3 ? ' style="background:var(--bad-bg);color:var(--bad)"' : '')
+            + '>' + d.slice(5) + ' · ' + by[d] + '편</span>';
+        }).join('') + '</div>'
+        + '<div class="mono" style="margin-top:6px">하루 4편 이상인 날은 빨갛게 표시했습니다. '
+        + '그날 맡을 사람이 그만큼 있어야 합니다.</div>'
+      : '';
+  }
+  if ($('schGo')) $('schGo').onclick = async function () {
+    var oid = $('asOrder').value;
+    if (!oid) { A.toast('주문을 고르세요'); return; }
+    if (!$('schTo').value) { A.toast('언제까지 올릴지 정해 주세요'); return; }
+    this.disabled = true;
+    try {
+      var r = await A.rpc('posts_schedule', {
+        p_order: oid, p_from: $('schFrom').value || null,
+        p_to: $('schTo').value, p_all: $('schAll').checked
+      });
+      A.toast((r.scheduled || 0) + '편에 날짜를 깔았습니다 (하루 약 ' + (r.per_day || 0) + '편)');
+      await A.loadAdmin(); A.show('assign'); schPaint();
+    } catch (e) { A.toast('실패: ' + e.message); }
+    this.disabled = false;
+  };
+
+  /* 비어 있을 때 왜 비었는지 알려줍니다 — 그냥 '없습니다'만 뜨면 답답합니다 */
     function whyEmpty() {
       var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
       if (!o) return '<div class="empty">먼저 위에서 주문을 골라 주세요.</div>';
@@ -1798,7 +1873,9 @@
         + '<span class="grip" title="끌어서 오른쪽 블로거에게 놓으세요">⠿</span>'
         + '<input type="checkbox" class="pk-post" value="' + p.id + '">'
         + '<span><b>' + esc(p.keyword || '(제목 없음)') + '</b></span>'
-        + '<span class="sub">#' + p.seq + (p.week ? ' · ' + p.week + '주차' : '') + '</span>'
+        + '<span class="sub">#' + p.seq
+        + (p.publish_on ? ' · <b style="color:var(--amber)">' + p.publish_on.slice(5) + ' 발행</b>'
+                        : p.week ? ' · ' + p.week + '주차' : '') + '</span>'
         + '<button class="xdel" data-delpost="' + p.id + '" title="이 글을 지웁니다">✕</button></label>';
     }).join('')
       + (mine.length > 1 ? '<div class="row" style="padding:8px 12px">'

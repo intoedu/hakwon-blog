@@ -545,7 +545,32 @@
         <select class="inp" id="asOrder" style="width:auto;flex:1;min-width:200px"></select>
         <select class="inp" id="asWeek" style="width:auto"><option value="">전체 주차</option></select>
       </div>
+      <details id="schedBox" class="outbox" style="margin-bottom:14px" data-adminonly>
+        <summary>🗓 발행 일정 짜기 <span class="mono">— 글이 한꺼번에 안 올라가게 날짜를 깝니다</span></summary>
+        <div class="obody">
+          <div class="note">
+            <b>글마다 「올릴 날」을 정해 둡니다.</b> 그날이 되어야 블로거가 링크를 넣을 수 있습니다.
+            원고 쓰기와 검수는 아무 때나 — <b>미리 할수록 좋습니다.</b><br>
+            <b>원고 마감은 올릴 날 사흘 전</b>으로 자동으로 잡힙니다. 검수할 틈을 두려고요.
+          </div>
+          <div class="row" style="margin-top:12px">
+            <label class="f" style="margin:0">언제부터</label>
+            <input class="inp" id="schFrom" type="date" style="width:auto">
+            <label class="f" style="margin:0">언제까지</label>
+            <input class="inp" id="schTo" type="date" style="width:auto">
+            <label class="row" style="gap:7px;cursor:pointer;font-size:13px">
+              <input type="checkbox" id="schAll">
+              <b>이미 날짜가 있는 글도 다시 깔기</b></label>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-p" id="schGo">발행 일정 깔기</button>
+            <span class="mono" id="schInfo"></span>
+          </div>
+          <div id="schPrev" style="margin-top:14px"></div>
+        </div>
+      </details>
       <div id="asMember"></div>
+      <div id="asClash"></div>
       <div id="asOver"></div>
       <div class="pickwrap">
         <div class="picklist">
