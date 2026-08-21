@@ -599,13 +599,29 @@
         <div class="row" style="margin-bottom:12px">
           <label class="f" style="margin:0">주문</label>
           <select class="inp" id="rmOrder" style="width:auto;flex:1;min-width:200px"></select>
-          <button class="btn btn-p" id="rmCopy">📋 주문 내용 복사</button>
+          <button class="btn btn-a" id="rmAuto">✨ 여기서 바로 만들기</button>
+          <button class="btn btn-s" id="rmCopy">📋 주문 내용 복사</button>
         </div>
         <div id="rmInfo"></div>
         <div class="note" style="margin-top:12px">
-          <b>1</b> 위 <b>[주문 내용 복사]</b>를 누르고 &nbsp;<b>2</b> 클로드에게 붙여넣어
-          「이 형식으로 리뷰를 만들어 줘」라고 하시고 &nbsp;<b>3</b> 받은 것을 아래에 통째로 붙여넣으세요.
+          <b>✨ 여기서 바로 만들기</b> — 한 번 누르면 아래 칸이 저절로 채워집니다.
+          만들어진 것을 눈으로 확인하고 <b>[이대로 리뷰 만들기]</b>를 누르시면 저장됩니다.<br>
+          <span class="mono">쓰려면 API 키를 한 번 넣어 두셔야 합니다. 아래 접힌 안내를 보세요.</span>
         </div>
+        <details style="margin-top:10px">
+          <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
+            ⚙️ 「여기서 바로 만들기」를 쓰려면 — 한 번만 하시면 됩니다</summary>
+          <div class="note" style="margin-top:10px">
+            <b>1</b> <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>
+            에서 <b>API 키</b>를 만드세요 (Create Key).<br>
+            <b>2</b> <a href="https://supabase.com/dashboard/project/qkvebwxewttqtcryfycy/functions/secrets" target="_blank" rel="noopener">Supabase 대시보드 → Edge Functions → Secrets</a>
+            에서 이름 <b>ANTHROPIC_API_KEY</b>, 값에 그 키를 넣고 저장하세요.<br>
+            <b>3</b> 끝입니다. 이 화면으로 돌아와 <b>[✨ 여기서 바로 만들기]</b>를 누르시면 됩니다.<br><br>
+            <b>비용</b> — 리뷰 50편에 <b>백 원 안팎</b>입니다. 쓴 만큼만 나갑니다.<br>
+            <b>키는 서버에만 있습니다.</b> 이 화면(브라우저)에는 절대 들어오지 않습니다.<br>
+            키를 안 넣으셔도 <b>[📋 주문 내용 복사]</b>로 예전처럼 쓰실 수 있습니다.
+          </div>
+        </details>
         <label class="f" style="margin-top:14px">받은 리뷰 붙여넣기</label>
         <textarea class="inp" id="rmPaste" style="min-height:240px;font-size:13px"
           placeholder="[음식] 짜장면&#10;여기 짜장면 진짜 맛있어요. 면이 쫄깃하고 소스도 안 짜요.&#10;---&#10;[시설] 화장실&#10;화장실이 정말 깨끗했어요.&#10;---"></textarea>
@@ -823,29 +839,18 @@
     <!-- 7 진행 현황 -->
     <section class="screen" data-screen="posts">
       <div class="head"><div class="step-of" data-adminonly>7단계 · 일이 돌아가면</div>
-        <h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p></div>
+        <div id="pgHead"><h1>진행 현황</h1>
+        <p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p></div></div>
       <div class="row" style="margin-bottom:10px">
         <select class="inp" id="pgOrder" style="width:auto;flex:1;min-width:180px"></select>
         <input class="inp" id="pgQ" style="width:auto;flex:1;min-width:140px" placeholder="검색어나 이름으로 찾기">
         <button class="btn btn-a" id="btnExport">📄 자료로 내보내기</button>
       </div>
-      <div class="chipbar" id="pgStatus">
-        <span class="mono">상태 (여러 개 고를 수 있습니다)</span>
-        <label class="ck"><input type="checkbox" value="pending"> 담당자 미정</label>
-        <label class="ck"><input type="checkbox" value="assigned"> 배정됨</label>
-        <label class="ck"><input type="checkbox" value="writing"> 쓰는 중</label>
-        <label class="ck"><input type="checkbox" value="submitted"> 원고 냄</label>
-        <label class="ck"><input type="checkbox" value="rework"> 다시 쓰기</label>
-        <label class="ck"><input type="checkbox" value="approved"> 원고 통과</label>
-        <label class="ck"><input type="checkbox" value="published"> 올림 · 확인 전</label>
-        <label class="ck"><input type="checkbox" value="verified"> 확인 끝</label>
-        <label class="ck"><input type="checkbox" value="paid"> 정산 완료</label>
-        <button class="btn btn-s" id="pgClear">전체 보기</button>
-      </div>
+      <div class="chipbar" id="pgStatus"></div>
       <div class="note" style="margin-bottom:14px">
         <b>[자료로 내보내기]</b> 를 누르면 지금 보이는 목록이 그대로 파일로 저장됩니다.
         구글 스프레드시트에서 <b>파일 → 가져오기</b> 로 열면 표가 됩니다. 엑셀에서도 바로 열립니다.
-        학원에 보여드릴 때 이 파일을 쓰시면 됩니다.
+        업체에 보여드릴 때 이 파일을 쓰시면 됩니다.
       </div>
       <div class="grid g5" id="pgStats" style="margin-bottom:16px"></div>
       <div id="pgList"></div>
@@ -854,11 +859,12 @@
     <!-- 8 정산하기 -->
     <section class="screen" data-screen="pay">
       <div class="head"><div class="step-of">8단계 · 일이 돌아가면</div>
-        <h1>정산하기</h1><p>공동체별로 한 번에 보냅니다. 개인에게 따로 보내지 않습니다.</p></div>
+        <h1>정산하기</h1><p>공동체별로 한 번에 보냅니다. 개인에게 따로 보내지 않습니다.</p>
+        <p class="mono" id="payTrackNote"></p></div>
       <div class="row" style="margin-bottom:16px">
         <input class="inp" id="payMonth" type="month" style="width:auto">
         <button class="btn btn-p" id="btnClose">이 달 마감하기</button>
-        <span class="mono">확인까지 끝난 글만 잡힙니다. 마감하면 금액이 고정됩니다</span>
+        <span class="mono">확인까지 끝난 것만 잡힙니다. 마감하면 금액이 고정됩니다</span>
       </div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn" id="btnPayPeople">📄 개인별 지급대장</button>

@@ -60,7 +60,10 @@
   }
 
   /* ═══ 데이터 ═══ */
-  A.afterTrack = function () { if (A.ORDERS && A.ORDERS.length) { renderOrders(); fillSelects(); } };
+  A.afterTrack = function () {
+    if (!A.ORDERS || !A.ORDERS.length) return;
+    renderOrders(); fillSelects(); renderProgress(); renderPay && renderPay();
+  };
 
   A.loadAdmin = async function () {
     A.COMMS = await A.sel('communities', { order: 'name' });
@@ -145,7 +148,13 @@
       }).join('') || '<option value="">주문이 없습니다</option>';
       if (k1 && A.ORDERS.some(function (o) { return o.id === k1; })) el1.value = k1;
     }
-    $('pgOrder').innerHTML = '<option value="">전체 주문</option>' + opts;
+    $('pgOrder').innerHTML = '<option value="">전체 주문</option>'
+      + A.ORDERS.filter(function (o) {
+          return (o.track || 'blog') === (A.TRACK || 'blog');
+        }).map(function (o) {
+          return '<option value="' + o.id + '">' + esc(o.academy_name)
+            + ' (' + o.total_qty + '편)</option>';
+        }).join('');
     $('fComm').innerHTML = '<option value="">전체 공동체</option>' + A.COMMS.map(function (c) {
       return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
     }).join('');
@@ -1956,6 +1965,7 @@
     }).join('') || '<option value="">리뷰 주문이 없습니다</option>';
     if (k) el.value = k;
   }
+  function rvOrderNow(id) { return rvOrderOf(id); }
   function rvOrderOf(id) {
     var v = $(id) && $(id).value;
     return A.ORDERS.filter(function (o) { return o.id === v; })[0] || null;
@@ -2033,6 +2043,33 @@
   }
   if ($('rmOrder')) {
     $('rmOrder').onchange = rmPaint;
+    /* ── 프로그램 안에서 바로 만들기 ──
+       ⚠️ API 키를 브라우저에 두면 누구나 열어볼 수 있습니다. 그래서 Supabase Edge Function
+       (make-reviews)이 서버에서 대신 부르고, 여기서는 결과 글만 받아 옵니다.
+       받은 것은 바로 저장하지 않고 화면에 채워 넣습니다 — 눈으로 보고 저장하시라고. */
+    $('rmAuto').onclick = async function () {
+      var o = rvOrderNow('rmOrder') || rvOrderOf('rmOrder');
+      if (!o) { A.toast('주문을 고르세요'); return; }
+      var specs = RVSPECS.filter(function (x) { return x.order_id === o.id; });
+      var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
+      if (!want) { A.toast('3 주문·입금에서 리뷰 구성을 먼저 정해 주세요'); return; }
+
+      this.disabled = true; this.textContent = '만드는 중… (1~2분)';
+      var btn = this;
+      try {
+        var r = await A.sb.functions.invoke('make-reviews', {
+          body: { brief: rmBrief(), count: want }
+        });
+        if (r.error) throw new Error(r.error.message || '불러오지 못했습니다');
+        if (r.data && r.data.error) throw new Error(r.data.error);
+        $('rmPaste').value = (r.data && r.data.text) || '';
+        $('rmParse').click();
+        A.toast('만들었습니다. 확인하고 [이대로 리뷰 만들기]를 누르세요');
+      } catch (e) {
+        A.toast('실패: ' + e.message);
+      }
+      btn.disabled = false; btn.textContent = '✨ 여기서 바로 만들기';
+    };
     $('rmCopy').onclick = function () {
       var t = rmBrief();
       if (!t) { A.toast('주문을 고르세요'); return; }
@@ -2809,14 +2846,50 @@
     return [].map.call(document.querySelectorAll('#pgStatus input:checked'), function (c) { return c.value; });
   }
   var PG_ROWS = [];
+  /* 상태 이름이 갈래마다 다릅니다 — 리뷰엔 원고·검수 단계가 없습니다 */
+  var PG_BLOG = [['pending','담당자 미정'],['assigned','배정됨'],['writing','쓰는 중'],
+    ['submitted','원고 냄'],['rework','다시 쓰기'],['approved','원고 통과'],
+    ['published','올림 · 확인 전'],['verified','확인 끝'],['paid','정산 완료']];
+  var PG_RV = [['pending','담당자 미정'],['assigned','맡김 · 올리기 전'],
+    ['published','올림 · 확인 전'],['verified','확인 끝'],['paid','정산 완료']];
+
   function renderProgress() {
+    var RV = (A.TRACK || 'blog') === 'review';
+
+    var ph = $('pgHead');
+    if (ph) ph.innerHTML = RV
+      ? '<h1>진행 현황</h1><p>리뷰 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 것을 찾습니다.</p>'
+      : '<h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p>';
+
+    /* 상태 칩을 갈래에 맞게 다시 그립니다 (고른 것은 그대로 둡니다) */
+    var box = $('pgStatus');
+    if (box) {
+      var want = (RV ? PG_RV : PG_BLOG).map(function (x) { return x[0]; }).join(',');
+      if (box.dataset.built !== want) {
+        var keep = pgPicked();
+        box.innerHTML = '<span class="mono">상태 (여러 개 고를 수 있습니다)</span>'
+          + (RV ? PG_RV : PG_BLOG).map(function (x) {
+            return '<label class="ck"><input type="checkbox" value="' + x[0] + '"'
+              + (keep.indexOf(x[0]) >= 0 ? ' checked' : '') + '> ' + x[1] + '</label>';
+          }).join('')
+          + '<button class="btn btn-s" id="pgClear">전체 보기</button>';
+        box.dataset.built = want;
+      }
+    }
+    if ($('pgQ')) $('pgQ').placeholder = RV
+      ? '갈래나 이름으로 찾기' : '검색어나 이름으로 찾기';
+
     var oid = $('pgOrder').value, sel = pgPicked(), q = ($('pgQ').value || '').trim();
     var rows = POSTS.filter(function (p) {
+      /* 지금 보는 갈래 것만 */
+      var o = A.ORDERS.filter(function (x) { return x.id === p.order_id; })[0];
+      if (!o || ((o.track || 'blog') === 'review') !== RV) return false;
       if (oid && p.order_id !== oid) return false;
       if (sel.length && sel.indexOf(p.status) < 0) return false;
       if (q) {
         var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
-        if ((p.keyword || '').indexOf(q) < 0 && (!b || b.name.indexOf(q) < 0)) return false;
+        var hay = (p.keyword || '') + ' ' + (p.category || '');
+        if (hay.indexOf(q) < 0 && (!b || b.name.indexOf(q) < 0)) return false;
       }
       return true;
     });
@@ -2849,6 +2922,12 @@
   }
   $('pgOrder').onchange = renderProgress;
   $('pgStatus').addEventListener('change', renderProgress);
+  $('pgStatus').addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'pgClear') {
+      document.querySelectorAll('#pgStatus input').forEach(function (c) { c.checked = false; });
+      renderProgress();
+    }
+  });
   $('pgClear').onclick = function () {
     document.querySelectorAll('#pgStatus input').forEach(function (c) { c.checked = false; });
     renderProgress();
@@ -2893,6 +2972,12 @@
     renderPay();
   }
   function renderPay() {
+    /* 정산은 갈래를 안 나눕니다 — 사람이 같으니 한 사람에게 한 번만 보냅니다.
+       그래서 여기서만은 블로그와 리뷰가 한 표에 같이 잡힙니다. */
+    var ptn = $('payTrackNote');
+    if (ptn) ptn.innerHTML = '<b>블로그와 리뷰가 함께 잡힙니다.</b> '
+      + '한 사람이 두 가지를 다 했어도 공동체로 한 번만 보내야 하기 때문입니다.';
+
     var m = $('payMonth').value + '-01';
     var verified = POSTS.filter(function (p) { return p.status === 'verified' && p.cycle_month === m; });
     var blogTotal = CPAY.reduce(function (a, c) { return a + c.amount; }, 0);
