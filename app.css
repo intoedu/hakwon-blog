@@ -513,3 +513,29 @@ td.num.bad{color:var(--bad)}
 tr.bdetail td{background:var(--surface-2);padding:0}
 .bdbox{padding:16px 18px;border-left:3px solid var(--amber)}
 .bdbox .kv{margin:0}
+
+/* ══ 갈래 전환 (블로그 / 리뷰) ══ */
+.tracksw{display:flex;gap:3px;background:rgba(255,255,255,.09);border-radius:9px;
+     padding:3px;margin:0 2px 12px}
+.tracksw button{flex:1;background:none;border:0;color:var(--side-fg);font-size:12.5px;
+     font-weight:700;padding:7px 4px;border-radius:7px;white-space:nowrap;transition:background .12s}
+.tracksw button:hover{background:rgba(255,255,255,.07)}
+.tracksw button.on{background:var(--amber);color:#0B1B26}
+
+/* 리뷰 갈래일 때는 화면 전체가 하늘색으로 바뀝니다 — 지금 어느 일을 하는지 헷갈리지 않게 */
+body.tk-review{
+  --amber:#1B7FB8; --side-bg:#123B57; --side-on:#1A5A80; --brand:#123B57;
+  --info:#1B6FA8; --info-bg:#E6F2FA;
+}
+@media (prefers-color-scheme:dark){
+  body.tk-review{
+    --amber:#5FB6E8; --side-bg:#0D1D28; --side-on:#17394F; --brand:#7FC4EC;
+    --info:#7FC4EC; --info-bg:#132635;
+  }
+}
+body.tk-review .brand .mk{background:var(--amber);color:#0B1B26}
+body.tk-review .tracksw button.on{color:#fff}
+
+/* 리뷰 구성 줄 */
+.rvrow{display:flex;gap:6px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
+.rvrow .inp{padding:5px 8px;font-size:12.5px}

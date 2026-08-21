@@ -126,17 +126,27 @@
     <div class="brand"><div class="mk">ESC</div>
       <div><b>블로그 센터</b><span>학원지원센터</span></div></div>
 
+    <!-- 어느 갈래 일을 하는지 — 여기서 고르면 아래 메뉴가 통째로 바뀝니다 -->
+    <div class="tracksw hide" id="trackSw">
+      <button data-track="blog" class="on">📝 블로그</button>
+      <button data-track="review">⭐ 리뷰</button>
+    </div>
+
     <div id="navAdmin" class="hide">
       <button class="nav on" data-go="dash">오늘 할 일</button>
       <div class="navlbl">사람을 모읍니다</div>
-      <button class="nav" data-go="staff"><span class="n">1</span>블로거 관리 <span class="cnt hide" id="cWait">0</span></button>
-      <button class="nav" data-go="edu"><span class="n">2</span>블로거 교육</button>
+      <button class="nav" data-go="staff"><span class="n">1</span>사람 관리 <span class="cnt hide" id="cWait">0</span></button>
+      <button class="nav" data-tk="blog" data-go="edu"><span class="n">2</span>블로거 교육</button>
+      <button class="nav" data-tk="review" data-go="r-edu"><span class="n">2</span>리뷰어 교육</button>
       <div class="navlbl">주문이 들어오면</div>
       <button class="nav" data-go="orders"><span class="n">3</span>주문 · 입금</button>
-      <button class="nav" data-go="kw"><span class="n">4</span>키워드 만들기</button>
-      <button class="nav" data-go="assign"><span class="n">5</span>글 나눠주기 <span class="cnt hide" id="cUnassigned">0</span></button>
+      <button class="nav" data-tk="blog" data-go="kw"><span class="n">4</span>키워드 만들기</button>
+      <button class="nav" data-tk="review" data-go="r-make"><span class="n">4</span>리뷰 만들기</button>
+      <button class="nav" data-tk="blog" data-go="assign"><span class="n">5</span>글 나눠주기 <span class="cnt hide" id="cUnassigned">0</span></button>
+      <button class="nav" data-tk="review" data-go="r-assign"><span class="n">5</span>리뷰 나눠주기</button>
       <div class="navlbl">일이 돌아가면</div>
-      <button class="nav" data-go="review"><span class="n">6</span>검수하기 <span class="cnt hot hide" id="cReview">0</span></button>
+      <button class="nav" data-tk="blog" data-go="review"><span class="n">6</span>검수하기 <span class="cnt hot hide" id="cReview">0</span></button>
+      <button class="nav" data-tk="review" data-go="r-check"><span class="n">6</span>올라왔는지 확인 <span class="cnt hot hide" id="cRvCheck">0</span></button>
       <button class="nav" data-go="posts"><span class="n">7</span>진행 현황</button>
       <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
       <div class="navlbl">챙길 것</div>
@@ -337,10 +347,64 @@
       <div id="eduProgress"></div>
     </section>
 
+    <!-- 2 리뷰어 교육 (리뷰 갈래) -->
+    <section class="screen" data-screen="r-edu">
+      <div class="head"><div class="step-of">2단계 · 사람을 모읍니다</div>
+        <h1>리뷰어 교육</h1><p>리뷰는 우리가 글을 다 써 드립니다. 교육은 <b>어떻게 올리는지</b>만 배우면 됩니다.</p></div>
+      <div class="note ok" style="margin-bottom:18px">
+        <b>블로그 교육과는 다른 내용입니다.</b> 리뷰어는 글을 쓰지 않습니다.
+        받은 내용을 그대로 올리고, 사진을 붙이고, 올린 화면을 캡처해서 보내는 것까지가 일입니다.
+        그래서 교육도 <b>짧고 실습 위주</b>입니다.
+      </div>
+
+      <div class="sec">줌 일정</div>
+      <div id="rvEduSessions"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="row">
+          <select class="inp" id="rns_kind" style="width:auto">
+            <option value="t1">1차 교육</option><option value="t2">2차 교육</option></select>
+          <input class="inp" id="rns_at" type="datetime-local" style="width:auto">
+          <input class="inp" id="rns_url" style="width:auto;flex:1;min-width:160px" placeholder="줌 링크">
+          <button class="btn btn-p" id="btnAddRvSession">일정 추가</button>
+        </div>
+        <div class="note" style="margin-top:12px">
+          녹화본은 아래 표의 <b>「녹화본 주소」</b> 칸에 넣으세요. 유튜브 <b>일부공개</b>로 올리시면 됩니다.
+        </div>
+      </div>
+
+      <div class="sec" style="margin-top:28px">영상 자료 <small>필수로 체크한 것을 다 봐야 리뷰가 배정됩니다</small></div>
+      <div id="rvEduMaterials"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="grid g2" style="gap:12px">
+          <div><label class="f">제목</label>
+            <input class="inp" id="rnm_title" placeholder="예: 네이버 리뷰 올리는 법 (영수증 인증까지)"></div>
+          <div><label class="f">유튜브 주소</label>
+            <input class="inp" id="rnm_url" placeholder="https://youtu.be/…"></div>
+        </div>
+        <div class="grid g2" style="gap:12px;margin-top:12px">
+          <div><label class="f">확인 질문 <small>영상 본 사람만 답할 수 있는 것</small></label>
+            <input class="inp" id="rnm_q" placeholder="예: 영수증 인증은 결제 후 며칠 안에 해야 하나요?"></div>
+          <div><label class="f">요약 몇 자 이상</label>
+            <input class="inp" id="rnm_min" type="number" value="150" style="max-width:120px"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <label class="row" style="gap:7px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="rnm_req" checked> <b>필수 영상</b></label>
+          <button class="btn btn-p" id="btnAddRvMat">자료 올리기</button>
+        </div>
+      </div>
+
+      <div class="sec" style="margin-top:28px">낸 요약 확인하기</div>
+      <div id="rvEduSummaries"></div>
+      <div class="sec" style="margin-top:28px">누가 어디까지 왔나</div>
+      <div id="rvEduProgress"></div>
+    </section>
+
     <!-- 3 주문 · 입금 -->
     <section class="screen" data-screen="orders">
       <div class="head"><div class="step-of">3단계 · 주문이 들어오면</div>
-        <h1>주문 · 입금</h1><p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p></div>
+        <div id="ordHead"><h1>주문 · 입금</h1>
+        <p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p></div></div>
       <div class="note ok" style="margin-bottom:18px">
         <b>주문은 보통 홈페이지에서 저절로 들어옵니다.</b>
         학원이 신청하면 관리자페이지 의뢰 상세에 <b>[🖊 블로그 주문 만들기]</b> 버튼이 생기고,
@@ -361,7 +425,7 @@
           아래 주문 카드에서 직접 채워 넣으셔야 합니다.
         </div>
         <div class="grid g4" style="gap:12px">
-          <div><label class="f">학원 이름</label><input class="inp" id="no_name" placeholder="성수영어학원"></div>
+          <div><label class="f">업체 이름</label><input class="inp" id="no_name" placeholder="성수영어학원 / 성수반점"></div>
           <div><label class="f">지역</label><input class="inp" id="no_region" placeholder="성수동"></div>
           <div><label class="f">주문 편수</label><input class="inp" id="no_qty" type="number" placeholder="100"></div>
           <div><label class="f">편당 받는 돈</label><input class="inp" id="no_price" type="number" value="6000"></div>
@@ -531,6 +595,41 @@
           </div>
         </div>
       </details>
+    </section>
+
+    <!-- 4 리뷰 만들기 (리뷰 갈래) -->
+    <section class="screen" data-screen="r-make">
+      <div class="head"><div class="step-of">4단계 · 주문이 들어오면</div>
+        <h1>리뷰 만들기</h1><p>주문에 적어둔 갈래·편수·세부 항목으로 <b>리뷰 본문을 만들어 넣습니다.</b></p></div>
+      <div class="note warn">
+        <b>아직 만들고 있습니다.</b> 다음 순서로 붙습니다.<br><br>
+        ① <b>[주문 내용 복사]</b> — 갈래·편수·세부 항목·업체 정보를 한 덩어리로 복사합니다<br>
+        ② 그걸 저에게 주시면 <b>서로 다른 표현으로 리뷰 N개</b>를 써서 돌려드립니다<br>
+        ③ 돌려받은 것을 <b>한 번에 붙여넣으면</b> 자동으로 쪼개져 리뷰 한 편씩 저장됩니다<br><br>
+        그때까지는 <b>3 주문·입금</b>에서 리뷰 구성만 정해 두시면 됩니다.
+      </div>
+    </section>
+
+    <!-- 5 리뷰 나눠주기 (리뷰 갈래) -->
+    <section class="screen" data-screen="r-assign">
+      <div class="head"><div class="step-of">5단계 · 주문이 들어오면</div>
+        <h1>리뷰 나눠주기</h1><p>누가 <b>언제 몇 시에</b> 올릴지까지 정합니다.</p></div>
+      <div class="note warn">
+        <b>아직 만들고 있습니다.</b> 리뷰는 블로그보다 시간을 더 잘게 벌려야 합니다 —
+        같은 가게 리뷰가 같은 시간대에 몰리면 바로 티가 납니다.
+        <b>날짜뿐 아니라 시각까지</b> 정해서 나눠주는 화면으로 만들겠습니다.
+      </div>
+    </section>
+
+    <!-- 6 올라왔는지 확인 (리뷰 갈래) -->
+    <section class="screen" data-screen="r-check">
+      <div class="head"><div class="step-of">6단계 · 일이 돌아가면</div>
+        <h1>올라왔는지 확인</h1><p>우리가 써준 그대로 올라왔는지 <b>네이버 지도에서 눈으로</b> 봅니다.</p></div>
+      <div class="note warn">
+        <b>아직 만들고 있습니다.</b> 리뷰어가 올린 <b>스크린샷</b>과
+        <b>[네이버 지도 열기]</b> 버튼을 나란히 놓아, 한 화면에서 대조하고 바로 통과시키는
+        방식으로 만들겠습니다. 지도 주소는 <b>3 주문·입금</b>에서 미리 넣어 두시면 됩니다.
+      </div>
     </section>
 
     <!-- 5 글 나눠주기 -->

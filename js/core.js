@@ -275,6 +275,8 @@ window.ESC = (function () {
 
     var sw = A.$('viewSwitch');
     if (sw) sw.classList.toggle('hide', !A.IS_ADMIN);
+    var tsw = A.$('trackSw');
+    if (tsw) tsw.classList.toggle('hide', !(A.IS_ADMIN && mode === 'admin'));
     document.querySelectorAll('[data-view-btn]').forEach(function (b) {
       b.classList.toggle('on', b.dataset.viewBtn === mode);
     });
@@ -422,6 +424,37 @@ window.ESC = (function () {
     }
   });
 
+  /* ── 갈래 전환 (블로그 / 리뷰) ──
+     메뉴 맨 위에서 고르면 아래 메뉴가 통째로 바뀌고, 화면 색도 같이 바뀝니다.
+     지금 어느 일을 하고 있는지 헷갈리면 엉뚱한 주문에 손대게 되므로 색으로 갈라 둡니다.
+     사람 관리(1번)·알림·주소 모음은 두 갈래가 같이 씁니다. */
+  A.TRACK = 'blog';
+  A.setTrack = function (tk, jump) {
+    A.TRACK = (tk === 'review') ? 'review' : 'blog';
+    document.body.classList.toggle('tk-review', A.TRACK === 'review');
+    document.querySelectorAll('[data-track]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.track === A.TRACK);
+    });
+    /* 그 갈래 것만 메뉴에 남깁니다 (data-tk 가 없으면 둘 다 씁니다) */
+    document.querySelectorAll('[data-tk]').forEach(function (el) {
+      el.classList.toggle('hide', el.dataset.tk !== A.TRACK);
+    });
+    try { localStorage.setItem('esc_track', A.TRACK); } catch (e) {}
+
+    /* 지금 보고 있는 화면이 다른 갈래 것이면 그 갈래의 같은 자리로 옮겨 줍니다 */
+    var pair = { edu: 'r-edu', kw: 'r-make', assign: 'r-assign', review: 'r-check' };
+    var back = { 'r-edu': 'edu', 'r-make': 'kw', 'r-assign': 'assign', 'r-check': 'review' };
+    var cur = document.querySelector('.screen.on');
+    var now = cur ? cur.dataset.screen : '';
+    var to = A.TRACK === 'review' ? pair[now] : back[now];
+    if (jump !== false && to) A.show(to);
+    else if (A.afterTrack) A.afterTrack();
+  };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-track]');
+    if (b) A.setTrack(b.dataset.track);
+  });
+
   /* ── 설정 읽기 ──
      ⚠️ `settings` 테이블은 RLS 가 is_staff() 만 열어 줍니다. staff 행이 없는 순수 블로거는
      한 줄도 못 읽어서, 광고 표시 문구·단계 이름·글 규칙이 화면에서 통째로 빠졌습니다.
@@ -496,6 +529,9 @@ window.ESC = (function () {
       A.$('meName').textContent = A.SESSION.user.email;
       A.applyView('admin');
       await A.loadAdmin();
+      var saved = 'blog';
+      try { saved = localStorage.getItem('esc_track') || 'blog'; } catch (e) {}
+      A.setTrack(saved, false);
       A.applyHash();
       return;
     }

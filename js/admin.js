@@ -4,7 +4,7 @@
   var $ = A.$, esc = A.esc, won = A.won;
 
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
-  var ALLTOPICS = [], NOTES = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
+  var ALLTOPICS = [], NOTES = [], RVSPECS = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
   var REQ_DONE = {};    /* 의뢰 id → ESC 관리자에서 '완료'로 표시됐는지 */
@@ -60,6 +60,8 @@
   }
 
   /* ═══ 데이터 ═══ */
+  A.afterTrack = function () { if (A.ORDERS && A.ORDERS.length) { renderOrders(); fillSelects(); } };
+
   A.loadAdmin = async function () {
     A.COMMS = await A.sel('communities', { order: 'name' });
     A.PEOPLE = await A.sel('bloggers', { order: 'created_at', asc: false });
@@ -69,6 +71,7 @@
     POSTS = await A.sel('blog_posts', { order: 'seq' });
     ALLTOPICS = await A.sel('blog_topics', { order: 'sort' });   /* 주문 카드 「나가는 정보」용 */
     NOTES = await A.sel('order_notes', { order: 'created_at' });
+    RVSPECS = await A.sel('review_specs', { order: 'sort' });
 
     await loadBlogStaff();
 
@@ -770,15 +773,34 @@
   }
 
   /* ═══ 2 블로거 교육 ═══ */
+  var ALLSESS = [], ALLMATS = [], ALLPROG = [], READY = {};
   async function loadEdu() {
-    SESSIONS = await A.sel('training_sessions', { order: 'held_at', asc: false });
-    MATS = await A.sel('training_materials', { order: 'sort' });
+    ALLSESS = await A.sel('training_sessions', { order: 'held_at', asc: false });
+    ALLMATS = await A.sel('training_materials', { order: 'sort' });
     ATT = await A.sel('training_attendance');
-    TPROG = await A.sel('training_progress');
+    ALLPROG = await A.sel('training_progress');
+    SESSIONS = ALLSESS; MATS = ALLMATS; TPROG = ALLPROG;   /* 예전 코드가 쓰는 이름 */
+
+    /* 갈래마다 「지금 일을 받을 수 있나」가 다릅니다 (교육이 다르니까).
+       한 명씩 물으면 왕복이 사람 수 × 2 번이라 한 번에 받아 옵니다. */
+    READY = { blog: {}, review: {} };
+    try {
+      var rm = await A.rpc('bloggers_ready_map');
+      (rm || []).forEach(function (r) { READY[r.track][r.blogger_id] = r.ok; });
+    } catch (e) { console.warn('준비 여부', e.message); }
     renderEdu();
   }
+  /* 갈래(블로그/리뷰)마다 같은 모양으로 두 번 그립니다.
+     교육 내용은 다르지만 화면이 같아야 관리자가 헷갈리지 않습니다. */
   function renderEdu() {
-    $('eduSessions').innerHTML = SESSIONS.length ? '<div class="tblbox tblscroll"><table>'
+    paintEdu('blog',   { sess: 'eduSessions',   mats: 'eduMaterials',   sum: 'eduSummaries',   prog: 'eduProgress' });
+    paintEdu('review', { sess: 'rvEduSessions', mats: 'rvEduMaterials', sum: 'rvEduSummaries', prog: 'rvEduProgress' });
+  }
+  function paintEdu(TK, ID) {
+    if (!$(ID.sess)) return;
+    var SESSIONS = ALLSESS.filter(function (x) { return (x.track || 'blog') === TK; });
+    var MATS = ALLMATS.filter(function (x) { return (x.track || 'blog') === TK; });
+    $(ID.sess).innerHTML = SESSIONS.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>교육</th><th>날짜</th><th>실시간</th><th>녹화본</th><th>줌 링크</th><th>녹화본 주소</th><th></th></tr></thead><tbody>'
       + SESSIONS.map(function (s) {
         var live = ATT.filter(function (a) { return a.session_id === s.id && a.mode === 'live'; }).length;
@@ -803,7 +825,7 @@
           + (wait ? '확인할 것 ' + wait + '건' : '참석 체크') + '</button></td></tr>';
       }).join('') + '</tbody></table></div>' : A.empty('줌 일정이 없습니다. 아래에서 추가하세요.');
 
-    $('eduMaterials').innerHTML = MATS.length ? '<div class="matlist">' + MATS.map(function (m) {
+    $(ID.mats).innerHTML = MATS.length ? '<div class="matlist">' + MATS.map(function (m) {
       var done = TPROG.filter(function (g) { return g.material_id === m.id && g.status === 'approved'; }).length;
       var wait = TPROG.filter(function (g) { return g.material_id === m.id && g.status === 'submitted'; }).length;
       return '<div class="mat">' + A.ytThumb(m.url) + '<div style="flex:1;min-width:140px">'
@@ -816,14 +838,14 @@
         + '<button class="btn btn-s" data-delmat="' + m.id + '">삭제</button></div>';
     }).join('') + '</div>' : A.empty('영상 자료가 없습니다.');
 
-    renderSummaries();
+    renderSummaries(TK, ID.sum, MATS);
 
     var appr = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
     var t1 = SESSIONS.filter(function (s) { return s.kind === 't1'; }).map(function (s) { return s.id; });
     var t2 = SESSIONS.filter(function (s) { return s.kind === 't2'; }).map(function (s) { return s.id; });
     var req = MATS.filter(function (m) { return m.required; });
 
-    $('eduProgress').innerHTML = appr.length ? '<div class="tblbox tblscroll"><table>'
+    $(ID.prog).innerHTML = appr.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>이름</th><th>공동체</th><th>1차 교육</th><th>영상</th><th>2차 교육</th><th>글 받을 수 있나</th></tr></thead><tbody>'
       + appr.map(function (p) {
         var a1 = ATT.filter(function (a) { return a.blogger_id === p.id && t1.indexOf(a.session_id) >= 0; })[0];
@@ -831,7 +853,7 @@
         var mine = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'approved'; }).length;
         var wt = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'submitted'; }).length;
         var need = req.length;
-        var s = stat(p.id);
+        var okNow = READY[TK] && READY[TK][p.id];
         return '<tr><td><b>' + esc(p.name) + '</b></td><td>' + esc(A.commName(p.community_id)) + '</td>'
           + '<td>' + (a1 ? (a1.mode === 'live' ? '<span class="chip c-ok">참석</span>'
             : '<span class="chip c-wait">녹화본</span>') : '<span class="chip c-bad">아직</span>') + '</td>'
@@ -840,14 +862,16 @@
               : '<span class="chip c-bad">' + mine + '/' + need + '</span>')
           + (wt ? ' <span class="chip c-wait">요약 ' + wt + '건 확인 대기</span>' : '') + '</td>'
           + '<td>' + (a2 ? '<span class="chip c-ok">참석</span>' : '<span class="chip c-off">—</span>') + '</td>'
-          + '<td>' + (s.ready ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>' : A.empty('승인된 블로거이 없습니다.');
+          + '<td>' + (okNow ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' : A.empty('승인된 사람이 없습니다.');
   }
 
   /* 낸 요약 확인 — 영상을 정말 봤는지는 요약을 읽어보면 압니다.
      본 시간·붙여넣기 여부를 같이 보여 주니 의심스러운 것만 골라 보시면 됩니다. */
-  function renderSummaries() {
-    var box = $('eduSummaries'); if (!box) return;
+  function renderSummaries(TK, boxId, MATS) {
+    var box = $(boxId); if (!box) return;
+    var mine = {}; MATS.forEach(function (m) { mine[m.id] = 1; });
+    var TPROG = ALLPROG.filter(function (g) { return mine[g.material_id]; });
     var wait = TPROG.filter(function (g) { return g.status === 'submitted'; })
       .sort(function (a, b) { return (a.submitted_at || '') < (b.submitted_at || '') ? -1 : 1; });
     var judged = TPROG.filter(function (g) { return g.status !== 'submitted' && g.summary; })
@@ -906,7 +930,14 @@
 
   /* ═══ 3 주문 · 입금 ═══ */
   function renderOrders() {
-    $('orderList').innerHTML = A.ORDERS.length ? A.ORDERS.map(function (o) {
+    /* 지금 보고 있는 갈래 주문만 보여줍니다 — 블로그 주문과 리뷰 주문이 섞이면 헷갈립니다 */
+    var TK = A.TRACK || 'blog';
+    var list = A.ORDERS.filter(function (o) { return (o.track || 'blog') === TK; });
+    var oh = $('ordHead');
+    if (oh) oh.innerHTML = TK === 'review'
+      ? '<h1>주문 · 입금</h1><p>업체가 어떤 리뷰를 몇 편 원하는지, 돈이 들어왔는지를 봅니다.</p>'
+      : '<h1>주문 · 입금</h1><p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p>';
+    $('orderList').innerHTML = list.length ? list.map(function (o) {
       var p = prog(o.id);
       return '<div class="card" style="margin-bottom:12px" data-ordercard="' + o.id + '">'
         + '<div class="row" style="justify-content:space-between"><div>'
@@ -946,7 +977,7 @@
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
               + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
             : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>'
-        + outBox(o)
+        + ((o.track || 'blog') === 'review' ? rvOrderBox(o) : outBox(o))
         + '<div class="sec" style="margin-top:16px">학원에 보낼 진행현황 주소 '
         + '<small>로그인 없이 열립니다 · 이 학원 것만 보입니다 · 블로거 이름·단가는 안 보입니다</small></div>'
         + '<div class="row">'
@@ -967,7 +998,9 @@
         + 'title="최고관리자만 지울 수 있습니다">🗑 주문 삭제</button>'
         + '</span></div>'
         + '</div>';
-    }).join('') : A.empty('아직 주문이 없습니다. 위에서 만드시면 됩니다.');
+    }).join('') : A.empty(TK === 'review'
+      ? '아직 리뷰 주문이 없습니다. 아래에서 만드시면 됩니다.'
+      : '아직 블로그 주문이 없습니다. 위에서 만드시면 됩니다.');
   }
   function kv(k, v) {
     return '<div><label class="f">' + k + '</label><div style="font-size:16px;font-weight:700">' + esc(v) + '</div></div>';
@@ -983,6 +1016,104 @@
   function basePay(o) {
     var base = (A.LEVELS[0] && A.LEVELS[0].rate) || 1000;
     return Math.round(base * (o && o.is_premium ? 1 : A.payMult()));
+  }
+
+  /* ── 리뷰 주문 ──
+     블로그와 크게 다른 점: 리뷰는 **우리가 본문까지 다 써 줍니다.**
+     그래서 여기서 받아야 하는 것은 검색어가 아니라
+     ①어떤 갈래 리뷰를 몇 편 ②그 갈래에서 짚을 세부 항목 ③네이버 지도 주소 입니다. */
+  function rvOrderBox(o) {
+    var specs = RVSPECS.filter(function (x) { return x.order_id === o.id; });
+    var made = POSTS.filter(function (p) { return p.order_id === o.id; }).length;
+    var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
+
+    return '<details class="outbox" open>'
+      + '<summary>⭐ 리뷰 구성 <span class="mono">— 어떤 리뷰를 몇 편 · 무엇을 짚을지</span></summary>'
+      + '<div class="obody">'
+
+      + '<div class="osec" style="margin-top:0">1 · 네이버 지도 주소</div>'
+      + '<div class="row">'
+      + '<input class="inp" style="flex:1;min-width:220px;font-size:12.5px" data-mapu="' + o.id + '" '
+      + 'placeholder="https://naver.me/… 또는 map.naver.com 주소" value="' + esc(o.map_url || '') + '">'
+      + '<button class="btn btn-p btn-s" data-savemap="' + o.id + '">저장</button>'
+      + (o.map_url ? '<a class="btn btn-s" href="' + esc(o.map_url) + '" target="_blank" rel="noopener">열어보기 ↗</a>' : '')
+      + '</div>'
+      + '<div class="mono" style="margin-top:6px">'
+      + '<b>6번 「올라왔는지 확인」에서 이 주소로 바로 들어갑니다.</b> 꼭 넣어 주세요.</div>'
+
+      + '<div class="osec">2 · 리뷰어가 직접 가나요</div>'
+      + '<div class="row">'
+      + '<select class="inp" style="width:auto" data-visit="' + o.id + '">'
+      + '<option value="visit"' + (o.visit_type !== 'material' ? ' selected' : '') + '>방문형 — 직접 가서 결제하고 씁니다</option>'
+      + '<option value="material"' + (o.visit_type === 'material' ? ' selected' : '') + '>자료형 — 업체가 사진·내용을 주고 방문 안 합니다</option>'
+      + '</select>'
+      + '<button class="btn btn-s" data-savevisit="' + o.id + '">저장</button></div>'
+      + (o.visit_type === 'material'
+        ? '<div class="note warn" style="margin-top:9px">'
+          + '<b>자료형은 네이버 영수증 리뷰로는 올릴 수 없습니다.</b> 네이버는 결제·방문 인증이 있어야 '
+          + '리뷰를 받습니다. 자료형으로 진행하실 때는 <b>어디에 올릴 리뷰인지</b>(플레이스가 아닌 곳인지) '
+          + '먼저 확인해 주세요. 인증 없이 올리면 리뷰어 계정이 막힐 수 있습니다.</div>'
+        : '<div class="mono" style="margin-top:6px">방문·결제 후 영수증으로 인증합니다. '
+          + '방문비·식대 정산이 따로 필요하면 메모에 적어 두세요.</div>')
+
+      + '<div class="osec">3 · 어떤 리뷰를 몇 편 <small>합계 ' + want + '편'
+      + (o.total_qty && want !== o.total_qty ? ' · 주문은 ' + o.total_qty + '편' : '') + '</small></div>'
+      + '<div data-rvspec="' + o.id + '">' + rvSpecRows(o.id, specs) + '</div>'
+      + '<div class="row" style="margin-top:10px">'
+      + '<button class="btn btn-s" data-rvadd="' + o.id + '">+ 갈래 한 줄 추가</button>'
+      + '<button class="btn btn-a btn-s" data-rvsave="' + o.id + '">리뷰 구성 저장</button>'
+      + (want && want !== o.total_qty
+        ? '<span class="mono" style="color:var(--bad)">합계(' + want + ')와 주문 편수('
+          + o.total_qty + ')가 다릅니다</span>' : '')
+      + '</div>'
+      + '<div class="note" style="margin-top:12px">'
+      + '<b>예)</b> 시설 5편 — 테이블, 화장실, 주방 / 직원 친절 10편 / 음식 30편 — 짜장면, 짬뽕, 탕수육, 짬짜면<br>'
+      + '세부 항목은 <b>쉼표로</b> 나눠 적어 주세요. 리뷰 문장을 만들 때 하나씩 돌아가며 들어갑니다.</div>'
+
+      + '<div class="osec">4 · 사진</div>'
+      + ((o.photo_paths || []).length
+        ? '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
+          + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button></div>'
+        : '<div class="note warn">사진이 없습니다. 리뷰는 사진이 생명이라 업체에 꼭 받으셔야 합니다.</div>')
+
+      + '<div class="osec">5 · 만들어진 리뷰</div>'
+      + (made
+        ? '<div class="mono">리뷰 <b>' + made + '편</b>이 만들어져 있습니다. '
+          + '<b>4 리뷰 만들기</b>에서 내용을 넣고 <b>5 리뷰 나눠주기</b>에서 배정하세요.</div>'
+        : '<div class="mono">아직 리뷰를 안 만들었습니다. 위 구성을 저장한 뒤 '
+          + '<b>4 리뷰 만들기</b>로 가세요.</div>')
+      + '</div></details>';
+  }
+  /* 화면에 있는 줄을 그대로 읽어 옵니다 (저장 전 상태를 잃지 않으려고) */
+  function rvCollect(oid) {
+    var out = [], i = 0;
+    while (true) {
+      var c = document.querySelector('[data-rvc="' + oid + '_' + i + '"]');
+      if (!c) break;
+      var q = document.querySelector('[data-rvq="' + oid + '_' + i + '"]');
+      var pt = document.querySelector('[data-rvp="' + oid + '_' + i + '"]');
+      out.push({
+        category: c.value.trim(),
+        qty: Number(q ? q.value : 0) || 0,
+        points: (pt ? pt.value : '').split(',').map(function (x) { return x.trim(); }).filter(Boolean)
+      });
+      i++;
+    }
+    return out;
+  }
+  function rvSpecRows(oid, specs) {
+    if (!specs.length) specs = [{ category: '', qty: 0, points: [] }];
+    return specs.map(function (x, i) {
+      return '<div class="rvrow">'
+        + '<input class="inp" data-rvc="' + oid + '_' + i + '" style="width:130px" '
+        + 'placeholder="갈래 (예: 음식)" value="' + esc(x.category || '') + '">'
+        + '<input class="inp" data-rvq="' + oid + '_' + i + '" type="number" min="0" style="width:80px" '
+        + 'placeholder="편수" value="' + (x.qty || '') + '">'
+        + '<input class="inp" data-rvp="' + oid + '_' + i + '" style="flex:1;min-width:180px" '
+        + 'placeholder="세부 항목 — 쉼표로 (예: 짜장면, 짬뽕, 탕수육)" '
+        + 'value="' + esc((x.points || []).join(', ')) + '">'
+        + '<button class="xdel" data-rvdel="' + oid + '_' + i + '" title="지우기">×</button></div>';
+    }).join('');
   }
 
   /* ── 「블로거에게 나가는 정보」 한눈에 보기 ──
@@ -2954,7 +3085,7 @@
     if (name === 'links') renderLinks();
     if (name === 'r-pay') renderMyReviewPay();
     if (name === 'noti') loadNoti(true);
-    if (name === 'edu') loadEdu();
+    if (name === 'edu' || name === 'r-edu') loadEdu();
     if (name === 'pay') loadPay();
     if (name === 'review') A.view('acad-list');
     if (name === 'kw' && $('kwOrder').value) { $('kwOrder').onchange(); tpFill(); tpLoad(); }  /* 주문 글감을 자동으로 채웁니다 */
@@ -3114,6 +3245,52 @@
         A.toast(cnt ? cnt + '명에게 알렸습니다' : '지금 이 학원 글을 맡고 있는 분이 없습니다');
         if (cnt) wbox.value = '';
         await loadNoti(false);
+      } catch (err) { A.toast('실패: ' + err.message); }
+      t.disabled = false; return;
+    }
+
+    /* ── 리뷰 주문 ── */
+    if ((t = e.target.closest('[data-savemap]'))) {
+      var mu = document.querySelector('[data-mapu="' + t.dataset.savemap + '"]');
+      t.disabled = true;
+      var r = await A.sb.from('blog_orders')
+        .update({ map_url: mu && mu.value.trim() ? mu.value.trim() : null })
+        .eq('id', t.dataset.savemap).select();
+      t.disabled = false;
+      if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+      A.toast('지도 주소를 저장했습니다'); await A.loadAdmin(); return;
+    }
+    if ((t = e.target.closest('[data-savevisit]'))) {
+      var vs = document.querySelector('[data-visit="' + t.dataset.savevisit + '"]');
+      t.disabled = true;
+      var r2 = await A.sb.from('blog_orders').update({ visit_type: vs ? vs.value : 'visit' })
+        .eq('id', t.dataset.savevisit).select();
+      t.disabled = false;
+      if (r2.error || !r2.data || !r2.data.length) { A.toast('저장 실패'); return; }
+      A.toast('저장했습니다'); await A.loadAdmin(); return;
+    }
+    if ((t = e.target.closest('[data-rvadd]'))) {
+      var oid = t.dataset.rvadd;
+      var cur = rvCollect(oid); cur.push({ category: '', qty: 0, points: [] });
+      document.querySelector('[data-rvspec="' + oid + '"]').innerHTML = rvSpecRows(oid, cur);
+      return;
+    }
+    if ((t = e.target.closest('[data-rvdel]'))) {
+      var pr = t.dataset.rvdel.split('_'); var oid2 = pr[0], idx = Number(pr[1]);
+      var cur2 = rvCollect(oid2); cur2.splice(idx, 1);
+      if (!cur2.length) cur2 = [{ category: '', qty: 0, points: [] }];
+      document.querySelector('[data-rvspec="' + oid2 + '"]').innerHTML = rvSpecRows(oid2, cur2);
+      return;
+    }
+    if ((t = e.target.closest('[data-rvsave]'))) {
+      var oid3 = t.dataset.rvsave;
+      var items = rvCollect(oid3).filter(function (x) { return x.category && x.qty > 0; });
+      if (!items.length) { A.toast('갈래와 편수를 채워 주세요'); return; }
+      t.disabled = true;
+      try {
+        var n = await A.rpc('review_specs_set', { p_order: oid3, p_items: items });
+        A.toast('리뷰 구성 ' + n + '줄을 저장했습니다');
+        await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); }
       t.disabled = false; return;
     }
@@ -3440,6 +3617,14 @@
         p_academy: name, p_qty: qty, p_sale: Number($('no_price').value) || 6000,
         p_deadline: $('no_deadline').value || null, p_region: $('no_region').value.trim() || null
       });
+      /* 지금 보고 있는 갈래로 만듭니다 (order_create 는 블로그 기준이라 뒤에서 표시만 바꿉니다) */
+      if ((A.TRACK || 'blog') === 'review') {
+        var last = await A.sb.from('blog_orders').select('id')
+          .eq('academy_name', name).order('created_at', { ascending: false }).limit(1);
+        if (last.data && last.data.length) {
+          await A.sb.from('blog_orders').update({ track: 'review' }).eq('id', last.data[0].id);
+        }
+      }
       A.toast('주문을 만들었습니다');
       $('no_name').value = ''; $('no_qty').value = '';
       await A.loadAdmin();
@@ -3471,6 +3656,34 @@
     if (r.error) { A.toast('추가 실패: ' + r.error.message); return; }
     $('nm_title').value = ''; $('nm_url').value = ''; $('nm_q').value = ''; $('nm_chars').value = '';
     A.toast('자료를 올렸습니다'); await loadEdu();
+  };
+
+  /* 리뷰 갈래 교육 — 같은 표에 track 만 'review' 로 넣습니다 */
+  if ($('btnAddRvSession')) $('btnAddRvSession').onclick = async function () {
+    if (!$('rns_at').value) { A.toast('날짜를 넣어 주세요'); return; }
+    this.disabled = true;
+    var r = await A.sb.from('training_sessions').insert({
+      kind: $('rns_kind').value, held_at: new Date($('rns_at').value).toISOString(),
+      zoom_url: $('rns_url').value.trim() || null, track: 'review'
+    }).select();
+    this.disabled = false;
+    if (r.error) { A.toast('추가 실패: ' + r.error.message); return; }
+    $('rns_url').value = ''; A.toast('리뷰 교육 일정을 추가했습니다'); await loadEdu();
+  };
+  if ($('btnAddRvMat')) $('btnAddRvMat').onclick = async function () {
+    var title = $('rnm_title').value.trim(), url = $('rnm_url').value.trim();
+    if (!title || !url) { A.toast('제목과 주소를 넣어 주세요'); return; }
+    this.disabled = true;
+    var r = await A.sb.from('training_materials').insert({
+      title: title, url: url,
+      min_chars: Number($('rnm_min').value) || 150,
+      check_question: $('rnm_q').value.trim() || null, required: $('rnm_req').checked,
+      sort: ALLMATS.length, track: 'review'
+    }).select();
+    this.disabled = false;
+    if (r.error) { A.toast('추가 실패: ' + r.error.message); return; }
+    $('rnm_title').value = ''; $('rnm_url').value = ''; $('rnm_q').value = '';
+    A.toast('리뷰 교육 자료를 올렸습니다'); await loadEdu();
   };
 
   document.addEventListener('change', async function (e) {
