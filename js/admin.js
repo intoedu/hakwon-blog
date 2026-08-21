@@ -96,6 +96,7 @@
     renderDash(); renderStaffAll(); renderBlogStaff();
     renderOrders(); renderAssign(); renderReview(); renderProgress(); renderLinks(); renderRules();
     tgFill(); tgLoad();
+    rvFill('rmOrder'); rmPaint(); renderRvAssign(); renderRvCheck();
     loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
 
@@ -1048,13 +1049,11 @@
       + '<option value="material"' + (o.visit_type === 'material' ? ' selected' : '') + '>자료형 — 업체가 사진·내용을 주고 방문 안 합니다</option>'
       + '</select>'
       + '<button class="btn btn-s" data-savevisit="' + o.id + '">저장</button></div>'
+      + '<div class="mono" style="margin-top:6px">'
       + (o.visit_type === 'material'
-        ? '<div class="note warn" style="margin-top:9px">'
-          + '<b>자료형은 네이버 영수증 리뷰로는 올릴 수 없습니다.</b> 네이버는 결제·방문 인증이 있어야 '
-          + '리뷰를 받습니다. 자료형으로 진행하실 때는 <b>어디에 올릴 리뷰인지</b>(플레이스가 아닌 곳인지) '
-          + '먼저 확인해 주세요. 인증 없이 올리면 리뷰어 계정이 막힐 수 있습니다.</div>'
-        : '<div class="mono" style="margin-top:6px">방문·결제 후 영수증으로 인증합니다. '
-          + '방문비·식대 정산이 따로 필요하면 메모에 적어 두세요.</div>')
+        ? '업체가 준 사진과 내용으로 씁니다.'
+        : '방문·결제 후 영수증으로 인증합니다. 방문비·식대 정산이 따로 필요하면 메모에 적어 두세요.')
+      + '</div>'
 
       + '<div class="osec">3 · 어떤 리뷰를 몇 편 <small>합계 ' + want + '편'
       + (o.total_qty && want !== o.total_qty ? ' · 주문은 ' + o.total_qty + '편' : '') + '</small></div>'
@@ -1912,6 +1911,303 @@
       this.disabled = false;
     };
   }
+
+  /* ═══════════ 리뷰 4 · 5 · 6 ═══════════ */
+
+  function rvOrders() {
+    return A.ORDERS.filter(function (o) { return (o.track || 'blog') === 'review'; });
+  }
+  function rvFill(id) {
+    var el = $(id); if (!el) return;
+    var k = el.value;
+    el.innerHTML = rvOrders().map(function (o) {
+      return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)</option>';
+    }).join('') || '<option value="">리뷰 주문이 없습니다</option>';
+    if (k) el.value = k;
+  }
+  function rvOrderOf(id) {
+    var v = $(id) && $(id).value;
+    return A.ORDERS.filter(function (o) { return o.id === v; })[0] || null;
+  }
+
+  /* ── 4 리뷰 만들기 ── */
+  var RMDRAFT = [];
+  function rmPaint() {
+    var o = rvOrderOf('rmOrder'); if (!$('rmInfo')) return;
+    if (!o) { $('rmInfo').innerHTML = A.empty('리뷰 주문이 없습니다.'); return; }
+    var specs = RVSPECS.filter(function (x) { return x.order_id === o.id; });
+    var made = POSTS.filter(function (x) { return x.order_id === o.id; }).length;
+    var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
+    $('rmInfo').innerHTML = '<div class="note">'
+      + '<b>' + esc(o.academy_name) + '</b> — 주문 ' + o.total_qty + '편 · '
+      + '구성 합계 ' + want + '편 · <b>지금까지 만든 리뷰 ' + made + '편</b>'
+      + (specs.length
+        ? '<div class="tagline" style="margin-top:8px">' + specs.map(function (x) {
+            return '<span>' + esc(x.category) + ' ' + x.qty + '편</span>';
+          }).join('') + '</div>'
+        : '<br><b style="color:var(--bad)">3 주문·입금에서 리뷰 구성을 먼저 정해 주세요.</b>')
+      + '</div>';
+  }
+  /* 클로드에게 그대로 넘길 수 있게 한 덩어리로 만듭니다 */
+  function rmBrief() {
+    var o = rvOrderOf('rmOrder'); if (!o) return '';
+    var specs = RVSPECS.filter(function (x) { return x.order_id === o.id; });
+    var L = [];
+    L.push('네이버 리뷰를 만들어 주세요. 아래 형식 그대로 돌려주시면 됩니다.');
+    L.push('');
+    L.push('■ 업체');
+    L.push('- 이름: ' + o.academy_name);
+    if (o.region) L.push('- 지역: ' + o.region);
+    if (o.map_url) L.push('- 네이버 지도: ' + o.map_url);
+    L.push('- 방문 여부: ' + (o.visit_type === 'material' ? '리뷰어가 방문하지 않음' : '리뷰어가 직접 방문·결제'));
+    L.push('');
+    L.push('■ 만들 리뷰');
+    specs.forEach(function (x) {
+      L.push('- ' + x.category + ' ' + x.qty + '편'
+        + ((x.points || []).length ? ' — ' + x.points.join(', ') : '')
+        + (x.note ? ' (' + x.note + ')' : ''));
+    });
+    L.push('');
+    if (o.info_pack) { L.push('■ 업체가 준 정보'); L.push(o.info_pack); L.push(''); }
+    L.push('■ 지켜 주세요');
+    L.push('- 리뷰 하나에 2~4문장. 네이버 리뷰답게 짧고 구어체로.');
+    L.push('- ' + specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0)
+      + '편이 서로 표현이 겹치지 않게. 같은 문장·같은 시작말을 쓰지 마세요.');
+    L.push('- 세부 항목이 있으면 편마다 하나씩 돌아가며 다루세요.');
+    L.push('- 별점·이모지·해시태그는 넣지 마세요.');
+    L.push('- 지어내지 마세요. 위에 준 것 안에서만 쓰세요.');
+    L.push('');
+    L.push('■ 이 형식으로 돌려주세요 (--- 로 나눔)');
+    L.push('[갈래] 세부항목');
+    L.push('리뷰 본문');
+    L.push('---');
+    L.push('[갈래] 세부항목');
+    L.push('리뷰 본문');
+    return L.join('\n');
+  }
+  /* 붙여넣은 것을 --- 로 잘라 읽습니다. 첫 줄이 [갈래] 세부항목 이면 떼어냅니다 */
+  function rmParse(txt) {
+    return String(txt || '').split(/^\s*-{3,}\s*$/m).map(function (blk) {
+      var lines = blk.replace(/\r/g, '').split('\n');
+      while (lines.length && !lines[0].trim()) lines.shift();
+      while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+      if (!lines.length) return null;
+      var cat = '', pt = '';
+      var m = lines[0].match(/^\s*\[([^\]]+)\]\s*(.*)$/);
+      if (m) { cat = m[1].trim(); pt = (m[2] || '').trim(); lines.shift(); }
+      var body = lines.join('\n').trim();
+      if (!body) return null;
+      return { category: cat, point: pt, body: body };
+    }).filter(Boolean);
+  }
+  if ($('rmOrder')) {
+    $('rmOrder').onchange = rmPaint;
+    $('rmCopy').onclick = function () {
+      var t = rmBrief();
+      if (!t) { A.toast('주문을 고르세요'); return; }
+      navigator.clipboard.writeText(t).then(function () {
+        A.toast('복사했습니다. 클로드에게 붙여넣으세요');
+      });
+    };
+    $('rmParse').onclick = function () {
+      RMDRAFT = rmParse($('rmPaste').value);
+      var by = {};
+      RMDRAFT.forEach(function (x) { by[x.category || '(갈래 없음)'] = (by[x.category || '(갈래 없음)'] || 0) + 1; });
+      $('rmCount').innerHTML = RMDRAFT.length
+        ? '<b>' + RMDRAFT.length + '편</b>을 읽었습니다'
+        : '읽어낸 것이 없습니다 — --- 로 나눠져 있는지 보세요';
+      /* 같은 문장이 섞여 있으면 여기서 잡습니다 */
+      var seen = {}, dup = 0;
+      RMDRAFT.forEach(function (x) {
+        var k = x.body.replace(/\s+/g, '');
+        if (seen[k]) dup++; else seen[k] = 1;
+      });
+      $('rmPrev').innerHTML = RMDRAFT.length
+        ? (dup ? '<div class="note warn"><b>똑같은 본문이 ' + dup + '건 있습니다.</b> '
+            + '같은 글이 여러 개 올라가면 바로 걸립니다. 다시 받으세요.</div>' : '')
+          + '<div class="tagline" style="margin-bottom:10px">'
+          + Object.keys(by).map(function (k) { return '<span>' + esc(k) + ' ' + by[k] + '편</span>'; }).join('')
+          + '</div>'
+          + RMDRAFT.slice(0, 5).map(function (x, i) {
+            return '<div class="obit" style="padding:10px 12px">'
+              + '<b style="font-size:12.5px">' + (i + 1) + '. [' + esc(x.category || '-') + '] '
+              + esc(x.point || '') + '</b>'
+              + '<div class="mono" style="margin-top:5px;white-space:pre-wrap">' + esc(x.body) + '</div></div>';
+          }).join('')
+          + (RMDRAFT.length > 5 ? '<div class="mono">앞의 5편만 보여드립니다.</div>' : '')
+        : '';
+      $('rmSave').disabled = !RMDRAFT.length;
+    };
+    $('rmSave').onclick = async function () {
+      var o = rvOrderOf('rmOrder'); if (!o || !RMDRAFT.length) return;
+      this.disabled = true;
+      try {
+        var n = await A.rpc('reviews_generate', {
+          p_order: o.id, p_items: RMDRAFT, p_replace: $('rmReplace').checked
+        });
+        A.toast(n + '편을 만들었습니다');
+        $('rmPaste').value = ''; $('rmPrev').innerHTML = ''; $('rmCount').textContent = '';
+        RMDRAFT = [];
+        await A.loadAdmin(); A.show('r-assign');
+      } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }
+    };
+  }
+
+  /* ── 5 리뷰 나눠주기 ── */
+  function renderRvAssign() {
+    if (!$('raPosts')) return;
+    rvFill('raOrder');
+    var o = rvOrderOf('raOrder');
+    if (!o) { $('raPosts').innerHTML = A.empty('리뷰 주문이 없습니다.'); $('raPeople').innerHTML = ''; return; }
+
+    if ($('raFrom') && !$('raFrom').value) $('raFrom').value = A.today();
+    if ($('raTo') && !$('raTo').value) $('raTo').value = o.deadline || '';
+
+    var mine = POSTS.filter(function (p) { return p.order_id === o.id; });
+    var idle = mine.filter(function (p) { return p.status === 'pending'; });
+    var timed = mine.filter(function (p) { return p.write_at; });
+
+    $('raInfo').innerHTML = '아직 안 맡긴 리뷰 <b>' + idle.length + '편</b> · 시각이 정해진 것 '
+      + timed.length + '편';
+
+    /* 날짜별 편수 미리보기 */
+    var by = {};
+    timed.forEach(function (p) { var d = String(p.write_at).slice(0, 10); by[d] = (by[d] || 0) + 1; });
+    var days = Object.keys(by).sort();
+    $('raPrev').innerHTML = days.length
+      ? '<div class="sec">날짜별 편수</div><div class="tagline">'
+        + days.map(function (d) {
+          return '<span' + (by[d] > 5 ? ' style="background:var(--bad-bg);color:var(--bad)"' : '')
+            + '>' + d.slice(5) + ' · ' + by[d] + '편</span>';
+        }).join('') + '</div>'
+      : '';
+
+    /* 같은 사람이 같은 날 이 가게 리뷰를 여러 개 맡았는지 */
+    var clash = {};
+    mine.filter(function (p) { return p.blogger_id && p.write_at; }).forEach(function (p) {
+      var k = p.blogger_id + '|' + String(p.write_at).slice(0, 10);
+      clash[k] = (clash[k] || 0) + 1;
+    });
+    var bad = Object.keys(clash).filter(function (k) { return clash[k] > 1; });
+    $('raClash').innerHTML = bad.length
+      ? '<div class="note warn" style="margin-bottom:12px"><b>같은 사람이 같은 날 이 가게 리뷰를 '
+        + '두 개 이상 맡은 것이 ' + bad.length + '건 있습니다.</b> 한 사람이 하루에 같은 가게 리뷰를 '
+        + '여러 개 올리면 바로 티가 납니다.<br>'
+        + bad.map(function (k) {
+          var pr = k.split('|'), who = A.PEOPLE.filter(function (x) { return x.id === pr[0]; })[0];
+          return '· <b>' + esc(who ? who.name : '?') + '</b> — ' + pr[1] + ' 에 ' + clash[k] + '편';
+        }).join('<br>') + '</div>'
+      : '';
+
+    $('raPosts').innerHTML = idle.length
+      ? '<div class="picklist">' + idle.map(function (p) {
+        return '<label class="pickrow"><input type="checkbox" class="pk-rv" value="' + p.id + '">'
+          + '<span style="flex:1;min-width:0"><b>' + esc(p.category || '-') + '</b> '
+          + '<span class="sub">' + esc(p.keyword || '') + '</span>'
+          + '<div class="mono" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+          + esc((p.body || '').slice(0, 40)) + '</div></span>'
+          + '<span class="dday calm">' + (p.write_at ? A.fdt(p.write_at) : '시각 미정') + '</span></label>';
+      }).join('') + '</div>'
+      : A.empty(mine.length ? '맡길 리뷰가 남아 있지 않습니다.' : '아직 리뷰를 안 만들었습니다. 4번으로 가세요.');
+
+    var appr = A.PEOPLE.filter(function (p) {
+      return p.status === 'approved' && READY.review && READY.review[p.id];
+    });
+    $('raPeople').innerHTML = appr.length
+      ? '<div class="picklist">' + appr.map(function (p) {
+        var n = POSTS.filter(function (x) { return x.blogger_id === p.id && x.status !== 'cancelled'; }).length;
+        return '<label class="pickrow"><input type="checkbox" class="pk-rvp" value="' + p.id + '">'
+          + '<span style="flex:1"><b>' + esc(p.name) + '</b> '
+          + '<span class="sub">' + esc(A.commName(p.community_id)) + '</span></span>'
+          + '<span class="mono">누적 ' + n + '</span></label>';
+      }).join('') + '</div>'
+      : A.empty('리뷰 교육을 마친 사람이 없습니다. 2 리뷰어 교육을 먼저 끝내 주세요.');
+  }
+  if ($('raOrder')) {
+    $('raOrder').onchange = renderRvAssign;
+    $('raGo').onclick = async function () {
+      var o = rvOrderOf('raOrder'); if (!o) return;
+      if (!$('raTo').value) { A.toast('언제까지 올릴지 정해 주세요'); return; }
+      this.disabled = true;
+      try {
+        var r = await A.rpc('reviews_schedule', {
+          p_order: o.id, p_from: $('raFrom').value || null, p_to: $('raTo').value,
+          p_h0: Number($('raH0').value) || 11, p_h1: Number($('raH1').value) || 21,
+          p_all: $('raAll').checked
+        });
+        A.toast((r.scheduled || 0) + '편에 시각을 깔았습니다 (하루 약 ' + (r.per_day || 0) + '편)');
+        await A.loadAdmin(); renderRvAssign();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+    $('raAuto').onclick = async function () {
+      var ids = pickedRv('pk-rv');
+      if (!ids.length) { A.toast('맡길 리뷰를 고르세요'); return; }
+      var pool = pickedRv('pk-rvp');
+      this.disabled = true;
+      try {
+        var r = await A.rpc('posts_auto_assign', { p_posts: ids, p_pool: pool.length ? pool : null });
+        A.toast((r.assigned || 0) + '편을 나눠줬습니다');
+        await A.loadAdmin(); renderRvAssign();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+    $('raAssign').onclick = async function () {
+      var ids = pickedRv('pk-rv'), who = pickedRv('pk-rvp');
+      if (!ids.length || !who.length) { A.toast('리뷰와 사람을 고르세요'); return; }
+      this.disabled = true;
+      try {
+        var n = await A.rpc('posts_assign', { p_posts: ids, p_bloggers: who });
+        A.toast(n + '편을 맡겼습니다');
+        await A.loadAdmin(); renderRvAssign();
+      } catch (e) { A.toast('실패: ' + e.message); }
+      this.disabled = false;
+    };
+  }
+  function pickedRv(cls) {
+    return Array.prototype.map.call(document.querySelectorAll('.' + cls + ':checked'),
+      function (c) { return c.value; });
+  }
+
+  /* ── 6 올라왔는지 확인 ── */
+  function renderRvCheck() {
+    var box = $('rcList'); if (!box) return;
+    var up = POSTS.filter(function (p) {
+      var o = A.ORDERS.filter(function (x) { return x.id === p.order_id; })[0];
+      return o && (o.track || 'blog') === 'review' && p.status === 'published';
+    });
+    var c = $('cRvCheck');
+    if (c) { c.textContent = up.length; c.classList.toggle('hide', !up.length); }
+
+    box.innerHTML = up.length ? up.map(function (p) {
+      var o = A.ORDERS.filter(function (x) { return x.id === p.order_id; })[0] || {};
+      var who = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
+      return '<div class="card" style="margin-bottom:12px">'
+        + '<div class="row" style="justify-content:space-between"><div>'
+        + '<h3 style="font-size:15.5px">' + esc(o.academy_name || '') + ' <span class="chip">'
+        + esc(p.category || '-') + '</span></h3>'
+        + '<div class="mono" style="margin-top:3px">' + esc(who ? who.name : '?')
+        + ' · ' + A.fdt(p.published_at) + ' 올림'
+        + (p.memo ? ' · 닉네임 ' + esc(p.memo) : '') + '</div></div>'
+        + (o.map_url
+          ? '<a class="btn btn-a btn-s" href="' + esc(o.map_url) + '" target="_blank" rel="noopener">'
+            + '📍 네이버 지도에서 보기 ↗</a>'
+          : '<span class="chip c-bad">지도 주소 없음</span>') + '</div>'
+        + '<div class="grid g2" style="gap:14px;margin-top:12px">'
+        + '<div><label class="f">우리가 준 본문</label>'
+        + '<pre class="tpnote" style="margin-top:0">' + esc(p.body || '') + '</pre></div>'
+        + '<div><label class="f">리뷰어가 올린 화면</label>'
+        + (p.proof_path
+          ? '<button class="btn btn-s" data-rvproof="' + esc(p.proof_path) + '">🖼 캡처 보기</button>'
+          : '<div class="note warn" style="margin:0">캡처가 없습니다.</div>') + '</div>'
+        + '</div>'
+        + '<div class="row" style="margin-top:14px">'
+        + '<button class="btn btn-a btn-s" data-rvok="' + p.id + '">올라왔습니다 — 확인</button>'
+        + '<button class="btn btn-s" data-rvno="' + p.id + '">다시 올려 달라기</button>'
+        + '</div></div>';
+    }).join('') : A.empty('지금 확인할 리뷰가 없습니다. 리뷰어가 올리면 여기에 뜹니다.');
+  }
+  A.renderRvCheck = renderRvCheck;
 
   /* ═══ 5 글 나눠주기 ═══ */
   function renderAssign() {
@@ -3086,6 +3382,9 @@
     if (name === 'r-pay') renderMyReviewPay();
     if (name === 'noti') loadNoti(true);
     if (name === 'edu' || name === 'r-edu') loadEdu();
+    if (name === 'r-make') { rvFill('rmOrder'); rmPaint(); }
+    if (name === 'r-assign') renderRvAssign();
+    if (name === 'r-check') renderRvCheck();
     if (name === 'pay') loadPay();
     if (name === 'review') A.view('acad-list');
     if (name === 'kw' && $('kwOrder').value) { $('kwOrder').onchange(); tpFill(); tpLoad(); }  /* 주문 글감을 자동으로 채웁니다 */
@@ -3247,6 +3546,32 @@
         await loadNoti(false);
       } catch (err) { A.toast('실패: ' + err.message); }
       t.disabled = false; return;
+    }
+
+    /* ── 리뷰 확인 ── */
+    if ((t = e.target.closest('[data-rvproof]'))) {
+      var r0 = await A.sb.storage.from('request-photos')
+        .createSignedUrl(t.dataset.rvproof, 3600);
+      if (r0.error || !r0.data) { A.toast('캡처를 불러오지 못했습니다'); return; }
+      PICS = [{ url: r0.data.signedUrl, path: t.dataset.rvproof }];
+      PICORDER = null; PICTAGS = {}; PSHOWN = 0;
+      $('picTitle').textContent = '리뷰어가 올린 화면';
+      $('picBody').innerHTML = '';
+      morePics();
+      $('picModal').classList.add('on');
+      return;
+    }
+    if ((t = e.target.closest('[data-rvok]')) || (t = e.target.closest('[data-rvno]'))) {
+      var ok = !!t.dataset.rvok;
+      var pid = t.dataset.rvok || t.dataset.rvno;
+      t.disabled = true;
+      try {
+        await A.rpc('post_verify', { p_post: pid, p_ok: ok, p_rank: null,
+          p_note: ok ? null : '지도에서 리뷰를 찾지 못했습니다. 다시 확인해 주세요.' });
+        A.toast(ok ? '확인했습니다' : '다시 올려 달라고 보냈습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
     }
 
     /* ── 리뷰 주문 ── */

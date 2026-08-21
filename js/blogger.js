@@ -484,6 +484,7 @@
     if (!CUR) { $('bWork').innerHTML = A.empty('지금 쓸 글이 없습니다. 배정되면 작업함에 뜹니다.'); return; }
     var p = MY.filter(function (x) { return x.id === CUR.id; })[0] || CUR;
     CUR = p;
+    if ((p.track || 'blog') === 'review') { renderRvWork(p); return; }
 
     var head = '<div class="card" style="margin-bottom:16px">'
       + '<div class="row" style="justify-content:space-between;margin-bottom:12px"><div>'
@@ -892,6 +893,118 @@
       + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'
       + '</div>'
       + '<div id="picBox" style="margin-top:10px"></div></div>';
+  }
+
+  /* ── 리뷰어 화면 ──
+     블로그와 완전히 다릅니다. 리뷰어는 글을 쓰지 않습니다.
+     ①본문을 복사하고 ②사진을 받고 ③가게에 가서(또는 바로) 올리고 ④캡처를 올립니다. */
+  function renderRvWork(p) {
+    var wa = p.write_at ? new Date(p.write_at) : null;
+    var waitTime = wa && wa > new Date();
+    var up = ['published', 'verified', 'paid'].indexOf(p.status) >= 0;
+    var pick = MY.filter(function (x) { return WORKST.indexOf(x.status) >= 0; });
+
+    var picker = pick.length > 1 ? '<div class="row" style="margin-bottom:14px">'
+      + '<label class="f" style="margin:0">할 일 고르기</label>'
+      + '<select class="inp" id="workPick" style="width:auto;flex:1;min-width:200px">'
+      + pick.map(function (x) {
+        return '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>'
+          + esc((x.academy_name || '') + ' · ' + (x.category || x.keyword || '')) + '</option>';
+      }).join('') + '</select></div>' : '';
+
+    var head = '<div class="card" style="margin-bottom:16px">'
+      + '<div class="row" style="justify-content:space-between;margin-bottom:12px"><div>'
+      + '<h3 style="font-size:16.5px">' + esc(p.academy_name || '') + '</h3>'
+      + '<div class="mono" style="margin-top:3px">'
+      + '<b>' + esc(p.category || '리뷰') + '</b>'
+      + (p.keyword ? ' · ' + esc(p.keyword) : '')
+      + ' · ' + won(p.payout_rate) + '원</div></div>'
+      + A.stChip(p.status) + '</div>'
+      + '<dl class="kv">'
+      + '<dt>언제 올리나요</dt><dd><b style="color:var(--amber)">'
+      + (wa ? A.fdt(p.write_at) : '아직 안 정해졌습니다') + '</b></dd>'
+      + '<dt>어디에 올리나요</dt><dd>'
+      + (p.map_url
+        ? '<a href="' + esc(p.map_url) + '" target="_blank" rel="noopener">네이버 지도에서 열기 ↗</a>'
+        : '<span class="mono">지도 주소가 아직 없습니다</span>') + '</dd>'
+      + '<dt>가야 하나요</dt><dd>'
+      + (p.visit_type === 'material'
+        ? '아니요 — 받은 사진과 내용으로 올리시면 됩니다'
+        : '<b>네 — 직접 가서 결제하신 뒤</b> 영수증으로 인증하고 올려 주세요') + '</dd>'
+      + '</dl></div>';
+
+    /* ① 본문 */
+    var s1 = '<div class="step ' + (up ? 'done' : 'now') + '">'
+      + '<div class="sh"><span class="sn">1</span>이 내용을 그대로 올리세요</div>'
+      + '<pre class="tpnote" style="margin-top:0;max-height:none">' + esc(p.body || '') + '</pre>'
+      + '<div class="row" style="margin-top:10px">'
+      + '<button class="btn btn-a btn-s" id="btnCopyRv">📋 본문 복사</button>'
+      + '<span class="mono"><b>고치지 말고 그대로</b> 올려 주세요. 표현을 바꾸면 다른 분 리뷰와 겹칩니다.</span>'
+      + '</div></div>';
+
+    /* ② 사진 */
+    var mine = myPhotos(p);
+    var s2 = '<div class="step ' + (up ? 'done' : 'now') + '">'
+      + '<div class="sh"><span class="sn">2</span>사진 붙이기</div>'
+      + (mine.length
+        ? '<div class="mono" style="margin-bottom:8px">이 리뷰에 쓸 사진 ' + mine.length + '장입니다. '
+          + '리뷰마다 다른 사진이 가도록 나눠 뒀습니다.</div>'
+          + '<div class="row">'
+          + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 보기</button>'
+          + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'
+          + '</div><div id="picBox" style="margin-top:10px"></div>'
+        : '<div class="mono">받은 사진이 없습니다. 직접 찍으신 사진을 쓰셔도 됩니다.</div>')
+      + '</div>';
+
+    /* ③ 올리고 캡처 */
+    var s3 = '<div class="step ' + (up ? 'done' : waitTime ? 'lock' : 'ok') + '">'
+      + '<div class="sh"><span class="sn">3</span>올리고 화면 캡처 올리기'
+      + (up ? '<span class="chip c-ok">냈습니다</span>'
+           : waitTime ? '<span class="chip c-wait">' + A.fdt(p.write_at) + ' 부터</span>'
+                      : '<span class="chip c-ok">지금 하세요</span>') + '</div>'
+      + (waitTime
+        ? '<div class="note warn"><b>아직 올리실 때가 아닙니다.</b> '
+          + '<b>' + A.fdt(p.write_at) + '</b> 이후에 올려 주세요.<br>'
+          + '같은 가게 리뷰가 한꺼번에 올라가면 바로 티가 나서 시각을 벌려 두었습니다.</div>'
+        : up
+          ? '<div class="note ok">올리신 것을 담당자가 확인하고 있습니다.</div>'
+          : '<div class="note" style="margin-bottom:12px"><b>올리신 뒤</b> 그 화면을 캡처해서 아래에 올려 주세요.<br>'
+            + '네이버 리뷰는 글마다 주소가 없어서 <b>캡처가 유일한 증거</b>입니다.</div>'
+            + '<label class="f">내 네이버 닉네임 <small>담당자가 지도에서 찾을 때 씁니다</small></label>'
+            + '<input class="inp" id="rvNick" value="' + esc(p.memo || '') + '" placeholder="예: 먹보아저씨">'
+            + '<label class="f" style="margin-top:12px">올린 화면 캡처</label>'
+            + '<input type="file" class="inp" id="rvShot" accept="image/*">'
+            + '<div class="row" style="margin-top:14px">'
+            + '<button class="btn btn-a" id="btnRvDone">다 올렸습니다</button>'
+            + '<span class="mono"><b>캡처를 올리셔야 정산에 잡힙니다.</b></span></div>')
+      + '</div>';
+
+    $('bWork').innerHTML = picker + head
+      + '<div class="sec">이 순서대로 하시면 됩니다</div>' + s1 + s2 + s3;
+
+    if ($('workPick')) $('workPick').onchange = function () {
+      CUR = MY.filter(function (x) { return x.id === this.value; }.bind(this))[0]; renderWork();
+    };
+    if ($('btnCopyRv')) $('btnCopyRv').onclick = function () {
+      navigator.clipboard.writeText(p.body || '').then(function () { A.toast('본문을 복사했습니다'); });
+    };
+    if ($('btnRvDone')) $('btnRvDone').onclick = async function () {
+      var f = $('rvShot').files && $('rvShot').files[0];
+      if (!f) { A.toast('올린 화면 캡처를 골라 주세요'); return; }
+      this.disabled = true;
+      try {
+        var ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
+        var path = 'proof/' + A.SESSION.user.id + '/' + p.id + '.' + ext;
+        var upr = await A.sb.storage.from('request-photos').upload(path, f, { upsert: true });
+        if (upr.error) throw new Error(upr.error.message);
+        await A.rpc('review_done', {
+          p_post: p.id, p_proof: path, p_nick: $('rvNick').value.trim() || null
+        });
+        A.toast('냈습니다. 담당자가 확인해 드립니다');
+        await A.loadBlogger(); A.show('b-inbox');
+      } catch (err) { A.toast('실패: ' + err.message); this.disabled = false; }
+    };
+    lockPreview();
   }
 
   function fl(label, desc, mine) {
