@@ -120,6 +120,12 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function won(n) { return (Number(n) || 0).toLocaleString('ko-KR'); }
+  /* ── 리뷰 주문이면 말을 바꿉니다 ──
+     같은 화면을 쓰되 「글」을 「리뷰」로, 「학원」을 「업체」로 부릅니다.
+     리뷰는 글마다 주소도 검색순위도 없습니다. */
+  var RV = false;
+  function W(blogWord, reviewWord) { return RV ? reviewWord : blogWord; }
+
   /* 언제 남긴 글인지 — 날짜와 시각까지 */
   function fdt(s) {
     if (!s) return '-';
@@ -177,6 +183,12 @@
   }
 
   function render(d) {
+    RV = (d.track === 'review');           /* 리뷰 주문이면 말을 바꿉니다 */
+    if (RV) {
+      document.title = '리뷰 진행현황 · ESC 학원지원센터';
+      var hb = document.querySelector('.pgtop b');
+      if (hb) hb.textContent = '리뷰 진행현황';
+    }
     var orders = d.orders || [], posts = d.posts || [];
     var T = { qty: 0, made: 0, writing: 0, review: 0, published: 0, checked: 0 };
     orders.forEach(function (o) {
@@ -191,7 +203,9 @@
     var h = '';
 
     h += '<div class="hero"><h1>' + esc(d.academy) + '</h1>'
-      + '<p>지금까지 올라간 글과 네이버 검색 순위입니다. 새로 올라갈 때마다 이 화면이 바뀝니다.</p></div>';
+      + '<p>' + W('지금까지 올라간 글과 네이버 검색 순위입니다.',
+                          '지금까지 올라간 리뷰입니다.')
+      + ' 새로 올라갈 때마다 이 화면이 바뀝니다.</p></div>';
 
     h += '<div class="big">'
       + '<div class="n"><b>' + T.published + '</b><em>/ ' + T.qty + '편 올라갔습니다</em>'
@@ -199,13 +213,13 @@
       + pct + '%</span></div>'
       + '<div class="bar' + (pct >= 100 ? '' : ' mid') + '"><i style="width:' + Math.min(100, pct) + '%"></i></div>'
       + '<div class="legend">'
-      + '<span><i style="background:var(--ok)"></i>올라간 글 ' + T.published + '편</span>'
-      + '<span><i style="background:var(--info)"></i>쓰는 중 ' + working + '편</span>'
+      + '<span><i style="background:var(--ok)"></i>올라간 ' + W('글','리뷰') + ' ' + T.published + '편</span>'
+      + '<span><i style="background:var(--info)"></i>' + W('쓰는 중','올릴 차례') + ' ' + working + '편</span>'
       + '<span><i style="background:var(--line)"></i>준비 중 ' + waiting + '편</span>'
       + '</div></div>';
 
     if (unpaid) {
-      h += '<div class="msg ok" style="margin-top:12px">입금이 확인되면 글 작성이 시작됩니다. '
+      h += '<div class="msg ok" style="margin-top:12px">입금이 확인되면 ' + W('글 작성이','리뷰가') + ' 시작됩니다. '
         + '입금 확인이 안 된 주문이 ' + unpaid + '건 있습니다.</div>';
     }
 
@@ -228,7 +242,7 @@
           : '<span class="chip c-wait" style="margin-left:auto">입금 기다리는 중</span>') + '</div>'
         + '<div class="kv">'
         + '<div><label>주문 편수</label><span>' + o.qty + '편</span></div>'
-        + '<div><label>올라간 글</label><span>' + o.published + '편</span></div>'
+        + '<div><label>올라간 ' + W('글','리뷰') + '</label><span>' + o.published + '편</span></div>'
         + '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>'
         + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '-') + '</span></div>'
         + '</div></div>';
@@ -239,7 +253,7 @@
       + '<div class="ocard">'
       + '<p style="font-size:13.5px;color:var(--ink-2);line-height:1.7;margin-bottom:12px">'
       + '<b>신청하실 때 못 보내셨어도 괜찮습니다. 언제든 여기서 올리시면 됩니다.</b><br>'
-      + '사진이 많을수록 좋습니다. 글마다 다른 사진을 써야 검색에 잘 걸리기 때문입니다 — '
+      + '사진이 많을수록 좋습니다. ' + W('글','리뷰') + '마다 다른 사진을 써야 하기 때문입니다 — '
       + '<b>30장 이상을 권합니다.</b><br>'
       + '간판·건물 바깥, 강의실, 교재, 시간표, 안내문, 수업 자료 등 '
       + '<b>학생 얼굴이 나오지 않는 사진</b>이면 무엇이든 좋습니다.</p>'
@@ -252,7 +266,7 @@
       + '<button class="btn btn-p" id="upGo">사진 올리기</button>'
       + '<span class="mono" id="upMsg">한 번에 60장까지 · <b>크기는 알아서 줄여 올립니다</b></span></div>'
       + (d.photos ? '<div class="msg ok" style="margin:14px 0 0">'
-        + '✓ <b>' + d.photos + '장</b>이 잘 도착했습니다. 글 쓰는 분들에게 나눠서 전달됩니다. '
+        + '✓ <b>' + d.photos + '장</b>이 잘 도착했습니다. ' + W('글 쓰는','리뷰 올리는') + ' 분들에게 나눠서 전달됩니다. '
         + '<button class="btn btn-s" id="seeMyPics" style="margin-left:6px">🖼 보낸 사진 보기</button></div>'
         + '<div id="myPics" class="picgrid hide"></div>' : '')
       + '</div>';
@@ -279,14 +293,17 @@
       + '</div>';
 
     /* 올라간 글 */
-    h += '<div class="sec">올라간 글 <small>' + posts.length + '편 · 새 창에서 열립니다</small></div>';
+    h += '<div class="sec">올라간 ' + W('글','리뷰') + ' <small>' + posts.length + '편'
+      + W(' · 새 창에서 열립니다','') + '</small></div>';
     if (!posts.length) {
-      h += '<div class="tblbox">' + '<div class="empty">아직 올라간 글이 없습니다. '
-        + '글이 올라가는 대로 여기에 하나씩 쌓입니다.</div></div>';
+      h += '<div class="tblbox">' + '<div class="empty">아직 올라간 ' + W('글','리뷰') + '이 없습니다. '
+        + W('글','리뷰') + '이 올라가는 대로 여기에 하나씩 쌓입니다.</div></div>';
     } else {
       h += '<div class="tblbox tblscroll"><table><thead><tr>'
-        + '<th style="width:36px">#</th><th>이 글이 노린 검색어</th><th style="width:90px">올린 날</th>'
-        + '<th style="width:80px">검색 순위</th><th style="width:150px"></th>'
+        + '<th style="width:36px">#</th><th>' + W('이 글이 노린 검색어','무엇에 대한 리뷰인지') + '</th>'
+        + '<th style="width:90px">올린 날</th>'
+        /* 리뷰는 글마다 주소도 검색순위도 없습니다 — 그 칸을 아예 안 그립니다 */
+        + (RV ? '' : '<th style="width:80px">검색 순위</th><th style="width:150px"></th>')
         + '</tr></thead><tbody>'
         + posts.map(function (p, i) {
           var u = safeUrl(p.url);
@@ -294,30 +311,41 @@
           return '<tr><td class="mono">' + (i + 1) + '</td>'
             + '<td><b>' + esc(kw) + '</b></td>'
             + '<td class="mono">' + fdate(p.at) + '</td>'
-            + '<td>' + rank(p.rank) + '</td>'
-            + '<td style="white-space:nowrap">'
-            + (u
-              ? (/demo_blog\d/.test(u)      /* 시연용으로 넣어둔 주소는 눌러도 안 열립니다 */
-                ? '<span class="btn btn-s" style="opacity:.6;cursor:default">시연용 주소</span> '
-                : '<a class="btn btn-s" href="' + esc(u) + '" target="_blank" rel="noopener nofollow">글 보기 ↗</a> ')
-              : '')
-            + (kw ? '<a class="btn btn-s" target="_blank" rel="noopener nofollow" href="https://search.naver.com/search.naver?query='
-              + encodeURIComponent(kw) + '">검색 ↗</a>' : '')
-            + '</td></tr>';
+            + (RV ? '' :
+              '<td>' + rank(p.rank) + '</td>'
+              + '<td style="white-space:nowrap">'
+              + (u
+                ? (/demo_blog\d/.test(u)      /* 시연용으로 넣어둔 주소는 눌러도 안 열립니다 */
+                  ? '<span class="btn btn-s" style="opacity:.6;cursor:default">시연용 주소</span> '
+                  : '<a class="btn btn-s" href="' + esc(u) + '" target="_blank" rel="noopener nofollow">글 보기 ↗</a> ')
+                : '')
+              + (kw ? '<a class="btn btn-s" target="_blank" rel="noopener nofollow" href="https://search.naver.com/search.naver?query='
+                + encodeURIComponent(kw) + '">검색 ↗</a>' : '')
+              + '</td>')
+            + '</tr>';
         }).join('')
         + '</tbody></table></div>';
     }
 
-    h += '<div class="note"><b>검색 순위는 어떻게 나온 건가요?</b><br>'
-      + '왼쪽에 적힌 검색어를 네이버에 그대로 넣었을 때, 그 글이 블로그 영역에서 몇 번째로 나왔는지를 '
-      + '저희가 직접 확인해 적은 숫자입니다. 옆의 <b>검색 ↗</b> 버튼을 누르시면 직접 확인해 보실 수 있습니다.<br>'
-      + '검색 순위는 시간이 지나면서 오르내립니다. 글이 쌓일수록 학원 이름이 걸리는 검색어가 늘어납니다.<br><br>'
-      + '<b>글은 누가 쓰나요?</b><br>'
-      + '저희와 함께하는 블로거들이 각자의 블로그에 학원을 소개하는 글을 올립니다. '
-      + '올라간 글은 최소 12개월 동안 지우지 않습니다.</div>';
+    h += RV
+      ? '<div class="note"><b>리뷰는 어디에서 보나요?</b><br>'
+        + '네이버 지도에서 업체를 검색하시면 <b>방문자 리뷰</b>에 하나씩 쌓입니다. '
+        + '리뷰는 글과 달리 개별 주소가 없어서 여기에 링크를 걸어 드리지 못합니다. '
+        + '대신 저희가 올라온 것을 하나하나 눈으로 확인하고 표시해 드립니다.<br><br>'
+        + '<b>리뷰는 누가 쓰나요?</b><br>'
+        + '저희가 업체에서 주신 내용으로 리뷰를 만들고, 함께하는 분들이 각자의 계정으로 올립니다. '
+        + '한꺼번에 올리지 않고 <b>날짜와 시간을 나눠서</b> 올립니다. '
+        + '올라간 리뷰는 최소 12개월 동안 지우지 않습니다.</div>'
+      : '<div class="note"><b>검색 순위는 어떻게 나온 건가요?</b><br>'
+        + '왼쪽에 적힌 검색어를 네이버에 그대로 넣었을 때, 그 글이 블로그 영역에서 몇 번째로 나왔는지를 '
+        + '저희가 직접 확인해 적은 숫자입니다. 옆의 <b>검색 ↗</b> 버튼을 누르시면 직접 확인해 보실 수 있습니다.<br>'
+        + '검색 순위는 시간이 지나면서 오르내립니다. 글이 쌓일수록 학원 이름이 걸리는 검색어가 늘어납니다.<br><br>'
+        + '<b>글은 누가 쓰나요?</b><br>'
+        + '저희와 함께하는 블로거들이 각자의 블로그에 학원을 소개하는 글을 올립니다. '
+        + '올라간 글은 최소 12개월 동안 지우지 않습니다.</div>';
 
     h += '<div class="pgfoot">ESC 학원지원센터 · 010-7318-1790 · benjamin.leeeunchong08@gmail.com<br>'
-      + '이 주소는 학원별로 다릅니다. 다른 학원의 내용은 보이지 않습니다.<br>'
+      + '이 주소는 ' + W('학원','업체') + '별로 다릅니다. 다른 곳의 내용은 보이지 않습니다.<br>'
       + '<span class="mono">' + fdate(d.now) + ' 기준</span></div>';
 
     PG.innerHTML = h;

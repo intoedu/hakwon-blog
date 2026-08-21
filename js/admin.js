@@ -934,16 +934,41 @@
     /* 지금 보고 있는 갈래 주문만 보여줍니다 — 블로그 주문과 리뷰 주문이 섞이면 헷갈립니다 */
     var TK = A.TRACK || 'blog';
     var list = A.ORDERS.filter(function (o) { return (o.track || 'blog') === TK; });
+    var RV = (TK === 'review');
     var oh = $('ordHead');
-    if (oh) oh.innerHTML = TK === 'review'
+    if (oh) oh.innerHTML = RV
       ? '<h1>주문 · 입금</h1><p>업체가 어떤 리뷰를 몇 편 원하는지, 돈이 들어왔는지를 봅니다.</p>'
       : '<h1>주문 · 입금</h1><p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p>';
+
+    var oi = $('ordIntro');
+    if (oi) oi.innerHTML = RV
+      ? '<div class="note ok" style="margin-bottom:18px">'
+        + '<b>리뷰 주문은 아래에서 직접 만드시면 됩니다.</b> '
+        + '업체 이름·편수·마감일만 넣고 만든 뒤, 주문 카드에서 '
+        + '<b>네이버 지도 주소</b>와 <b>리뷰 구성</b>(어떤 리뷰를 몇 편, 무엇을 짚을지)을 채워 주세요. '
+        + '사진은 업체에서 받아 넣어 주시면 됩니다.</div>'
+      : '<div class="note ok" style="margin-bottom:18px">'
+        + '<b>주문은 보통 홈페이지에서 저절로 들어옵니다.</b> '
+        + '학원이 신청하면 관리자페이지 의뢰 상세에 <b>[🖊 블로그 주문 만들기]</b> 버튼이 생기고, '
+        + '그걸 누르면 지역·과목·대상·목적·정보팩·사진까지 여기로 그대로 넘어옵니다. '
+        + '<b>손으로 만드실 일은 거의 없습니다.</b></div>';
+
+    var om = $('ordManual');
+    if (om) om.innerHTML = RV
+      ? '<b>리뷰 주문은 여기서 만듭니다.</b> 업체 이름·편수·마감일을 넣고 만드시면 '
+        + '아래 목록에 뜹니다. 만든 뒤 그 카드에서 <b>지도 주소·리뷰 구성·사진</b>을 채워 주세요.'
+      : '<b>이럴 때만 쓰세요.</b> 학원이 전화·카톡으로 바로 주문했을 때, '
+        + '이미 거래하던 학원이 신청서 없이 재주문할 때, 우리가 먼저 제안해서 성사됐을 때.<br>'
+        + '<b>손으로 만들면 글감(지역·과목·대상·목적)과 사진이 비어 있습니다.</b> '
+        + '아래 주문 카드에서 직접 채워 넣으셔야 합니다.';
     $('orderList').innerHTML = list.length ? list.map(function (o) {
       var p = prog(o.id);
       return '<div class="card" style="margin-bottom:12px" data-ordercard="' + o.id + '">'
         + '<div class="row" style="justify-content:space-between"><div>'
         + '<h3 style="font-size:16.5px">' + esc(o.academy_name) + ' ' + memBadge(o)
-        + (o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '') + '</h3>'
+        + (!RV && o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '')
+        + (RV && o.visit_type === 'material' ? ' <span class="chip">자료형</span>'
+           : RV ? ' <span class="chip c-ok">방문형</span>' : '') + '</h3>'
         + '<div class="mono" style="margin-top:3px">' + esc(o.region || '지역 미입력')
         + ' · 편당 ' + won(o.sale_price) + '원 받고 <b>' + won(basePay(o)) + '원</b> 지급'
         + '</div></div>'
@@ -962,14 +987,17 @@
           + '<input class="inp" style="max-width:150px" data-payamt="' + o.id + '" type="number" placeholder="들어온 금액" value="' + o.amount_total + '">'
           + '<button class="btn btn-a btn-s" data-paid="' + o.id + '">입금 확인</button>'
           + '<span class="mono">확인 전에는 글을 만들 수 없습니다</span></div>')
-        + '<div class="sec" style="margin-top:16px">글감 <small>4번 키워드 만들기에 그대로 쓰입니다</small></div>'
-        + '<div class="grid g2" style="gap:12px">'
-        + fld(o, 'target_regions', '지역 (쉼표로 구분)') + fld(o, 'target_subjects', '과목')
-        + fld(o, 'target_grades', '학년 · 대상') + fld(o, 'target_purposes', '목적')
-        + '</div>'
-        + '<div style="margin-top:12px"><label class="f">정보팩 — 모든 글에 똑같이 들어갑니다</label>'
-        + '<textarea class="inp" data-of="info_pack" data-oid="' + o.id + '">' + esc(o.info_pack || '') + '</textarea></div>'
-        + '<div class="row" style="margin-top:10px">'
+        /* ⚠️ 리뷰에는 검색어를 안 씁니다. 글감(지역·과목·학년·목적)도 정보팩도 필요 없습니다.
+           리뷰가 필요로 하는 것은 아래 rvOrderBox 에 다 들어 있습니다. */
+        + (RV ? '' :
+          '<div class="sec" style="margin-top:16px">글감 <small>4번 키워드 만들기에 그대로 쓰입니다</small></div>'
+          + '<div class="grid g2" style="gap:12px">'
+          + fld(o, 'target_regions', '지역 (쉼표로 구분)') + fld(o, 'target_subjects', '과목')
+          + fld(o, 'target_grades', '학년 · 대상') + fld(o, 'target_purposes', '목적')
+          + '</div>'
+          + '<div style="margin-top:12px"><label class="f">정보팩 — 모든 글에 똑같이 들어갑니다</label>'
+          + '<textarea class="inp" data-of="info_pack" data-oid="' + o.id + '">' + esc(o.info_pack || '') + '</textarea></div>')
+        + (RV ? '' : '<div class="row" style="margin-top:10px">'
         + ((o.photo_paths || []).length
           ? '<span class="chip c-ok">사진 ' + o.photo_paths.length + '장 들어옴</span>'
             + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기</button>'
@@ -977,18 +1005,21 @@
           : o.photo_note
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
               + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
-            : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>'
-        + ((o.track || 'blog') === 'review' ? rvOrderBox(o) : outBox(o))
-        + '<div class="sec" style="margin-top:16px">학원에 보낼 진행현황 주소 '
-        + '<small>로그인 없이 열립니다 · 이 학원 것만 보입니다 · 블로거 이름·단가는 안 보입니다</small></div>'
+            : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>')
+        + (RV ? rvOrderBox(o) : outBox(o))
+        + '<div class="sec" style="margin-top:16px">' + (RV ? '업체' : '학원') + '에 보낼 진행현황 주소 '
+        + '<small>로그인 없이 열립니다 · 이 ' + (RV ? '업체' : '학원') + ' 것만 보입니다 · '
+        + (RV ? '리뷰어' : '블로거') + ' 이름·단가는 안 보입니다</small></div>'
         + '<div class="row">'
         + '<input class="inp" style="flex:1;min-width:240px;font-family:var(--mono);font-size:12px" readonly '
         + 'value="' + esc(statusUrl(o)) + '" onclick="this.select()">'
         + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '">📋 주소 복사</button>'
         + '<a class="btn btn-s" href="' + esc(statusUrl(o)) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
         + '</div>'
-        + '<div class="row" style="margin-top:12px"><button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>'
-        + '<button class="btn btn-s" data-gokw="' + o.id + '">4 키워드 만들기 →</button>'
+        + '<div class="row" style="margin-top:12px">'
+        + (RV ? '' : '<button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>')
+        + '<button class="btn btn-s" data-gokw="' + o.id + '">'
+        + (RV ? '4 리뷰 만들기 →' : '4 키워드 만들기 →') + '</button>'
         + '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
         + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-ostatus="' + o.id + '">'
         + ['active', 'paused', 'done', 'ended'].map(function (s) {
@@ -3403,6 +3434,10 @@
       return;
     }
     if ((t = e.target.closest('[data-gokw]'))) {
+      if ((A.TRACK || 'blog') === 'review') {
+        var rmo = $('rmOrder'); if (rmo) rmo.value = t.dataset.gokw;
+        rmPaint(); A.show('r-make'); return;
+      }
       $('kwOrder').value = t.dataset.gokw; $('kwOrder').onchange(); A.show('kw'); return;
     }
     if ((t = e.target.closest('[data-openrj]'))) {
