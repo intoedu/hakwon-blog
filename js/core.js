@@ -270,13 +270,18 @@ window.ESC = (function () {
     A.$('navAdmin').classList.toggle('hide', rev || blg);
     A.$('navReviewer').classList.toggle('hide', !rev);
     A.$('navBlogger').classList.toggle('hide', !blg);
-    A.$('meRole').textContent = rev ? '블로그 원고 검수자'
-      : blg ? '블로거 화면 보는 중' : '블로그 센터 관리자';
+    var W = A.WORDS();
+    A.$('meRole').textContent = rev ? (A.isRv() ? '리뷰 확인 담당' : '블로그 원고 검수자')
+      : blg ? W.who + ' 화면 보는 중'
+      : (A.isRv() ? '리뷰 센터 관리자' : '블로그 센터 관리자');
 
     var sw = A.$('viewSwitch');
     if (sw) sw.classList.toggle('hide', !A.IS_ADMIN);
+    /* ⚠️ 갈래 고르는 칸은 검수자·블로거 화면을 볼 때도 남겨 둡니다.
+       안 그러면 「리뷰어 화면을 보려고 블로거로 바꾸는 순간 갈래를 못 바꾸는」 막다른 길이 됩니다. */
     var tsw = A.$('trackSw');
-    if (tsw) tsw.classList.toggle('hide', !(A.IS_ADMIN && mode === 'admin'));
+    if (tsw) tsw.classList.toggle('hide', !A.IS_ADMIN);
+    A.paintTrackWords();
     document.querySelectorAll('[data-view-btn]').forEach(function (b) {
       b.classList.toggle('on', b.dataset.viewBtn === mode);
     });
@@ -316,7 +321,7 @@ window.ESC = (function () {
       pw.innerHTML = '<option value="">' + (blg ? '승인된 블로거가 없습니다' : '검수자·관리자가 없습니다') + '</option>';
       pw.dataset.filled = '';
       A.$('previewBar').classList.add('hide');
-      A.openApp(blg ? 'b-inbox' : 'review');
+      A.openApp(blg ? 'b-inbox' : A.reviewScreen());
       return;
     }
 
@@ -364,7 +369,7 @@ window.ESC = (function () {
     document.querySelectorAll('[data-adminonly]').forEach(function (el) {
       el.classList.toggle('hide', !full);
     });
-    A.openApp(full ? 'dash' : 'review');
+    A.openApp(full ? 'dash' : A.reviewScreen());
   };
 
   A.openApp = function (screen) {
@@ -429,6 +434,58 @@ window.ESC = (function () {
      지금 어느 일을 하고 있는지 헷갈리면 엉뚱한 주문에 손대게 되므로 색으로 갈라 둡니다.
      사람 관리(1번)·알림·주소 모음은 두 갈래가 같이 씁니다. */
   A.TRACK = 'blog';
+  A.isRv = function () { return A.TRACK === 'review'; };
+  /* 검수자가 먼저 여는 화면 — 블로그는 원고 검수, 리뷰는 올라왔는지 확인입니다 */
+  A.reviewScreen = function () { return A.isRv() ? 'r-check' : 'review'; };
+  /* 갈래에 따라 부르는 말이 달라집니다 — 블로그는 「블로거가 글을 쓴다」,
+     리뷰는 「리뷰어가 올린다」입니다. 화면 곳곳에서 같은 말을 쓰려고 한 곳에 모았습니다. */
+  A.WORDS = function () {
+    return A.isRv()
+      ? { who: '리뷰어', what: '리뷰', edu: '리뷰어 교육', work: '리뷰 올리기',
+          workP: '우리가 써 드린 본문을 그대로 올리시면 됩니다. 리뷰어는 글을 쓰지 않습니다.',
+          eduP: '리뷰 교육을 마치셔야 리뷰가 배정됩니다.',
+          payP: '확인까지 끝난 리뷰만 돈이 됩니다. 공동체를 통해 들어옵니다.' }
+      : { who: '블로거', what: '글', edu: '교육 받기', work: '글 쓰기',
+          workP: '아래 폼대로 구글 문서에 쓰고 원고를 냅니다. 원고가 통과되면 블로그에 올리고, '
+               + '<b>올린 글 주소</b>를 이 화면 맨 위에 넣어 주시면 끝입니다.',
+          eduP: '줌 두 번을 들으시면 됩니다. 되도록 실시간으로 들어와 주세요.',
+          payP: '확인까지 끝난 글만 돈이 됩니다. 공동체를 통해 들어옵니다.' };
+  };
+  /* 조사 붙이기 — 「글이 / 리뷰가」처럼 받침에 따라 달라집니다.
+     갈래에 따라 말이 바뀌는 문장이 많아서 한 곳에 두었습니다. */
+  A.josa = function (w, pair) {
+    var t = { '이': ['이', '가'], '을': ['을', '를'], '은': ['은', '는'], '과': ['과', '와'] }[pair]
+      || ['이', '가'];
+    var c = (w || '').charCodeAt((w || '').length - 1);
+    var hasJong = c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0;
+    return w + (hasJong ? t[0] : t[1]);
+  };
+  function setText(id, v) { var el = A.$(id); if (el) el.textContent = v; }
+  function setHtml(id, v) { var el = A.$(id); if (el) el.innerHTML = v; }
+
+  /* 블로거·리뷰어 쪽 이름표를 갈래에 맞게 바꿉니다 (사이드바 메뉴 · 화면 머리말) */
+  A.paintTrackWords = function () {
+    var w = A.WORDS();
+    setText('bnEdu', w.edu); setText('bnWork', w.work); setText('bnPay', '내 정산');
+    setText('bhEdu', w.edu); setText('bhEduP', w.eduP);
+    setText('bhWork', w.work); setHtml('bhWorkP', w.workP);
+    setText('bhPayP', w.payP);
+    /* 아래쪽 [관리자 / 검수자 / 블로거] 에서 셋째 칸 이름도 갈래를 따릅니다 */
+    var vb = document.querySelector('[data-view-btn="blogger"]');
+    if (vb) vb.textContent = w.who;
+    /* 내 이름 아래 직분도 같이.
+       ⚠️ 「…화면 보는 중」은 관리자가 남의 화면을 들여다볼 때만 쓰는 말입니다.
+       진짜 블로거에게는 자기 단계가 그대로 보여야 합니다. */
+    if (!A.IS_ADMIN && !A.IS_REVIEWER) {
+      if (A.ME) A.$('meRole').textContent = A.ME.level + '단계 · ' + A.levelOf(A.ME.level).name;
+    } else if (A.VIEW_AS === 'blogger') A.$('meRole').textContent = w.who + ' 화면 보는 중';
+    else if (A.VIEW_AS === 'reviewer') {
+      if (!A.PREVIEW_STAFF) A.$('meRole').textContent = A.isRv() ? '리뷰 확인 담당' : '블로그 원고 검수자';
+    } else if (A.IS_ADMIN) {
+      A.$('meRole').textContent = A.isRv() ? '리뷰 센터 관리자' : '블로그 센터 관리자';
+    }
+  };
+
   A.setTrack = function (tk, jump) {
     A.TRACK = (tk === 'review') ? 'review' : 'blog';
     document.body.classList.toggle('tk-review', A.TRACK === 'review');
@@ -440,6 +497,11 @@ window.ESC = (function () {
       el.classList.toggle('hide', el.dataset.tk !== A.TRACK);
     });
     try { localStorage.setItem('esc_track', A.TRACK); } catch (e) {}
+    A.paintTrackWords();
+
+    /* 블로거·리뷰어 화면을 보고 있으면 그 갈래 것으로 다시 그립니다
+       (할 일 · 교육 · 정산이 전부 그 갈래 것만 남습니다) */
+    if (A.VIEW_AS === 'blogger') { if (A.afterBloggerTrack) A.afterBloggerTrack(); return; }
 
     /* 지금 보고 있는 화면이 다른 갈래 것이면 그 갈래의 같은 자리로 옮겨 줍니다 */
     var pair = { edu: 'r-edu', kw: 'r-make', assign: 'r-assign', review: 'r-check' };
@@ -570,8 +632,17 @@ window.ESC = (function () {
 
     A.$('navBlogger').classList.remove('hide');
     A.$('navAdmin').classList.add('hide');
+    /* ⚠️ 여기서 VIEW_AS 를 반드시 'blogger' 로 둬야 합니다.
+       처음 값이 'admin' 이라 그냥 두면, 갈래를 바꿔도 setTrack 이 관리자 쪽으로 빠져서
+       **블로거 화면이 다시 안 그려집니다**(메뉴 이름만 바뀌고 할 일은 그대로였습니다). */
+    A.VIEW_AS = 'blogger';
+    /* 공동체 이름을 쓰려면 목록이 있어야 합니다 — 없으면 정산 화면에 「돈은 -로 갑니다」가 떴습니다 */
+    A.COMMS = await A.sel('communities_public');
     A.$('meName').textContent = A.ME.name;
     A.$('meRole').textContent = A.ME.level + '단계 · ' + A.levelOf(A.ME.level).name;
+    var savedB = 'blog';
+    try { savedB = localStorage.getItem('esc_track') || 'blog'; } catch (e) {}
+    A.setTrack(savedB, false);
     A.openApp('b-inbox');
     await A.loadBlogger();
   };

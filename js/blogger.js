@@ -5,6 +5,40 @@
   var MY = [], SESS = [], MATS = [], MINE = [], ATT = [], PAY = [], NOTI = [], CUR = null;
   var PREVIEW = false;   /* 관리자가 블로거 화면을 들여다보는 중이면 true */
 
+  /* ── 갈래(블로그 / 리뷰) ──
+     한 사람이 블로그도 쓰고 리뷰도 올릴 수 있습니다. 그래서 받아온 것은 통째로 두고
+     (ALL_*), 지금 고른 갈래 것만 걸러서 화면에 씁니다.
+     교육도 갈래마다 따로라서 서버 판정(blogger_ready(id, track))과 같은 기준으로 거릅니다. */
+  var ALL_MY = [], ALL_SESS = [], ALL_MATS = [];
+  function TK() { return A.isRv() ? 'review' : 'blog'; }
+  function ofTrack(list) {
+    var t = TK();
+    return (list || []).filter(function (x) { return (x.track || 'blog') === t; });
+  }
+  function applyTrack() {
+    MY = ofTrack(ALL_MY); SESS = ofTrack(ALL_SESS); MATS = ofTrack(ALL_MATS);
+    CUR = null;                       /* 갈래가 바뀌면 보고 있던 글은 다른 갈래 것입니다 */
+  }
+  /* 갈래를 바꾸면 core.js 가 불러 줍니다 */
+  A.afterBloggerTrack = function () {
+    if (!A.ME) return;
+    applyTrack();
+    renderInbox(); renderEdu(); renderWork(); renderPay();
+    lockPreview();
+  };
+
+  /* 내 작업함 맨 위의 [📝 블로그] [⭐ 리뷰] — 관리자 사이드바의 것과 같은 data-track 을 씁니다 */
+  function renderTrackSw() {
+    var box = $('bTrackSw'); if (!box) return;
+    var nB = ALL_MY.filter(function (p) { return (p.track || 'blog') === 'blog'; }).length;
+    var nR = ALL_MY.filter(function (p) { return (p.track || 'blog') === 'review'; }).length;
+    box.innerHTML = '<div class="tracksw" style="margin-bottom:16px">'
+      + '<button data-track="blog"' + (A.isRv() ? '' : ' class="on"') + '>📝 블로그'
+      + (nB ? ' <b>' + nB + '</b>' : '') + '</button>'
+      + '<button data-track="review"' + (A.isRv() ? ' class="on"' : '') + '>⭐ 리뷰'
+      + (nR ? ' <b>' + nR + '</b>' : '') + '</button></div>';
+  }
+
   /* 글쓰기 화면에 남겨 두는 상태.
      ⚠️ 예전엔 submitted 가 빠져 있어서 **원고를 내는 순간 글이 화면에서 사라졌습니다.**
      검수 중인지 통과됐는지 볼 데가 없어져 「주소 넣는 곳을 못 찾겠다」가 됩니다. */
@@ -32,19 +66,21 @@
     A.$('previewName').textContent = who.name;
 
     var r = await A.sb.from('blog_posts')
-      .select('*, blog_orders(academy_name,region,info_pack,academy_url,photo_paths,photo_note)')
+      .select('*, blog_orders(academy_name,region,info_pack,academy_url,photo_paths,photo_note,'
+        + 'photo_tags,track,map_url,visit_type)')
       .eq('blogger_id', id).order('due_date');
-    MY = (r.data || []).map(function (x) {
+    ALL_MY = (r.data || []).map(function (x) {
       var o = x.blog_orders || {}; delete x.blog_orders;
       return Object.assign(x, o);
     });
-    SESS = await A.sel('training_sessions', { order: 'held_at' });
-    MATS = await A.sel('training_materials_public', { order: 'sort' });
+    ALL_SESS = await A.sel('training_sessions', { order: 'held_at' });
+    ALL_MATS = await A.sel('training_materials_public', { order: 'sort' });
     MINE = await A.sel('training_progress', { eq: { blogger_id: id } });
     ATT = await A.sel('training_attendance', { eq: { blogger_id: id } });
     PAY = await A.sel('blog_payouts', { eq: { blogger_id: id }, order: 'month', asc: false });
     NOTI = await A.sel('notifications', { eq: { blogger_id: id }, order: 'created_at', asc: false });
 
+    applyTrack();
     renderInbox(); renderEdu(); renderWork(); renderPay();
     A.openApp('b-inbox');
     lockPreview();
@@ -59,6 +95,9 @@
         + ' .screen[data-screen="' + s + '"] textarea,'
         + ' .screen[data-screen="' + s + '"] select').forEach(function (el) {
           if (el.id === 'workPick') return;    /* 글 넘겨보기는 되게 둡니다 */
+          /* 갈래 고르기(블로그/리뷰)도 잠그면 안 됩니다 — 무엇을 바꾸는 버튼이 아니라
+             무엇을 볼지 고르는 칸입니다. 잠가 두면 관리자가 리뷰어 화면을 못 봅니다. */
+          if (el.closest && el.closest('#bTrackSw')) return;
           el.disabled = true;
         });
     });
@@ -67,13 +106,14 @@
 
   A.loadBlogger = async function () {
     PREVIEW = false;
-    MY = await A.sel('my_posts', { order: 'due_date' });
-    SESS = await A.sel('training_sessions', { order: 'held_at' });
-    MATS = await A.sel('training_materials_public', { order: 'sort' });
+    ALL_MY = await A.sel('my_posts', { order: 'due_date' });
+    ALL_SESS = await A.sel('training_sessions', { order: 'held_at' });
+    ALL_MATS = await A.sel('training_materials_public', { order: 'sort' });
     MINE = await A.sel('training_progress');
     ATT = await A.sel('training_attendance');
     PAY = await A.sel('blog_payouts', { order: 'month', asc: false });
     NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
+    applyTrack();
     renderInbox(); renderEdu(); renderWork(); renderPay();
   };
 
@@ -159,23 +199,32 @@
       return ['verified', 'paid'].indexOf(p.status) >= 0 && p.cycle_month === A.thisMonth() + '-01';
     });
 
+    var W = A.WORDS(), RV = A.isRv();
+
     renderNoti();
     renderWants();
+    renderTrackSw();
     $('bhWho').textContent = A.ME.name + ' 님, 반갑습니다.';
     $('bStats').innerHTML =
-      s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 글')
+      s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 ' + W.what)
       + s(A.ME.level + '단계', '내 단계 (편당 ' + won(lv.rate) + '원)')
       + s(won(monthDone.reduce(function (a, p) { return a + (p.payout_rate || 0); }, 0)), '이번 달 받을 돈 (원)');
 
     $('bGate').innerHTML = r.ok ? '' :
-      '<div class="note warn" style="margin-bottom:18px"><b>아직 교육이 안 끝났습니다.</b> '
+      '<div class="note warn" style="margin-bottom:18px"><b>아직 '
+      + (RV ? '리뷰어 교육' : '교육') + '이 안 끝났습니다.</b> '
       + '1차 교육 참석' + (r.t1 ? ' <span style="color:var(--ok)">✓</span>' : ' <b style="color:var(--bad)">미완</b>')
       + ' · 필수 영상 ' + r.videoDone + '/' + r.videoNeed
-      + '. 다 마치셔야 글이 배정됩니다. <button class="link" data-go="b-edu">교육 받으러 가기 →</button></div>';
+      + '. 다 마치셔야 ' + A.josa(W.what, '이') + ' 배정됩니다. '
+      + '<button class="link" data-go="b-edu">' + (RV ? '리뷰어 교육' : '교육') + ' 받으러 가기 →</button></div>';
 
     /* 통과됐고 **오늘 올릴 날**인 글만 맨 위에 띄웁니다.
-       예정일이 아직 안 온 글까지 「올려 주세요」라고 하면 혼란만 줍니다. */
+       예정일이 아직 안 온 글까지 「올려 주세요」라고 하면 혼란만 줍니다.
+
+       ⚠️ 리뷰는 흐름이 다릅니다 — 검수(approved) 단계가 아예 없고, 대신 **올릴 시각**
+       (write_at)이 정해져 있습니다. 그래서 「지금 올릴 것 / 시각을 기다리는 것」으로 가릅니다. */
     var today = A.today();
+    if (RV) { renderRvTodo(todo); return renderLevelBox(lv); }
     var pub = todo.filter(function (p) {
       return p.status === 'approved' && (!p.publish_on || p.publish_on <= today);
     });
@@ -216,7 +265,13 @@
         + '<button class="btn btn-a btn-s" data-open="' + p.id + '">' + label + '</button></div></div>';
     }).join('') : A.empty(r.ok ? '지금 맡으신 글이 없습니다. 배정되면 여기에 뜹니다.' : '교육을 마치면 글이 배정됩니다.'));
 
+    renderLevelBox(lv);
+  }
+
+  /* 내 단계 상자 — 블로그·리뷰가 같이 씁니다 (단계와 단가는 갈래를 안 가립니다) */
+  function renderLevelBox(lv) {
     var next = A.LEVELS.filter(function (l) { return l.lv === A.ME.level + 1; })[0];
+    var RV = A.isRv();
     $('bLevel').innerHTML = '<div class="card"><div class="row" style="gap:14px">'
       + '<span class="lv' + (A.ME.level >= 5 ? ' l5' : A.ME.level === 4 ? ' l4' : '')
       + '" style="width:34px;height:34px;font-size:15px">' + A.ME.level + '</span>'
@@ -224,12 +279,53 @@
       + '<span class="mono">편당 ' + won(lv.rate) + '원</span>'
       + '<div class="mono" style="margin-top:4px">'
       + (next ? '다음은 ' + next.lv + '단계(' + esc(next.name) + ' · 편당 ' + won(next.rate) + '원)입니다. '
-        + '글을 꾸준히 쓰고 한 번에 통과되면 올라갑니다.' : '가장 높은 단계입니다.')
-      + '</div></div></div>'
-      + '<div class="note warn" style="margin-top:14px"><b>' + dailyRule() + '</b><br>'
-      + '몰아서 올리면 블로그가 광고 블로그로 찍혀 검색에 안 나오게 됩니다. '
-      + '그러면 내 블로그가 손해입니다. <b>글마다 올릴 날을 정해 드리니 그날 올리시면 됩니다.</b>'
-      + '</div></div>';
+        + (RV ? '리뷰를 제때 올리고 확인이 잘 되면 올라갑니다.'
+              : '글을 꾸준히 쓰고 한 번에 통과되면 올라갑니다.') : '가장 높은 단계입니다.')
+      + '<br><b>단계는 블로그·리뷰가 같이 씁니다.</b></div></div></div>'
+      + (RV
+        ? '<div class="note warn" style="margin-top:14px"><b>정해 드린 시각에 올려 주세요.</b><br>'
+        + '같은 가게 리뷰가 한꺼번에 올라가면 바로 티가 납니다. '
+        + '그래서 날짜와 <b>시각까지</b> 벌려 두었습니다.</div></div>'
+        : '<div class="note warn" style="margin-top:14px"><b>' + dailyRule() + '</b><br>'
+        + '몰아서 올리면 블로그가 광고 블로그로 찍혀 검색에 안 나오게 됩니다. '
+        + '그러면 내 블로그가 손해입니다. <b>글마다 올릴 날을 정해 드리니 그날 올리시면 됩니다.</b>'
+        + '</div></div>');
+  }
+
+  /* 리뷰 할 일 — 검수 단계가 없고 「올릴 시각」이 기준입니다 */
+  function renderRvTodo(todo) {
+    var now = new Date();
+    var nowT = todo.filter(function (p) { return !p.write_at || new Date(p.write_at) <= now; });
+    var later = todo.filter(function (p) { return p.write_at && new Date(p.write_at) > now; });
+    $('bTodo').innerHTML = (nowT.length
+      ? '<div class="note ok" style="margin-bottom:14px"><b>지금 올리실 리뷰가 '
+      + nowT.length + '건 있습니다.</b><br>'
+      + '올리신 뒤에 <b>「2 리뷰 올리기」 3번 칸</b>에 <b>화면 캡처</b>를 올려 주셔야 정산에 잡힙니다. '
+      + '네이버 리뷰는 글마다 주소가 없어서 캡처가 유일한 증거입니다.<br>'
+      + '<span class="mono">' + nowT.map(function (p) {
+          return esc((p.academy_name || '') + ' · ' + (p.category || ''));
+        }).join(' / ') + '</span></div>'
+      : '')
+      + (later.length
+      ? '<div class="note" style="margin-bottom:14px"><b>올릴 시각을 기다리는 리뷰가 '
+      + later.length + '건 있습니다.</b> 그 시각이 되면 올리시면 됩니다.<br>'
+      + '<span class="mono">' + later.map(function (p) {
+          return A.fdt(p.write_at) + ' · ' + esc(p.academy_name || '');
+        }).join(' / ') + '</span></div>'
+      : '')
+      + (todo.length ? todo.map(function (p) {
+      var wa = p.write_at ? new Date(p.write_at) : null;
+      var waiting = wa && wa > now;
+      return '<div class="job"><div>'
+        + '<h4>' + esc(p.category || p.keyword || '리뷰') + '</h4>'
+        + '<div class="meta">' + esc(p.academy_name || '') + ' · ' + won(p.payout_rate) + '원 · '
+        + (A.ST[p.status] ? A.ST[p.status][0] : p.status) + '</div></div>'
+        + '<div class="right">'
+        + '<span class="dday' + (waiting ? ' calm' : '') + '">'
+        + (wa ? A.fdt(p.write_at) : '시각 미정') + '</span>'
+        + '<button class="btn btn-a btn-s" data-open="' + p.id + '">'
+        + (waiting ? '내용 미리 보기' : '올리러 가기') + '</button></div></div>';
+    }).join('') : A.empty('지금 맡으신 리뷰가 없습니다. 배정되면 여기에 뜹니다.'));
   }
   function s(n, label) {
     return '<div class="stat"><b>' + (typeof n === 'number' ? won(n) : esc(n)) + '</b><span>' + label + '</span></div>';
@@ -237,28 +333,36 @@
 
   function renderEdu() {
     var r = ready();
+    var W = A.WORDS(), RV = A.isRv();
+    /* ⚠️ 교육은 갈래마다 따로입니다. 블로그 교육을 다 들으셨어도 리뷰는 리뷰 교육을
+       마치셔야 배정됩니다 (서버도 blogger_ready(id, track) 로 같게 봅니다). */
     $('bEduState').innerHTML = '<div class="card"><div class="steps">'
       + '<div class="step done">승인</div>'
       + '<div class="step ' + (r.t1 ? 'done' : 'now') + '">1차 줌</div>'
       + '<div class="step ' + (r.videoDone >= r.videoNeed && r.videoNeed ? 'done' : r.t1 ? 'now' : '') + '">영상 보기</div>'
-      + '<div class="step ' + (r.ok ? 'now' : '') + '">첫 글 1편</div>'
+      + '<div class="step ' + (r.ok ? 'now' : '') + '">첫 ' + W.what + ' 1건</div>'
       + '<div class="step">2차 줌</div></div>'
       + '<div class="note" style="margin-top:15px">'
-      + (r.ok ? '<b>교육을 마치셨습니다.</b> 이제 글이 배정됩니다. 첫 글을 쓰시면 2차 줌에서 같이 보면서 피드백해 드립니다.'
-        : '<b>1차 줌 참석과 필수 영상 요약</b>을 마치셔야 글이 배정됩니다. '
+      + '<b>지금 보시는 것은 ' + (RV ? '⭐ 리뷰어 교육' : '📝 블로그 교육') + '입니다.</b> '
+      + '위 작업함에서 갈래를 바꾸시면 다른 교육이 나옵니다.<br><br>'
+      + (r.ok ? '<b>' + A.josa(W.edu, '을') + ' 마치셨습니다.</b> 이제 ' + A.josa(W.what, '이') + ' 배정됩니다.'
+        + (RV ? ' 리뷰는 저희가 본문까지 써서 드립니다. 그대로 올리시면 됩니다.'
+              : ' 첫 글을 쓰시면 2차 줌에서 같이 보면서 피드백해 드립니다.')
+        : '<b>1차 줌 참석과 필수 영상 요약</b>을 마치셔야 ' + A.josa(W.what, '이') + ' 배정됩니다. '
         + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
         + (r.videoWait ? ' <b style="color:var(--wait)">' + r.videoWait
           + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
-      + '<br><br><b>첫 글도 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.</div></div>';
+      + (RV ? '' : '<br><br><b>첫 글도 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.')
+      + '</div></div>';
 
     /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
     $('bEduSessions').innerHTML = SESS.length
       ? SESS.slice().reverse().map(sessRow).join('')
-      : A.empty('아직 잡힌 일정이 없습니다. 정해지면 알려드립니다.');
+      : A.empty('아직 잡힌 ' + (RV ? '리뷰어 교육 ' : '') + '일정이 없습니다. 정해지면 알려드립니다.');
 
     $('bEduMats').innerHTML = MATS.length
       ? '<div class="matlist">' + MATS.map(matRow).join('') + '</div>'
-      : A.empty('아직 올라온 영상이 없습니다.');
+      : A.empty('아직 올라온 ' + (RV ? '리뷰어 교육 ' : '') + '영상이 없습니다.');
     if (OPEN) openPlayer(OPEN, true);
   }
 
@@ -481,7 +585,12 @@
 
   function renderWork() {
     if (!CUR) CUR = MY.filter(function (p) { return WORKST.indexOf(p.status) >= 0; })[0];
-    if (!CUR) { $('bWork').innerHTML = A.empty('지금 쓸 글이 없습니다. 배정되면 작업함에 뜹니다.'); return; }
+    if (!CUR) {
+      $('bWork').innerHTML = A.empty(A.isRv()
+        ? '지금 올리실 리뷰가 없습니다. 배정되면 작업함에 뜹니다.'
+        : '지금 쓸 글이 없습니다. 배정되면 작업함에 뜹니다.');
+      return;
+    }
     var p = MY.filter(function (x) { return x.id === CUR.id; })[0] || CUR;
     CUR = p;
     if ((p.track || 'blog') === 'review') { renderRvWork(p); return; }
@@ -819,7 +928,42 @@
      같은 사진이 여러 블로그에 겹치면 중복으로 잡히므로, 각 묶음 안에서는
      글 순번만큼 밀어서 글마다 다른 조합이 나가게 합니다.
      꼬리표를 하나도 안 달았으면 예전처럼 순번으로만 자릅니다. */
+  /* ── 리뷰 사진 나누기 ──
+     리뷰는 블로그와 나누는 규칙이 다릅니다.
+     ① **영수증은 한 사람당 한 장** — 같은 가게에서는 늘 같은 영수증이 갑니다.
+        (리뷰마다 다른 영수증을 쓰면 한 사람이 여러 번 결제한 것처럼 보입니다)
+     ② **실제 사진은 최대한 안 겹치게** — 리뷰 순번만큼 건너뛰며 집습니다.
+        건너뛰는 폭은 1이 아니라 한 리뷰에 쓰는 장수(per)여야 옆 순번과 안 겹칩니다
+        (블로그 사진에서 1칸씩 밀었다가 8장 중 6장이 같았던 것과 같은 이유). */
+  var RV_PER = 3;                 /* 리뷰 하나에 붙일 실제 사진 장수 */
+
+  function rvPhotos(p) {
+    var tags = p.photo_tags || {};
+    var all = (p.photo_paths || []).filter(function (x) { return !(tags[x] && tags[x].x); });
+    if (!all.length) return [];
+    var recs = all.filter(function (x) { return (tags[x] || {}).t === '영수증'; });
+    var reals = all.filter(function (x) { return (tags[x] || {}).t !== '영수증'; });
+    var out = [];
+
+    /* ① 영수증 한 장 — 사람 + 가게로 정하니 같은 사람은 늘 같은 것을 받습니다.
+       (my_posts 에는 order_id 가 없어서 가게 이름을 열쇠로 씁니다) */
+    if (recs.length) {
+      var who = (A.ME && A.ME.id) || '';
+      var shop = p.order_id || p.academy_name || '';
+      out.push(recs[A.adIndex(who + ':' + shop, recs.length)]);
+    }
+
+    /* ② 실제 사진 — 리뷰 순번만큼 건너뛰며 */
+    if (reals.length) {
+      var per = Math.min(RV_PER, reals.length);
+      var st = ((p.seq || 1) - 1) * per % reals.length;
+      for (var i = 0; i < per; i++) out.push(reals[(st + i) % reals.length]);
+    }
+    return out;
+  }
+
   function myPhotos(p) {
+    if ((p.track || 'blog') === 'review') return rvPhotos(p);
     var all = p.photo_paths || [];
     if (!all.length) return [];
     var per = Math.min(8, Math.max(5, Math.floor(all.length / 6) || 5));
@@ -942,13 +1086,24 @@
       + '<span class="mono"><b>고치지 말고 그대로</b> 올려 주세요. 표현을 바꾸면 다른 분 리뷰와 겹칩니다.</span>'
       + '</div></div>';
 
-    /* ② 사진 */
+    /* ② 사진 — 영수증 한 장 + 실제 사진 몇 장 */
     var mine = myPhotos(p);
+    var ptags = p.photo_tags || {};
+    var nRec = mine.filter(function (x) { return (ptags[x] || {}).t === '영수증'; }).length;
+    var nReal = mine.length - nRec;
     var s2 = '<div class="step ' + (up ? 'done' : 'now') + '">'
       + '<div class="sh"><span class="sn">2</span>사진 붙이기</div>'
       + (mine.length
-        ? '<div class="mono" style="margin-bottom:8px">이 리뷰에 쓸 사진 ' + mine.length + '장입니다. '
-          + '리뷰마다 다른 사진이 가도록 나눠 뒀습니다.</div>'
+        ? '<div class="mono" style="margin-bottom:8px">이 리뷰에 쓸 사진 ' + mine.length + '장입니다'
+          + (nRec ? ' — <b>영수증 ' + nRec + '장</b>(맨 앞) + 실제 사진 ' + nReal + '장'
+                  : ' (실제 사진 ' + nReal + '장)') + '.<br>'
+          + '<b>실제 사진은 다른 분과 안 겹치게 나눠 뒀습니다.</b> 받으신 것만 쓰세요.'
+          + (nRec ? '<br><b>영수증은 한 분당 한 장</b>입니다 — 이 가게 리뷰를 여러 건 맡으셨어도 '
+                  + '늘 같은 영수증이 갑니다.' : '')
+          + '</div>'
+          + (p.visit_type === 'visit'
+            ? '<div class="note warn" style="margin-bottom:8px"><b>직접 가서 결제하셨다면 '
+              + '내 영수증을 쓰세요.</b> 위 영수증은 그러지 못하는 경우에만 씁니다.</div>' : '')
           + '<div class="row">'
           + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 보기</button>'
           + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'
@@ -1018,27 +1173,34 @@
       return ['verified', 'paid'].indexOf(p.status) >= 0 && p.cycle_month === m;
     });
     var lv = A.levelOf(A.ME.level);
+    var W = A.WORDS(), RV = A.isRv();
     $('bPayStats').innerHTML = s(thisM.length, '이번 달 확정 편수')
       + s(lv.rate, '내 단계 단가 (원)')
       + s(thisM.reduce(function (a, p) { return a + (p.payout_rate || 0); }, 0), '이번 달 받을 돈 (원)')
-      + s(MY.filter(function (p) { return ['verified', 'paid'].indexOf(p.status) >= 0; }).length, '지금까지 쓴 글');
+      + s(MY.filter(function (p) { return ['verified', 'paid'].indexOf(p.status) >= 0; }).length,
+          '지금까지 한 ' + W.what);
 
     var rows = MY.filter(function (p) { return p.published_at || p.status === 'rework'; });
     $('bPayList').innerHTML =
       '<div class="note" style="margin-bottom:14px">돈은 <b>' + esc(A.commName(A.ME.community_id))
-      + '로 한 번에 보내집니다.</b> 공동체에서 나눠 받으시면 됩니다. 보통 다음 달 10일쯤입니다.</div>'
+      + '로 한 번에 보내집니다.</b> 공동체에서 나눠 받으시면 됩니다. 보통 다음 달 10일쯤입니다.<br>'
+      + '<b>블로그와 리뷰는 합쳐서 한 번에 나갑니다.</b> 위 표는 지금 고르신 '
+      + (RV ? '⭐ 리뷰' : '📝 블로그') + ' 것만 보여드리는 것이고, '
+      + '아래 「지난달」은 둘을 합친 금액입니다.</div>'
       + (rows.length ? '<div class="tblbox tblscroll"><table>'
-        + '<thead><tr><th>글</th><th>올린 날</th><th>상태</th><th>노출</th><th>금액</th></tr></thead><tbody>'
+        + '<thead><tr><th>' + (RV ? '리뷰' : '글') + '</th><th>올린 날</th><th>상태</th>'
+        + (RV ? '' : '<th>노출</th>') + '<th>금액</th></tr></thead><tbody>'
         + rows.map(function (p) {
           var pay = ['verified', 'paid'].indexOf(p.status) >= 0;
           return '<tr' + (p.status === 'rework' ? ' class="sent"' : '') + '>'
-            + '<td>' + esc(p.keyword || '') + '</td>'
+            + '<td>' + esc(RV ? ((p.academy_name || '') + ' · ' + (p.category || '')) : (p.keyword || '')) + '</td>'
             + '<td class="mono">' + (p.published_at ? A.fdate(p.published_at) : '아직') + '</td>'
             + '<td>' + A.stChip(p.status) + '</td>'
-            + '<td class="num">' + (p.keyword_rank ? p.keyword_rank + '위' : '-') + '</td>'
+            + (RV ? '' : '<td class="num">' + (p.keyword_rank ? p.keyword_rank + '위' : '-') + '</td>')
             + '<td class="num">' + (pay ? '<b>' + won(p.payout_rate) + '</b>' : '—') + '</td></tr>';
-        }).join('') + '</tbody></table></div>' : A.empty('아직 올린 글이 없습니다.'))
-      + (PAY.length ? '<div class="sec">지난달</div><div class="tblbox tblscroll"><table>'
+        }).join('') + '</tbody></table></div>' : A.empty('아직 올린 ' + A.josa(W.what, '이') + ' 없습니다.'))
+      + (PAY.length ? '<div class="sec">지난달 <small>블로그·리뷰 합계</small></div>'
+        + '<div class="tblbox tblscroll"><table>'
         + '<thead><tr><th>기간</th><th>편수</th><th>금액</th></tr></thead><tbody>'
         + PAY.map(function (b) {
           return '<tr><td>' + b.month.slice(0, 7).replace('-', '년 ') + '월</td>'
@@ -1072,7 +1234,9 @@
             + 'style="display:block;width:96px"><img src="' + x.signedUrl
             + '" style="width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line)'
             + (rot ? ';transform:rotate(' + rot + 'deg)' : '') + '">'
-            + '<span class="mono">' + (i + 1) + '번' + (i === 0 ? ' · 첫 사진' : '') + '</span></a>';
+            + '<span class="mono">' + (i + 1) + '번'
+            + ((gtags[paths[i]] || {}).t === '영수증' ? ' · 영수증'
+               : i === 0 ? ' · 첫 사진' : '') + '</span></a>';
         }).join('') + '</div>'
         + '<div class="mono" style="margin-top:8px">한 장씩 받으시려면 사진을 누르세요. '
         + '<b>한번에 받으시려면 위의 [⬇ 한번에 받기]</b>가 편합니다. 링크는 1시간 동안 유효합니다.</div>';

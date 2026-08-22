@@ -95,11 +95,16 @@
       (rr.data || []).forEach(function (x) { REQ_DONE[x.id] = (x.status === '완료'); });
     }
 
-    fillSelects();
-    renderDash(); renderStaffAll(); renderBlogStaff();
-    renderOrders(); renderAssign(); renderReview(); renderProgress(); renderLinks(); renderRules();
-    tgFill(); tgLoad();
-    rvFill('rmOrder'); rmPaint(); renderRvAssign(); renderRvCheck();
+    /* ⚠️ 하나가 터져도 나머지 화면은 그려지게 합니다.
+       예전엔 한 줄로 이어 붙여 놔서, 주소 모음 하나가 터지자 그 뒤의
+       리뷰 만들기·나눠주기·확인이 통째로 안 그려졌습니다(업체 칸이 텅 빈 원인). */
+    [fillSelects, renderDash, renderStaffAll, renderBlogStaff,
+     renderOrders, renderAssign, renderReview, renderProgress, renderLinks, renderRules,
+     tgFill, tgLoad,
+     function () { rvFill('rmOrder'); }, rmPaint, renderRvAssign, renderRvCheck
+    ].forEach(function (fn) {
+      try { fn(); } catch (e) { console.error('화면 그리기 실패:', fn.name || '(익명)', e); }
+    });
     loadNoti(false);          /* 사이드바 배지용 — 훑기는 화면에 들어갈 때만 */
   };
 
@@ -1282,6 +1287,13 @@
                  '상담실·로비', '학생 결과물', '기타'];
   var PT_SUBJ = ['공통', '영어', '수학', '국어', '학습코칭'];
 
+  /* ⭐ 리뷰는 크게 둘로만 나눕니다 — 나누는 규칙이 블로그와 다르기 때문입니다.
+     **영수증은 한 사람당 한 장**(같은 가게에서는 늘 같은 것),
+     **실제 사진은 리뷰마다 안 겹치게** 돌아갑니다 (blogger.js rvPhotos).
+     리뷰에는 과목이 없으므로 과목 칸은 숨깁니다. */
+  var PT_KIND_RV = ['영수증', '실제 사진'];
+  var PICRV = false;
+
   async function showPics(o) {
     var paths = o.photo_paths || [];
     if (!paths.length) { A.toast('받은 사진이 없습니다'); return; }
@@ -1291,9 +1303,11 @@
       return { url: x.signedUrl, path: paths[i] };
     }).filter(function (x) { return x.url; });
     PICORDER = o;
+    PICRV = (o.track || 'blog') === 'review';
     PICTAGS = Object.assign({}, o.photo_tags || {});
     PSHOWN = 0;
-    $('picTitle').textContent = o.academy_name + ' — 학원이 보낸 사진 ' + PICS.length + '장';
+    $('picTitle').textContent = o.academy_name + ' — '
+      + (PICRV ? '업체' : '학원') + '가 보낸 사진 ' + PICS.length + '장';
     $('picBody').innerHTML = '';
     morePics();
     paintTagBar();
@@ -1324,15 +1338,16 @@
   }
   function tagRow(path) {
     var t = PICTAGS[path] || {};
+    var kinds = PICRV ? PT_KIND_RV : PT_KIND;
     return '<div class="pictag">'
       + '<select data-ptk="' + esc(path) + '"><option value="">종류…</option>'
-      + PT_KIND.map(function (k) {
+      + kinds.map(function (k) {
         return '<option value="' + esc(k) + '"' + (t.t === k ? ' selected' : '') + '>' + esc(k) + '</option>';
       }).join('') + '</select>'
-      + '<select data-pts="' + esc(path) + '"><option value="">과목…</option>'
+      + (PICRV ? '' : '<select data-pts="' + esc(path) + '"><option value="">과목…</option>'
       + PT_SUBJ.map(function (s) {
         return '<option value="' + esc(s) + '"' + (t.s === s ? ' selected' : '') + '>' + esc(s) + '</option>';
-      }).join('') + '</select></div>'
+      }).join('') + '</select>') + '</div>'
       + '<div class="pictag">'
       + '<button class="btn btn-s" data-ptrot="' + esc(path) + '" title="90도씩 돌립니다">↻ '
       + (t.r ? t.r + '°' : '돌리기') + '</button>'
@@ -1350,18 +1365,50 @@
     bar.classList.toggle('hide', !PICTAG_ON);
     if (!PICTAG_ON) return;
     var done = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t; }).length;
-    var sign = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t === '간판·외부'; }).length;
     var out = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).x; }).length;
     var rot = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).r; }).length;
-    bar.innerHTML = '<div class="note' + (sign ? '' : ' warn') + '">'
-      + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
-      + (sign ? '간판·외부 사진 ' + sign + '장 — 글마다 맨 앞에 한 장씩 들어갑니다.'
-              : '<b>간판·외부 사진이 아직 없습니다.</b> 글의 첫 사진은 간판이 좋습니다.')
-      + (out ? ' <b>' + out + '장은 빼 뒀습니다</b>(블로거에게 안 갑니다).' : '')
-      + (rot ? ' <b>' + rot + '장은 돌려 뒀습니다</b> — 블로거가 받을 때 바로 선 파일로 나갑니다.' : '')
-      + '<div class="row" style="margin-top:10px">'
-      + '<button class="btn btn-p btn-s" id="picTagSave">꼬리표 저장</button>'
-      + '<span class="mono">종류만 달아도 됩니다. 과목을 비우면 「공통」으로 봅니다</span></div></div>';
+    var tail = (out ? ' <b>' + out + '장은 빼 뒀습니다</b>(안 나갑니다).' : '')
+      + (rot ? ' <b>' + rot + '장은 돌려 뒀습니다</b> — 받을 때 바로 선 파일로 나갑니다.' : '');
+
+    if (PICRV) {
+      /* 리뷰 — 영수증이 리뷰어 수보다 모자라면 같은 영수증이 여러 사람에게 갑니다.
+         그러면 지도에서 나란히 보였을 때 바로 티가 나므로 미리 알려 드립니다. */
+      var rec = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t === '영수증'; }).length;
+      var real = PICS.filter(function (x) {
+        var t = PICTAGS[x.path] || {}; return t.t === '실제 사진' && !t.x;
+      }).length;
+      var people = {};
+      POSTS.forEach(function (q) {
+        if (q.order_id === PICORDER.id && q.blogger_id) people[q.blogger_id] = 1;
+      });
+      var nP = Object.keys(people).length;
+      var shortRec = rec && nP && rec < nP;
+      bar.innerHTML = '<div class="note' + (rec && !shortRec ? '' : ' warn') + '">'
+        + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
+        + '<b>영수증 ' + rec + '장 · 실제 사진 ' + real + '장</b>'
+        + (rec ? ' — 영수증은 <b>한 사람당 한 장</b>씩 갑니다.'
+               : ' — <b>영수증이 아직 없습니다.</b> 영수증 리뷰를 쓰시려면 필요합니다.')
+        + (shortRec ? '<br><b style="color:var(--bad)">지금 이 업체를 맡은 리뷰어가 ' + nP + '명인데 '
+            + '영수증은 ' + rec + '장뿐입니다.</b> 같은 영수증이 여러 분께 가니 '
+            + (nP - rec) + '장을 더 받으시는 편이 좋습니다.' : '')
+        + (real ? '<br>실제 사진은 <b>리뷰마다 안 겹치게</b> 3장씩 돌아갑니다.'
+                + (real < 3 ? ' <b style="color:var(--bad)">3장이 안 되어 리뷰끼리 사진이 겹칩니다.</b>' : '')
+          : '')
+        + tail
+        + '<div class="row" style="margin-top:10px">'
+        + '<button class="btn btn-p btn-s" id="picTagSave">꼬리표 저장</button>'
+        + '<span class="mono">영수증인지 아닌지만 골라 주시면 됩니다</span></div></div>';
+    } else {
+      var sign = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t === '간판·외부'; }).length;
+      bar.innerHTML = '<div class="note' + (sign ? '' : ' warn') + '">'
+        + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
+        + (sign ? '간판·외부 사진 ' + sign + '장 — 글마다 맨 앞에 한 장씩 들어갑니다.'
+                : '<b>간판·외부 사진이 아직 없습니다.</b> 글의 첫 사진은 간판이 좋습니다.')
+        + tail
+        + '<div class="row" style="margin-top:10px">'
+        + '<button class="btn btn-p btn-s" id="picTagSave">꼬리표 저장</button>'
+        + '<span class="mono">종류만 달아도 됩니다. 과목을 비우면 「공통」으로 봅니다</span></div></div>';
+    }
     $('picTagSave').onclick = async function () {
       this.disabled = true;
       try {
@@ -2928,10 +2975,11 @@
       renderProgress();
     }
   });
-  $('pgClear').onclick = function () {
-    document.querySelectorAll('#pgStatus input').forEach(function (c) { c.checked = false; });
-    renderProgress();
-  };
+  /* ⚠️ 「전체 보기」(#pgClear) 는 갈래에 따라 #pgStatus 안에 그때그때 그려집니다.
+     그래서 여기서 $('pgClear') 로 직접 붙이면 안 됩니다 — 페이지가 열리는 시점엔
+     아직 없는 요소라 null 이고, 거기서 터지면 이 파일의 아래쪽이 통째로 안 돌아갑니다.
+     (실제로 그래서 「4 리뷰 만들기 →」 버튼과 주소 모음이 죽어 있었습니다.)
+     누르는 것은 바로 위 #pgStatus 위임 처리기가 이미 받고 있습니다. */
   $('pgQ').oninput = renderProgress;
 
   /* 표를 파일로 — 구글 시트·넘버스·엑셀에서 바로 열립니다 */

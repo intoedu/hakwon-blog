@@ -156,7 +156,8 @@
 
     <!-- ESC 직원 중 '검수만' 권한을 가진 분 -->
     <div id="navReviewer" class="hide">
-      <button class="nav on" data-go="review">원고 검수하기 <span class="cnt hot hide" id="cReview2">0</span></button>
+      <button class="nav on" data-tk="blog" data-go="review">원고 검수하기 <span class="cnt hot hide" id="cReview2">0</span></button>
+      <button class="nav" data-tk="review" data-go="r-check">올라왔는지 확인</button>
       <button class="nav" data-go="posts">진행 현황 보기</button>
       <button class="nav" data-go="r-pay">내 검수 정산</button>
       <button class="nav" data-go="noti">🔔 챙길 것</button>
@@ -165,9 +166,9 @@
     <div id="navBlogger" class="hide">
       <button class="nav on" data-go="b-inbox">내 작업함</button>
       <div class="navlbl">이 순서로 하시면 됩니다</div>
-      <button class="nav" data-go="b-edu"><span class="n">1</span>교육 받기</button>
-      <button class="nav" data-go="b-work"><span class="n">2</span>글 쓰기</button>
-      <button class="nav" data-go="b-pay"><span class="n">3</span>내 정산</button>
+      <button class="nav" data-go="b-edu"><span class="n">1</span><span id="bnEdu">교육 받기</span></button>
+      <button class="nav" data-go="b-work"><span class="n">2</span><span id="bnWork">글 쓰기</span></button>
+      <button class="nav" data-go="b-pay"><span class="n">3</span><span id="bnPay">내 정산</span></button>
     </div>
 
     <div class="sidefoot">
@@ -994,6 +995,8 @@
     <!-- ═══ 블로거 화면 ═══ -->
     <section class="screen" data-screen="b-inbox">
       <div class="head"><h1>내 작업함</h1><p id="bhWho"></p></div>
+      <!-- 블로그 / 리뷰 고르기 — 아래 화면(교육·할 일·정산)이 통째로 그 갈래 것으로 바뀝니다 -->
+      <div id="bTrackSw"></div>
       <div class="grid g4" id="bStats" style="margin-bottom:18px"></div>
       <div id="bWants"></div>
       <div id="bNoti"></div>
@@ -1005,8 +1008,8 @@
     </section>
 
     <section class="screen" data-screen="b-edu">
-      <div class="head"><div class="step-of">1단계</div><h1>교육 받기</h1>
-        <p>줌 두 번을 들으시면 됩니다. 되도록 실시간으로 들어와 주세요.</p></div>
+      <div class="head"><div class="step-of">1단계</div><h1 id="bhEdu">교육 받기</h1>
+        <p id="bhEduP">줌 두 번을 들으시면 됩니다. 되도록 실시간으로 들어와 주세요.</p></div>
       <div id="bEduState"></div>
       <div class="sec">다음 일정</div>
       <div id="bEduSessions"></div>
@@ -1021,15 +1024,15 @@
     </section>
 
     <section class="screen" data-screen="b-work">
-      <div class="head"><div class="step-of">2단계</div><h1>글 쓰기</h1>
-        <p>아래 폼대로 구글 문서에 쓰고 원고를 냅니다. 원고가 통과되면 블로그에 올리고,
+      <div class="head"><div class="step-of">2단계</div><h1 id="bhWork">글 쓰기</h1>
+        <p id="bhWorkP">아래 폼대로 구글 문서에 쓰고 원고를 냅니다. 원고가 통과되면 블로그에 올리고,
            <b>올린 글 주소</b>를 이 화면 맨 위에 넣어 주시면 끝입니다.</p></div>
       <div id="bWork"></div>
     </section>
 
     <section class="screen" data-screen="b-pay">
       <div class="head"><div class="step-of">3단계</div><h1>내 정산</h1>
-        <p>확인까지 끝난 글만 돈이 됩니다. 공동체를 통해 들어옵니다.</p></div>
+        <p id="bhPayP">확인까지 끝난 글만 돈이 됩니다. 공동체를 통해 들어옵니다.</p></div>
       <div class="grid g4" id="bPayStats" style="margin-bottom:18px"></div>
       <div class="sec">내역</div>
       <div id="bPayList"></div>
