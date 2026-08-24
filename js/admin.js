@@ -2018,6 +2018,18 @@
     return A.ORDERS.filter(function (o) { return o.id === v; })[0] || null;
   }
 
+  /* Edge Function 이 돌려준 진짜 오류 글을 꺼냅니다.
+     supabase-js 는 non-2xx 면 본문을 안 읽고 일반적인 문장만 던지는데,
+     우리 함수는 무엇이 잘못됐는지 우리 말로 담아 보냅니다(키 거절·잔액 없음 등). */
+  async function fnError(err) {
+    try {
+      var b = err && err.context && typeof err.context.json === 'function'
+        ? await err.context.json() : null;
+      if (b && b.error) return b.error;
+    } catch (e) { /* 본문이 JSON 이 아니면 그냥 넘어갑니다 */ }
+    return (err && err.message) || '불러오지 못했습니다';
+  }
+
   /* ── 4 리뷰 만들기 ── */
   var RMDRAFT = [];
   function rmPaint() {
@@ -2103,17 +2115,24 @@
 
       this.disabled = true; this.textContent = '만드는 중… (1~2분)';
       var btn = this;
+      $('rmMsg').innerHTML = '';
       try {
         var r = await A.sb.functions.invoke('make-reviews', {
           body: { brief: rmBrief(), count: want }
         });
-        if (r.error) throw new Error(r.error.message || '불러오지 못했습니다');
+        /* ⚠️ supabase-js 는 2xx 가 아니면 r.error.message 에 「Edge Function returned a
+           non-2xx status code」라는 **쓸모없는 말**만 담습니다. 진짜 이유(키가 거절됐다,
+           잔액이 없다…)는 r.error.context 안의 응답 본문에 있습니다. 그걸 꺼내 보여줍니다. */
+        if (r.error) throw new Error(await fnError(r.error));
         if (r.data && r.data.error) throw new Error(r.data.error);
         $('rmPaste').value = (r.data && r.data.text) || '';
         $('rmParse').click();
         A.toast('만들었습니다. 확인하고 [이대로 리뷰 만들기]를 누르세요');
       } catch (e) {
-        A.toast('실패: ' + e.message);
+        /* 토스트는 금방 사라지고 길면 잘립니다 — 무엇을 해야 하는지 화면에 남겨 둡니다 */
+        $('rmMsg').innerHTML = '<div class="note warn" style="margin-top:12px">'
+          + '<b>만들지 못했습니다.</b><br>' + esc(e.message) + '</div>';
+        A.toast('실패: ' + e.message.slice(0, 60));
       }
       btn.disabled = false; btn.textContent = '✨ 여기서 바로 만들기';
     };
