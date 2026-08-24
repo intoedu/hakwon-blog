@@ -370,7 +370,31 @@
      예전에는 「봤습니다」 버튼 하나로 끝나서 안 보고도 누를 수 있었습니다.
      지금은 ① 이 페이지 안에서 영상이 재생되고 ② 실제로 본 시간을 재고
      ③ 요약을 직접 써서 내면 ④ 관리자·검수자가 읽고 통과시켜야 이수됩니다. */
-  var PASTED = {}, OPEN = null, TICK = null;
+  var PASTED = {}, PASTETXT = {}, OPEN = null, TICK = null;
+
+  /* ── 붙여넣기 표시 ──
+     ⚠️ 예전엔 한 번 붙여넣으면 **영영 표시가 남았습니다.** 지우고 손으로 다시 써도
+     빨간 글씨가 그대로라 「고쳤는데도 안 없어진다」가 됐습니다(사용자 신고).
+     이제 붙여넣은 글 조각을 기억해 두고, **그 조각이 칸에 아직 남아 있을 때만** 표시합니다.
+     통째로 지우고 새로 쓰시면 사라집니다.
+     띄어쓰기를 지운 뒤 20글자 창으로 훑기 때문에, 몇 글자 고치는 것으로는 안 없어집니다. */
+  function noSpace(t) { return (t || '').replace(/\s+/g, ''); }
+  function pasteLeft(id) {
+    var ta = $('sum-' + id);
+    if (!ta) return !!PASTED[id];
+    var frags = PASTETXT[id] || [];
+    if (!frags.length) return !!PASTED[id];      /* 붙여넣은 내용을 못 잡았으면 표시를 유지합니다 */
+    var cur = noSpace(ta.value), W = 20;
+    return frags.some(function (f) {
+      var n = noSpace(f);
+      if (!n) return false;
+      if (n.length <= W) return cur.indexOf(n) >= 0;
+      for (var i = 0; i + W <= n.length; i++) {
+        if (cur.indexOf(n.slice(i, i + W)) >= 0) return true;
+      }
+      return false;
+    });
+  }
   var SEEN = {};        /* 영상id → { 초: 1 } — 실제로 재생된 "서로 다른 초"만 셉니다 */
   var DUR = {};         /* 영상id → 실제 길이(초). 유튜브가 알려줍니다 */
   var PLAYER = null;    /* 지금 열려 있는 유튜브 플레이어 */
@@ -499,7 +523,12 @@
 
     var ta = $('sum-' + id);
     ta.addEventListener('input', function () { paint(id); });
-    ta.addEventListener('paste', function () {
+    ta.addEventListener('paste', function (e) {
+      /* 무엇을 붙여넣었는지 붙잡아 둡니다 — 나중에 아직 남아 있는지 보려고 */
+      var t = '';
+      try { t = ((e.clipboardData || window.clipboardData).getData('text') || '').trim(); }
+      catch (err) { t = ''; }
+      if (t) (PASTETXT[id] = PASTETXT[id] || []).push(t);
       PASTED[id] = true;
       setTimeout(function () { paint(id); }, 0);
     });
@@ -527,9 +556,13 @@
 
     var ta = $('sum-' + id); if (!ta) return;
     var len = ta.value.trim().length, min = m.min_chars || 150;
+    /* 붙여넣은 것이 아직 칸에 남아 있는지 매번 다시 봅니다 */
+    var pnow = pasteLeft(id);
+    if (!pnow) { PASTED[id] = false; PASTETXT[id] = []; }
     var cnt = $('cnt-' + id);
     if (cnt) cnt.innerHTML = '<b style="color:var(--' + (len >= min ? 'ok' : 'bad') + ')">' + len + '자</b> / ' + min + '자'
-      + (PASTED[id] ? ' · <span style="color:var(--bad)">붙여넣기 있음</span>' : '');
+      + (pnow ? ' · <span style="color:var(--bad)">붙여넣기 있음</span>'
+        + ' <span class="mono">(지우고 손으로 다시 쓰시면 없어집니다)</span>' : '');
 
     var btn = $('sb-' + id); if (!btn || PREVIEW) return;
     var why = !ok ? '영상을 더 보셔야 합니다' : len < min ? (min - len) + '자 더 써 주세요' : '';
@@ -573,7 +606,7 @@
         p_summary: $('sum-' + id).value.trim(),
         p_answer: ansEl ? ansEl.value.trim() : null,
         p_watched: watched(id),
-        p_pasted: !!PASTED[id]
+        p_pasted: pasteLeft(id)
       });
       A.toast('냈습니다. 담당자가 읽고 이수 처리해 드립니다');
       OPEN = null;
