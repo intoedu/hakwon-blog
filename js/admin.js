@@ -77,6 +77,7 @@
     RVSPECS = await A.sel('review_specs', { order: 'sort' });
 
     await loadBlogStaff();
+    await A.loadTraining();     /* 배정 화면이 「왜 못 받는지」를 적으려면 이게 있어야 합니다 */
 
     /* 돌려보낸 이력 — 다시 제출되면 글에서는 사유가 지워지므로 기록에서 가져옵니다 */
     REWORKS = {};
@@ -789,12 +790,20 @@
 
   /* ═══ 2 블로거 교육 ═══ */
   var ALLSESS = [], ALLMATS = [], ALLPROG = [], READY = {};
-  async function loadEdu() {
+
+  /* ⭐ 교육 기록은 「5 글 나눠주기」에서도 씁니다 — 누가 왜 못 받는지 적어 주려고.
+     그래서 읽는 부분만 따로 떼어 loadAdmin 에서도 부릅니다.
+     (예전엔 교육 화면에 들어가야만 읽어서, 배정 화면은 이유를 알 수가 없었습니다.) */
+  A.loadTraining = async function () {
     ALLSESS = await A.sel('training_sessions', { order: 'held_at', asc: false });
     ALLMATS = await A.sel('training_materials', { order: 'sort' });
     ATT = await A.sel('training_attendance');
     ALLPROG = await A.sel('training_progress');
     SESSIONS = ALLSESS; MATS = ALLMATS; TPROG = ALLPROG;   /* 예전 코드가 쓰는 이름 */
+  };
+
+  async function loadEdu() {
+    await A.loadTraining();
 
     /* 갈래마다 「지금 일을 받을 수 있나」가 다릅니다 (교육이 다르니까).
        한 명씩 물으면 왕복이 사람 수 × 2 번이라 한 번에 받아 옵니다. */
@@ -2428,6 +2437,52 @@
   A.renderRvCheck = renderRvCheck;
 
   /* ═══ 5 글 나눠주기 ═══ */
+  /* ⭐ 이 사람이 지금 글을 못 받는 **정확한 이유**.
+     ⚠️ 예전엔 「검수자·관리자」 한마디로 뭉뚱그렸습니다. 그래서 관리자가 「블로거 병행」을
+     켜 놓고도 화면이 그대로 「검수자·관리자」라고 해서, 체크가 안 먹은 줄 알았습니다.
+     서버의 blogger_ready(id, track) 와 **같은 순서로** 조건을 따집니다. */
+  function trackOfOrder(oid) {
+    var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+    return (o && o.track) || 'blog';
+  }
+
+  function whyNotReady(p, TK) {
+    TK = TK || 'blog';
+    if (p.status !== 'approved') return '승인 안 됨';
+    if (p.quality === 'low') return '저품질로 표시해 두셨습니다';
+    if (blogRoleOf(p.id) && !p.also_blogging) {
+      return '검수자·관리자 — 「블로거 병행」이 꺼져 있습니다';
+    }
+    /* 교육 기록을 아직 못 읽었으면 넘겨짚지 않습니다 */
+    if (!ALLMATS.length && !ALLSESS.length) return '교육 미완';
+
+    var need = ALLMATS.filter(function (m) { return m.required && (m.track || 'blog') === TK; });
+    function gOf(m, st) {
+      return ALLPROG.some(function (g) {
+        return g.material_id === m.id && g.blogger_id === p.id && g.status === st;
+      });
+    }
+    var done = need.filter(function (m) { return gOf(m, 'approved'); }).length;
+    var wait = need.filter(function (m) { return gOf(m, 'submitted'); }).length;
+
+    var t1 = ALLSESS.filter(function (x) {
+      return x.kind === 't1' && (x.track || 'blog') === TK;
+    }).map(function (x) { return x.id; });
+    var came = ATT.some(function (a) {
+      return a.blogger_id === p.id && t1.indexOf(a.session_id) >= 0
+        && (a.mode === 'live' || (a.mode === 'video' && a.confirmed_at));
+    });
+
+    var miss = [];
+    if (!t1.length) miss.push('1차 줌 일정이 없습니다');
+    else if (!came) miss.push('1차 줌 미참석');
+    if (done < need.length) {
+      miss.push('필수 영상 ' + done + '/' + need.length
+        + (wait ? ' — ' + wait + '건은 요약을 냈고 확인 대기' : ''));
+    }
+    return miss.join(' · ') || '알 수 없음';
+  }
+
   function renderAssign() {
     var oid = $('asOrder').value || (A.ORDERS[0] && A.ORDERS[0].id);
     var wk = $('asWeek').value;
@@ -2459,6 +2514,45 @@
         + '단계가 오르면 그만큼 더 갑니다'
         + (o.is_premium ? '.' : ' (일반 회원이라 프리미엄 주문의 ' + A.payMult() + '배입니다).')
         + '</div>';
+
+      /* ⭐ 지금 이 주문을 맡을 수 있는 사람이 몇 명인지 — 안 그러면 왜 배정이 안 되는지
+         한참 헤매게 됩니다. 못 받는 사람은 이유별로 묶어서 보여 줍니다. */
+      (function () {
+        var wbox = $('asWho'); if (!wbox) return;
+        var TK = trackOfOrder(oid);
+        var app = A.PEOPLE.filter(function (x) { return x.status === 'approved'; });
+        var ok = app.filter(function (x) { return stat(x.id).ready; });
+        var no = app.filter(function (x) { return !stat(x.id).ready; });
+        var by = {};
+        no.forEach(function (x) {
+          var r = whyNotReady(x, TK);
+          (by[r] = by[r] || []).push(x.name);
+        });
+        var left = POSTS.filter(function (q) {
+          return q.order_id === oid && q.status === 'pending';
+        }).length;
+        var o2 = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+        var dd = o2 && o2.deadline ? A.dday(o2.deadline) : null;
+
+        wbox.innerHTML = '<div class="note' + (ok.length ? '' : ' warn') + '" style="margin:0 0 12px">'
+          + '<b>지금 맡을 수 있는 사람 ' + ok.length + '명</b>'
+          + (no.length ? ' · 못 받는 사람 ' + no.length + '명' : '')
+          + (left ? ' · 안 맡긴 글 <b>' + left + '편</b>' : '')
+          + (dd != null ? ' · 마감 ' + (dd < 0 ? '<b style="color:var(--bad)">' + (-dd) + '일 지남</b>'
+              : dd === 0 ? '<b style="color:var(--bad)">오늘</b>'
+              : '<b' + (dd <= 7 ? ' style="color:var(--bad)"' : '') + '>D-' + dd + '</b>') : '')
+          + (ok.length ? '' : '<br><b style="color:var(--bad)">한 사람도 못 받는 상태입니다.</b> '
+              + '아래 이유를 풀어 주셔야 글이 나갑니다.')
+          + (no.length ? '<div style="margin-top:9px">' + Object.keys(by).map(function (r) {
+              return '· <b>' + esc(r) + '</b> — ' + esc(by[r].join(', '))
+                + ' <span class="mono">(' + by[r].length + '명)</span>';
+            }).join('<br>')
+            + '<div class="mono" style="margin-top:8px">'
+            + '「필수 영상」은 본인이 <b>센터에서 영상을 보고 요약을 내면</b>, '
+            + '「2 블로거 교육 → 낸 요약 확인하기」에서 통과시켜 주시면 풀립니다. '
+            + '<button class="link" data-go="edu">2번으로 가기 →</button></div></div>' : '')
+          + '</div>';
+      })();
 
       /* ⚠️ 같은 학원 글이 한 사람에게 하루 두 편 이상 간 경우.
          배정은 후순위로 밀 뿐 막지는 않습니다 — 막으면 글이 안 나가고 마감을 못 맞춥니다.
@@ -2601,10 +2695,9 @@
       var p = x.p, s = x.s;
       var here = POSTS.filter(function (y) { return y.order_id === oid && y.blogger_id === p.id; }).length;
       if (!s.ready) {
-        return '<label class="pickrow" style="opacity:.45;cursor:not-allowed"><input type="checkbox" disabled>'
+        return '<label class="pickrow" style="opacity:.55;cursor:not-allowed"><input type="checkbox" disabled>'
           + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id)) + '</span></span>'
-          + '<span class="sub" style="color:var(--bad)">'
-          + (p.quality === 'low' ? '저품질' : blogRoleOf(p.id) ? '검수자·관리자' : '교육 미완') + '</span></label>';
+          + '<span class="sub" style="color:var(--bad)">' + esc(whyNotReady(p, trackOfOrder(oid))) + '</span></label>';
       }
       return '<label class="pickrow drop" data-drop="' + p.id + '">'
         + '<input type="checkbox" class="pk-ppl" value="' + p.id + '">'
