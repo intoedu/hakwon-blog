@@ -537,6 +537,8 @@ window.ESC = (function () {
       A.MONTH_CAP = Number(full.month_cap) || 30;   /* posts_auto_assign 이 쓰는 한 사람 월 상한 */
       A.SALE = full.sale || { normal: 6000, premium: 3000 };   /* 학원에게 받는 편당 금액 */
       A.SPLIT = full.split || { esc: 2, blogger: 2, community: 1, reviewer: 1 };
+      /* 리뷰를 만들 때 AI 에게 주는 규칙 — 비어 있으면 admin.js 의 기본 규칙을 씁니다 */
+      A.RV_RULES = full.rv_rules || '';
     }
   };
 

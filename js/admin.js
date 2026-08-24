@@ -2034,6 +2034,7 @@
   var RMDRAFT = [];
   function rmPaint() {
     var o = rvOrderOf('rmOrder'); if (!$('rmInfo')) return;
+    rvPaintPrompt();
     if (!o) { $('rmInfo').innerHTML = A.empty('리뷰 주문이 없습니다.'); return; }
     var specs = RVSPECS.filter(function (x) { return x.order_id === o.id; });
     var made = POSTS.filter(function (x) { return x.order_id === o.id; }).length;
@@ -2048,6 +2049,30 @@
         : '<br><b style="color:var(--bad)">3 주문·입금에서 리뷰 구성을 먼저 정해 주세요.</b>')
       + '</div>';
   }
+  /* ⭐ 기본 규칙 — Edge Function 의 DEFAULT_RULES 와 **같은 글**이어야 합니다.
+     화면에서 고쳐 저장하면 settings.blog.rv_rules 에 들어가고, 그때부터 그걸 보냅니다. */
+  var RV_RULES_DEFAULT = [
+    '당신은 네이버 플레이스 리뷰를 대신 써 주는 사람입니다.',
+    '규칙:',
+    '- 리뷰 하나는 2~4문장. 실제 손님이 쓴 것처럼 짧고 구어체로.',
+    '- 모든 리뷰의 표현이 서로 겹치면 안 됩니다. 시작하는 말, 문장 구조, 마무리를 전부 다르게.',
+    "- '정말', '너무', '진짜' 같은 말을 반복해서 쓰지 마세요.",
+    '- 별점·이모지·해시태그·과장된 광고 문구는 넣지 마세요.',
+    '- 주어진 정보 안에서만 쓰고, 없는 사실을 지어내지 마세요.',
+    '- 형식을 정확히 지키세요. 설명이나 인사말을 앞뒤에 붙이지 마세요.'
+  ].join('\n');
+
+  /* ⚠️ 화면에 적힌 글이 곧 보내는 글이어야 합니다.
+     예전엔 저장한 값만 봐서, 규칙을 고쳐 놓고 [저장] 없이 만들면 **고친 게 조용히 무시**됐습니다.
+     이제 칸에 적힌 것을 먼저 씁니다. [규칙 저장]은 다음에 열어도 남아 있게 하는 용도입니다. */
+  function rvRules() {
+    var el = $('rvRules'), t = el && (el.value || '').trim();
+    if (t) return t;
+    return (A.RV_RULES || '').trim() || RV_RULES_DEFAULT;
+  }
+
+  var RMLAST = null;   /* 마지막으로 주고받은 것 — [무엇을 주고받았는지 보기] 용 */
+
   /* 클로드에게 그대로 넘길 수 있게 한 덩어리로 만듭니다 */
   function rmBrief() {
     var o = rvOrderOf('rmOrder'); if (!o) return '';
@@ -2100,6 +2125,57 @@
       return { category: cat, point: pt, body: body };
     }).filter(Boolean);
   }
+  /* ⚙️ 지시문 상자 — ①규칙(고칠 수 있음) ②이번에 보낼 주문 내용(읽기 전용) */
+  function rvPaintPrompt() {
+    if (!$('rvRules')) return;
+    if (document.activeElement !== $('rvRules')) $('rvRules').value = rvRules();
+    $('rvBriefPrev').textContent = rmBrief() || '(주문을 고르시면 여기에 보입니다)';
+  }
+  if ($('rvRulesSave')) $('rvRulesSave').onclick = async function () {
+    var t = $('rvRules').value.trim();
+    if (!t) { A.toast('규칙이 비었습니다. [기본값으로]를 누르시면 처음 것으로 돌아갑니다'); return; }
+    this.disabled = true;
+    var cur = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+    var v = (cur.data && cur.data.value) || {};
+    v.rv_rules = t;
+    var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
+    this.disabled = false;
+    if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+    A.RV_RULES = t;
+    A.toast('규칙을 저장했습니다. 다음부터 이 규칙으로 만듭니다');
+  };
+  if ($('rvRulesReset')) $('rvRulesReset').onclick = function () {
+    $('rvRules').value = RV_RULES_DEFAULT;
+    A.toast('기본 규칙을 넣었습니다. 쓰시려면 [규칙 저장]을 눌러 주세요');
+  };
+
+  /* 🔍 무엇을 주고받았는지 — 추측이 아니라 **함수가 실제로 보낸 글**을 그대로 보여줍니다
+     (Edge Function 이 sent 로 되돌려 줍니다). 비용도 여기서 같이 계산합니다. */
+  function rvPaintSeen() {
+    var box = $('rmSeenBox'); if (!box) return;
+    if (!RMLAST) { box.innerHTML = ''; return; }
+    var u = RMLAST.usage || {};
+    /* Claude Opus 5 = 100만 토큰당 입력 $5 · 출력 $25 */
+    var usd = ((u.in || 0) / 1e6) * 5 + ((u.out || 0) / 1e6) * 25;
+    box.innerHTML = '<details class="rvseen" style="margin-top:12px">'
+      + '<summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">'
+      + '🔍 방금 무엇을 주고받았는지 보기 <span class="mono">(토큰 '
+      + won(u.in || 0) + ' + ' + won(u.out || 0) + ' · 약 ' + usd.toFixed(3) + ' 달러)</span></summary>'
+      + '<div class="note" style="margin-top:10px"><b>이건 기록일 뿐입니다.</b> '
+      + '아래 내용은 저장되지 않고, 화면을 새로 고치면 사라집니다.</div>'
+      + '<div class="sec">① 보낸 규칙</div>'
+      + '<pre class="tpnote">' + esc(RMLAST.system || '') + '</pre>'
+      + '<div class="sec">② 보낸 주문 내용</div>'
+      + '<pre class="tpnote">' + esc(RMLAST.user || '') + '</pre>'
+      + '<div class="sec">③ 받은 글</div>'
+      + '<pre class="tpnote">' + esc(RMLAST.text || '') + '</pre>'
+      + '<div class="note" style="margin-top:12px">'
+      + '<b>비용</b> — 이번에 <b>약 ' + usd.toFixed(3) + ' 달러</b>'
+      + '(원화로 대략 ' + won(Math.round(usd * 1400)) + '원, 1달러 1,400원 기준)를 썼습니다.<br>'
+      + '<b>모델</b> ' + esc(RMLAST.model || '-') + ' · <b>생각 깊이</b> ' + esc(RMLAST.effort || '-')
+      + '</div></details>';
+  }
+
   if ($('rmOrder')) {
     $('rmOrder').onchange = rmPaint;
     /* ── 프로그램 안에서 바로 만들기 ──
@@ -2116,9 +2192,10 @@
       this.disabled = true; this.textContent = '만드는 중… (1~2분)';
       var btn = this;
       $('rmMsg').innerHTML = '';
+      RMLAST = null; rvPaintSeen();
       try {
         var r = await A.sb.functions.invoke('make-reviews', {
-          body: { brief: rmBrief(), count: want }
+          body: { brief: rmBrief(), count: want, rules: rvRules() }
         });
         /* ⚠️ supabase-js 는 2xx 가 아니면 r.error.message 에 「Edge Function returned a
            non-2xx status code」라는 **쓸모없는 말**만 담습니다. 진짜 이유(키가 거절됐다,
@@ -2126,6 +2203,13 @@
         if (r.error) throw new Error(await fnError(r.error));
         if (r.data && r.data.error) throw new Error(r.data.error);
         $('rmPaste').value = (r.data && r.data.text) || '';
+        /* 함수가 되돌려준 「실제로 보낸 글」을 그대로 붙잡아 둡니다 */
+        var sent = (r.data && r.data.sent) || {};
+        RMLAST = {
+          system: sent.system, user: sent.user, model: sent.model, effort: sent.effort,
+          text: r.data.text, usage: r.data.usage
+        };
+        rvPaintSeen();
         $('rmParse').click();
         A.toast('만들었습니다. 확인하고 [이대로 리뷰 만들기]를 누르세요');
       } catch (e) {
@@ -3565,7 +3649,7 @@
     if (name === 'r-pay') renderMyReviewPay();
     if (name === 'noti') loadNoti(true);
     if (name === 'edu' || name === 'r-edu') loadEdu();
-    if (name === 'r-make') { rvFill('rmOrder'); rmPaint(); }
+    if (name === 'r-make') { rvFill('rmOrder'); rmPaint(); rvPaintSeen(); }
     if (name === 'r-assign') renderRvAssign();
     if (name === 'r-check') renderRvCheck();
     if (name === 'pay') loadPay();
