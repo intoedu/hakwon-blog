@@ -1229,7 +1229,7 @@
             + '<td>' + esc(RV ? ((p.academy_name || '') + ' · ' + (p.category || '')) : (p.keyword || '')) + '</td>'
             + '<td class="mono">' + (p.published_at ? A.fdate(p.published_at) : '아직') + '</td>'
             + '<td>' + A.stChip(p.status) + '</td>'
-            + (RV ? '' : '<td class="num">' + (p.keyword_rank ? p.keyword_rank + '위' : '-') + '</td>')
+            + (RV ? '' : '<td class="num">' + (p.keyword_rank ? A.rankText(p.keyword_rank) : '-') + '</td>')
             + '<td class="num">' + (pay ? '<b>' + won(p.payout_rate) + '</b>' : '—') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : A.empty('아직 올린 ' + A.josa(W.what, '이') + ' 없습니다.'))
       + (PAY.length ? '<div class="sec">지난달 <small>블로그·리뷰 합계</small></div>'

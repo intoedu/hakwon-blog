@@ -2799,9 +2799,17 @@
   }
   function isMineComm(cid) { return cid && (A.MY_COMMS || []).indexOf(cid) >= 0; }
 
+  /* ⚠️ 「6 검수하기」는 **블로그 갈래 전용** 화면입니다. 리뷰는 「6 올라왔는지 확인」(r-check)에서
+     따로 봅니다. 그런데 여기서 갈래를 안 걸러서 **리뷰가 블로그 검수 화면에도 같이 떴습니다** —
+     같은 건이 두 화면에 나와 두 번 손대게 됩니다. */
+  function isBlogPost(p) {
+    var o = A.ORDERS.filter(function (x) { return x.id === p.order_id; })[0];
+    return !o || (o.track || 'blog') === 'blog';
+  }
+
   function renderReview() {
-    var draft = POSTS.filter(function (p) { return p.status === 'submitted'; });
-    var live = POSTS.filter(function (p) { return p.status === 'published'; });
+    var draft = POSTS.filter(function (p) { return p.status === 'submitted' && isBlogPost(p); });
+    var live = POSTS.filter(function (p) { return p.status === 'published' && isBlogPost(p); });
     $('rcDraft').textContent = draft.length; $('rcLive').textContent = live.length;
 
     document.querySelectorAll('[data-rvby]').forEach(function (b) {
@@ -2813,9 +2821,10 @@
 
     if (RV_BY === 'comm') { renderReviewByComm(draft); return; }
 
-    $('rvAcadList').innerHTML = A.ORDERS.length ? '<div class="tblbox tblscroll"><table>'
+    var bOrders = A.ORDERS.filter(function (o) { return (o.track || 'blog') === 'blog'; });
+    $('rvAcadList').innerHTML = bOrders.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>학원</th><th>주문한 글</th><th>원고 상황</th><th>올라간 글</th><th>마감일</th><th>남은 기간</th></tr></thead><tbody>'
-      + A.ORDERS.map(function (o) {
+      + bOrders.map(function (o) {
         var todo = draft.filter(function (p) { return p.order_id === o.id; }).length;
         var doneR = POSTS.filter(function (p) {
           return p.order_id === o.id && ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
@@ -2942,7 +2951,7 @@
     if (p.verified_at)
       out.push('<span style="color:var(--ok)">올린 글 확인</span> <span class="mono">'
         + esc(staffName(p.verified_by) || '') + ' · ' + A.fdate(p.verified_at)
-        + (p.keyword_rank ? ' · ' + p.keyword_rank + '위' : '') + '</span>');
+        + (p.keyword_rank ? ' · ' + A.rankText(p.keyword_rank) : '') + '</span>');
     return out.join('<br>');
   }
 
@@ -3037,7 +3046,7 @@
 
   /* 올라간 글 확인 — 학원별로 묶고, 블로거 실명·공동체는 빼둡니다 */
   function renderLive() {
-    var live = POSTS.filter(function (p) { return p.status === 'published'; });
+    var live = POSTS.filter(function (p) { return p.status === 'published' && isBlogPost(p); });
     if (!live.length) { $('rvLive').innerHTML = A.empty('확인할 글이 없습니다.'); return; }
     var byOrder = {};
     live.forEach(function (p) { (byOrder[p.order_id] = byOrder[p.order_id] || []).push(p); });
@@ -3058,9 +3067,14 @@
               : '<a class="btn btn-s" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 열어보기 ↗</a>')
             + '<a class="btn btn-s" href="https://search.naver.com/search.naver?query=' + encodeURIComponent(p.keyword || '')
             + '" target="_blank" rel="noopener">이 검색어로 검색해보기 ↗</a></div></div>'
-            + '<div style="min-width:180px"><label class="f">몇 번째에 나왔나요</label>'
-            + '<input class="inp" type="number" data-rank="' + p.id + '" placeholder="예: 4">'
-            + '<div class="mono" style="margin-top:5px">위 [검색해보기] 로 나온 순서<br>안 적으셔도 됩니다</div></div>'
+            + '<div style="min-width:200px"><label class="f">몇 번째에 나왔나요</label>'
+            + '<div class="row" style="gap:6px">'
+            + '<input class="inp" type="number" min="1" max="50" style="width:88px" '
+            + 'data-rank="' + p.id + '" placeholder="예: 4">'
+            + '<button class="btn btn-s" data-rank50="' + p.id + '" '
+            + 'title="한참 내려도 안 보이면 누르세요">50+</button></div>'
+            + '<div class="mono" style="margin-top:5px">위 [검색해보기] 로 나온 순서입니다.<br>'
+            + '<b>한참 내려도 안 보이면 [50+]</b> 를 누르세요.<br>안 적으셔도 됩니다</div></div>'
             + '<button class="btn btn-a" data-verify="' + p.id + '">확인 완료</button>'
             + '<button class="btn btn-s" data-unverify="' + p.id + '">문제 있음</button>'
             + '</div></div>';
@@ -3199,7 +3213,7 @@
         b ? A.commName(b.community_id) : '', b ? b.name : '',
         (A.ST[p.status] || [p.status])[0], p.due_date || '',
         p.published_at ? A.fdate(p.published_at) : '', p.published_url || '',
-        p.keyword_rank ? p.keyword_rank + '위' : ''];
+        p.keyword_rank ? A.rankText(p.keyword_rank) : ''];
     });
     var oid = $('pgOrder').value;
     saveCsv('ESC 블로그 진행현황 ' + (oid ? orderName(oid) + ' ' : '') + A.today() + '.csv', head, body);
@@ -3786,6 +3800,22 @@
       catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
+    /* [50+] — 한참 내려도 안 보이는 경우. 999 로 넣고 숫자 칸은 잠급니다.
+       다시 누르면 풀립니다. 비워 두는 것(=아직 안 재봄)과 구분되어야 합니다. */
+    if ((t = e.target.closest('[data-rank50]'))) {
+      var rin = document.querySelector('[data-rank="' + t.dataset.rank50 + '"]');
+      if (!rin) return;
+      var on = Number(rin.value) >= A.RANK_OUT;
+      if (on) {
+        rin.value = ''; rin.disabled = false;
+        t.classList.remove('btn-a'); t.textContent = '50+';
+      } else {
+        rin.value = String(A.RANK_OUT); rin.disabled = true;
+        t.classList.add('btn-a'); t.textContent = '50+ ✓';
+      }
+      return;
+    }
+
     if ((t = e.target.closest('[data-verify]')) || (t = e.target.closest('[data-unverify]'))) {
       var pid = t.dataset.verify || t.dataset.unverify, ok = !!t.dataset.verify;
       var rk = document.querySelector('[data-rank="' + pid + '"]');
