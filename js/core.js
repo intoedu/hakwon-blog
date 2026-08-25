@@ -80,6 +80,18 @@ window.ESC = (function () {
   };
   A.NID_OK = /^[a-z0-9_-]{3,20}$/;
 
+  /* ── 이웃 수 표시 ──
+     ⚠️ 이웃 수를 **비공개로 해 둔 블로그가 많습니다**(본인이 껐습니다). 그때 칸을 비워 두면
+     「아직 안 열어봤다」와 구분이 안 됩니다.
+     새 칸을 만들지 않고 이미 있는 두 값의 조합으로 나타냅니다 —
+     `neighbors` 는 비었는데 `neighbors_checked_at` 이 찍혀 있으면 = **열어봤지만 비공개**. */
+  A.nbText = function (p) {
+    if (!p) return '-';
+    if (p.neighbors != null) return A.won(p.neighbors);
+    if (p.neighbors_checked_at) return '비공개';
+    return p.neighbors_band || '-';
+  };
+
   A.RANK_OUT = 999;
   A.rankText = function (n) {
     if (n == null || n === '') return '';
@@ -564,6 +576,7 @@ window.ESC = (function () {
       A.SPLIT = full.split || { esc: 2, blogger: 2, community: 1, reviewer: 1 };
       /* 리뷰를 만들 때 AI 에게 주는 규칙 — 비어 있으면 admin.js 의 기본 규칙을 씁니다 */
       A.RV_RULES = full.rv_rules || '';
+      A.SIGN = full.sign || 'ESC 이은총 드림';   /* 알림·문자 문구 끝에 붙는 서명 */
     }
   };
 

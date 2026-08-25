@@ -344,7 +344,13 @@
       + '<dl class="kv">'
       + '<dt>블로그</dt><dd>' + nidCell(p) + '</dd>'
       + '<dt>이웃 수</dt><dd>' + neighborCell(p) + '</dd>'
-      + '<dt>연락처</dt><dd class="mono">' + esc(p.phone || '-') + '</dd>'
+      + '<dt>연락처</dt><dd class="mono">' + esc(p.phone || '-')
+      /* ⚠️ 우리는 문자·카톡을 자동으로 못 보냅니다(사업자 발신프로필이 있어야 합니다).
+         그래서 **보낼 문구를 만들어 드리고 복사만** 하시게 합니다. 알림 화면과 같은 방식입니다. */
+      + '<div class="row" style="margin-top:6px">'
+      + '<button class="btn btn-s" data-askmsg="url:' + p.id + '">📋 주소 물어보기</button>'
+      + '<button class="btn btn-s" data-askmsg="nb:' + p.id + '">📋 이웃 수 물어보기</button>'
+      + '</div></dd>'
       + '<dt>이메일</dt><dd class="mono">' + esc(p.email) + '</dd>'
       + (p.reject_reason ? '<dt>거절 사유</dt><dd>' + esc(p.reject_reason) + '</dd>' : '')
       + '</dl>'
@@ -380,13 +386,12 @@
      시간이 지나 이웃이 늘거나 승인할 때 안 적어 두었으면 손댈 방법이 없었습니다.
      숫자를 누르면 그 자리에서 고쳐집니다. */
   function nbCell(p) {
-    var has = p.neighbors != null;
+    var has = p.neighbors != null, hid = !has && p.neighbors_checked_at;
     return '<button class="nbbtn' + (has ? '' : ' none') + '" data-nbopen="' + p.id + '" '
-      + 'title="눌러서 고치기">'
-      + (has ? won(p.neighbors) : esc(p.neighbors_band || '-'))
-      + '</button>'
+      + 'title="눌러서 고치기">' + esc(A.nbText(p)) + '</button>'
       + (p.neighbors_checked_at
-        ? '<div class="mono" style="font-size:10.5px">' + A.fdate(p.neighbors_checked_at) + '</div>'
+        ? '<div class="mono" style="font-size:10.5px">'
+          + (hid ? '열어봄 · ' : '') + A.fdate(p.neighbors_checked_at) + '</div>'
         : has ? '' : '<div class="mono" style="font-size:10.5px">본인 신고</div>');
   }
   /* 숫자를 누르면 그 칸이 입력칸으로 바뀝니다 */
@@ -396,17 +401,26 @@
       + 'data-nb="' + p.id + '" type="number" placeholder="숫자" '
       + 'value="' + (p.neighbors == null ? '' : p.neighbors) + '">'
       + '<button class="btn btn-a btn-s" data-savenb="' + p.id + '" style="padding:4px 8px">저장</button>'
+      + '<button class="btn btn-s" data-nbhide="' + p.id + '" style="padding:4px 8px" '
+      + 'title="블로그에 이웃 수가 안 보일 때">비공개</button>'
       + '</div>'
       + '<div class="mono" style="font-size:10.5px">본인 신고 ' + esc(p.neighbors_band || '-') + '</div>';
     var i = td.querySelector('input'); if (i) { i.focus(); i.select(); }
   }
 
   function neighborCell(p) {
+    var hid = p.neighbors == null && p.neighbors_checked_at;
     return '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span> '
       + '<input class="inp" style="width:110px;display:inline-block;padding:4px 8px;font-size:13px" '
       + 'data-nb="' + p.id + '" type="number" placeholder="실제 숫자" value="' + (p.neighbors == null ? '' : p.neighbors) + '">'
       + ' <button class="btn btn-s" data-savenb="' + p.id + '">확인 저장</button>'
-      + (p.neighbors_checked_at ? '<div class="mono">' + A.fdate(p.neighbors_checked_at) + ' 확인</div>' : '');
+      /* 이웃 수를 감춰 둔 블로그가 많습니다 — 못 봤다는 것을 기록해 둬야
+         「아직 안 열어봤다」와 구분됩니다 */
+      + ' <button class="btn btn-s" data-nbhide="' + p.id + '" '
+      + 'title="블로그에 이웃 수가 안 보일 때">비공개</button>'
+      + (p.neighbors_checked_at
+        ? '<div class="mono">' + (hid ? '<b>비공개</b> — ' : '') + A.fdate(p.neighbors_checked_at) + ' 확인</div>'
+        : '');
   }
 
   function renderList() {
@@ -3947,6 +3961,43 @@
       if (who) nbEdit(t.closest('td'), who);
       return;
     }
+    /* 신청자에게 보낼 문구를 만들어 복사합니다 — 그대로 문자·카톡에 붙이시면 됩니다 */
+    if ((t = e.target.closest('[data-askmsg]'))) {
+      var pr = t.dataset.askmsg.split(':'), kind = pr[0];
+      var who = A.PEOPLE.filter(function (x) { return x.id === pr[1]; })[0];
+      if (!who) return;
+      var sign = '\n\n' + (A.SIGN || 'ESC 이은총 드림');
+      var txt = kind === 'url'
+        ? who.name + '님, 안녕하세요. ESC 학원지원센터입니다.\n'
+          + '블로그 신청 감사합니다. 적어 주신 블로그 주소가 열리지 않아 확인 부탁드립니다.\n\n'
+          + '적어 주신 주소 : ' + (who.blog_url || '-') + '\n\n'
+          + '내 블로그에 들어가셔서 주소창에 보이는 주소를 그대로 보내 주시면 '
+          + '저희가 고쳐 넣겠습니다. (blog.naver.com/ 뒤에 오는 부분입니다)\n'
+          + '다시 신청하실 필요는 없습니다.' + sign
+        : who.name + '님, 안녕하세요. ESC 학원지원센터입니다.\n'
+          + '블로그를 열어 보니 이웃 수가 공개로 되어 있지 않아 확인이 어렵습니다.\n\n'
+          + '네이버 블로그 앱에서 [내 블로그 → 통계] 로 들어가시면 이웃 수가 보입니다. '
+          + '그 화면을 캡처해서 보내 주시면 됩니다.\n'
+          + '꼭 필요한 것은 아니니 어려우시면 넘어가셔도 됩니다. '
+          + '단계를 올릴 때 참고만 하는 숫자입니다.' + sign;
+      navigator.clipboard.writeText(txt).then(function () {
+        A.toast('문구를 복사했습니다 — ' + (who.phone || '연락처 없음') + ' 으로 보내세요');
+      }, function () { A.toast('복사에 실패했습니다'); });
+      return;
+    }
+
+    /* 이웃 수 비공개 — 숫자는 비우고 「확인한 때」만 남깁니다.
+       그래야 「열어봤는데 안 보이더라」와 「아직 안 열어봤다」가 구분됩니다. */
+    if ((t = e.target.closest('[data-nbhide]'))) {
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_set_neighbors', { p_id: t.dataset.nbhide, p_n: null });
+        A.toast('비공개로 적어 두었습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-savenb]'))) {
       var el = document.querySelector('[data-nb="' + t.dataset.savenb + '"]');
       if (!el || el.value === '') { A.toast('숫자를 넣어 주세요'); return; }
