@@ -37,6 +37,23 @@
     A.boot();
   };
 
+  /* 적으시는 대로 「이 주소가 열립니다」를 보여 줍니다 —
+     대문자로 적으면 안 열린다는 것을 내는 순간이 아니라 그 자리에서 알 수 있게. */
+  if ($('su_nid')) $('su_nid').oninput = function () {
+    var h = $('su_nid_hint'); if (!h) return;
+    var v = A.normNid(this.value);
+    if (!v) {
+      h.innerHTML = 'blog.naver.com/<b>여기에 들어가는 부분</b> · 주소를 통째로 붙여넣으셔도 됩니다';
+      return;
+    }
+    var ok = A.NID_OK.test(v);
+    h.innerHTML = ok
+      ? '이 주소가 열립니다 → <a href="https://blog.naver.com/' + A.esc(v)
+        + '" target="_blank" rel="noopener">blog.naver.com/' + A.esc(v) + ' ↗</a>'
+        + ' <b>눌러서 내 블로그가 맞는지 확인해 주세요</b>'
+      : '<b style="color:var(--bad)">영문 소문자·숫자·_·- 만 쓸 수 있습니다 (3~20자)</b>';
+  };
+
   $('btnSignup').onclick = async function () {
     var v = function (id) { return ($(id).value || '').trim(); };
     var comm = v('su_comm'), name = v('su_name'), age = v('su_age');
@@ -47,7 +64,15 @@
     if (comm === 'esc') comm = null;      /* ESC 직원 — 공동체 없음 */
     if (!name) { A.msg('suMsg', '이름을 입력해 주세요.'); return; }
     if (!nid) { A.msg('suMsg', '블로그 네이버 아이디를 입력해 주세요.'); return; }
-    if (/[^\w.-]/.test(nid)) { A.msg('suMsg', '네이버 아이디만 넣어 주세요. 주소 전체가 아니라 아이디 부분입니다.'); return; }
+    /* 주소를 통째로 붙여넣었거나 대문자로 적었으면 여기서 바로잡습니다.
+       ⚠️ 네이버 아이디는 소문자만 씁니다 — 대문자로 두면 안 열리는 주소가 됩니다. */
+    nid = A.normNid(nid);
+    $('su_nid').value = nid;
+    if (!A.NID_OK.test(nid)) {
+      A.msg('suMsg', '네이버 아이디를 다시 봐 주세요. blog.naver.com/ 뒤에 오는 부분이며 '
+        + '영문 소문자·숫자·_·- 만 쓸 수 있습니다 (지금 넣으신 것: ' + nid + ')');
+      return;
+    }
     if (!band) { A.msg('suMsg', '블로그 이웃 수 구간을 골라 주세요.'); return; }
     if (!phone) { A.msg('suMsg', '전화번호를 입력해 주세요.'); return; }
 

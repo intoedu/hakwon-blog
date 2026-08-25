@@ -342,9 +342,7 @@
       + '</span></label>'
       + chip + '</div>'
       + '<dl class="kv">'
-      + '<dt>블로그</dt><dd><a class="mono" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
-      + esc((p.blog_url || '').replace(/^https?:\/\//, '')) + ' ↗</a>'
-      + (p.blog_alias ? ' <span class="mono">' + esc(p.blog_alias) + '</span>' : '') + '</dd>'
+      + '<dt>블로그</dt><dd>' + nidCell(p) + '</dd>'
       + '<dt>이웃 수</dt><dd>' + neighborCell(p) + '</dd>'
       + '<dt>연락처</dt><dd class="mono">' + esc(p.phone || '-') + '</dd>'
       + '<dt>이메일</dt><dd class="mono">' + esc(p.email) + '</dd>'
@@ -352,6 +350,31 @@
       + '</dl>'
       + '<div class="row">' + btns + '</div></div>';
   }
+  /* ── 블로그 주소 칸 ──
+     ⚠️ 네이버 아이디는 소문자만 씁니다. 대문자로 적어 내신 분들 주소가 안 열렸는데
+     (blog.naver.com/Haeun_726 → 없는 아이디), 그동안 고칠 데가 없어서
+     「거절 → 재신청」밖에 방법이 없었습니다. 잘못 쓴 것뿐인데 너무 큰 벌입니다.
+     여기서 그 자리에서 고칩니다. 정리는 서버 blogger_norm_nid() 가 한 번 더 합니다. */
+  var NID_EDIT = {};
+  function nidCell(p) {
+    if (NID_EDIT[p.id]) {
+      return '<span data-nidbox="' + p.id + '">'
+        + '<input class="inp" style="width:230px;display:inline-block" data-nidin="' + p.id + '" '
+        + 'value="' + esc(p.naver_id || '') + '" placeholder="myblogid" autocapitalize="off" '
+        + 'autocorrect="off" spellcheck="false"> '
+        + '<button class="btn btn-p btn-s" data-nidsave="' + p.id + '">저장</button> '
+        + '<button class="btn btn-s" data-nidcancel="' + p.id + '">취소</button>'
+        + '<div class="mono" style="margin-top:4px">blog.naver.com/<b>아이디</b> · '
+        + '주소를 통째로 붙여넣으셔도 됩니다 · <b>대문자는 소문자로 바꿔 저장됩니다</b></div></span>';
+    }
+    return '<span data-nidbox="' + p.id + '">'
+      + '<a class="mono" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
+      + esc((p.blog_url || '').replace(/^https?:\/\//, '')) + ' ↗</a>'
+      + (p.blog_alias ? ' <span class="mono">' + esc(p.blog_alias) + '</span>' : '')
+      + ' <button class="btn btn-s" data-nidedit="' + p.id + '" '
+      + 'title="눌러 보고 안 열리면 여기서 고치세요">✏️ 고치기</button></span>';
+  }
+
   /* ── 블로거 목록의 이웃 수 칸 ──
      ⚠️ 예전엔 승인 대기 카드에서만 고칠 수 있어서, 승인하고 나면 고칠 데가 없었습니다.
      시간이 지나 이웃이 늘거나 승인할 때 안 적어 두었으면 손댈 방법이 없었습니다.
@@ -451,9 +474,7 @@
       + kvrow('이름 · 나이', esc(p.name) + (p.age ? ' · ' + p.age + '세' : ''))
       + kvrow('네이버 아이디', p.naver_id ? '<span class="mono">' + esc(p.naver_id) + '</span>' : '')
       + kvrow('블로그 별명', esc(p.blog_alias || ''))
-      + kvrow('블로그 주소', p.blog_url
-        ? '<a class="mono" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
-          + esc(p.blog_url.replace(/^https?:\/\//, '')) + ' ↗</a>' : '')
+      + kvrow('블로그 주소', nidCell(p))
       + kvrow('이웃 수', '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span>'
         + (p.neighbors != null ? ' · 확인 <b>' + won(p.neighbors) + '명</b>'
           + (p.neighbors_checked_at ? ' <span class="mono">(' + A.fdate(p.neighbors_checked_at) + ')</span>' : '')
@@ -3802,6 +3823,38 @@
     }
     /* [50+] — 한참 내려도 안 보이는 경우. 999 로 넣고 숫자 칸은 잠급니다.
        다시 누르면 풀립니다. 비워 두는 것(=아직 안 재봄)과 구분되어야 합니다. */
+    /* 블로그 주소 고치기 */
+    if ((t = e.target.closest('[data-nidedit]'))) {
+      NID_EDIT[t.dataset.nidedit] = true;
+      renderStaffAll();
+      var f = document.querySelector('[data-nidin="' + t.dataset.nidedit + '"]');
+      if (f) { f.focus(); f.select(); }
+      return;
+    }
+    if ((t = e.target.closest('[data-nidcancel]'))) {
+      delete NID_EDIT[t.dataset.nidcancel];
+      renderStaffAll();
+      return;
+    }
+    if ((t = e.target.closest('[data-nidsave]'))) {
+      var nid0 = t.dataset.nidsave;
+      var box = document.querySelector('[data-nidin="' + nid0 + '"]');
+      if (!box) return;
+      var v = A.normNid(box.value);
+      if (!A.NID_OK.test(v)) {
+        A.toast('네이버 아이디 형식이 아닙니다 — 영문 소문자·숫자·_·- 만, 3~20자');
+        return;
+      }
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_set_blog', { p_id: nid0, p_nid: v });
+        delete NID_EDIT[nid0];
+        A.toast('blog.naver.com/' + v + ' 로 고쳤습니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-rank50]'))) {
       var rin = document.querySelector('[data-rank="' + t.dataset.rank50 + '"]');
       if (!rin) return;

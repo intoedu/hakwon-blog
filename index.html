@@ -52,8 +52,10 @@
     </div>
     <div class="grid g2" style="gap:0 13px">
       <div class="fld"><label class="f">블로그 네이버 아이디</label>
-        <input class="inp" id="su_nid" placeholder="myblogid">
-        <div class="mono" style="margin-top:5px">blog.naver.com/<b>여기에 들어가는 부분</b></div></div>
+        <input class="inp" id="su_nid" placeholder="myblogid" autocapitalize="off"
+               autocorrect="off" autocomplete="off" spellcheck="false">
+        <div class="mono" id="su_nid_hint" style="margin-top:5px">blog.naver.com/<b>여기에 들어가는 부분</b>
+          · 주소를 통째로 붙여넣으셔도 됩니다</div></div>
       <div class="fld"><label class="f">블로그 별명</label><input class="inp" id="su_alias" placeholder="블로그 이름"></div>
     </div>
     <div class="fld"><label class="f">블로그 이웃 수</label>

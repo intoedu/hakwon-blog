@@ -65,6 +65,21 @@ window.ESC = (function () {
      한참 내려도 글이 안 보이는 경우가 많습니다. 그때 칸을 비워 두면 「아직 안 재봤다」와
      구분이 안 됩니다. 그래서 **999 를 「50위 밖」**이라는 뜻으로 씁니다.
      ⚠️ status.html 은 바깥 파일을 안 쓰므로 거기에도 같은 규칙이 따로 적혀 있습니다. */
+  /* ── 네이버 아이디 정리 ──
+     ⚠️ 네이버 아이디는 **소문자만** 씁니다. 대문자로 적어 내시면 blog.naver.com/Haeun_726 처럼
+     열리지 않는 주소가 만들어집니다(실제로 신청자 여럿이 그랬습니다).
+     주소를 통째로 붙여넣는 분도 많아서 앞뒤를 털어 냅니다.
+     ⚠️ 서버의 blogger_norm_nid() 와 **같은 규칙**입니다 — 한쪽만 고치면 어긋납니다. */
+  A.normNid = function (t) {
+    return String(t || '')
+      .trim()
+      .replace(/^(https?:\/\/)?(m\.)?blog\.naver\.com\//i, '')
+      .replace(/[/?#].*$/, '')
+      .trim()
+      .toLowerCase();
+  };
+  A.NID_OK = /^[a-z0-9_-]{3,20}$/;
+
   A.RANK_OUT = 999;
   A.rankText = function (n) {
     if (n == null || n === '') return '';
