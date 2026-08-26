@@ -1906,6 +1906,8 @@
     var f = A.FORM || {};
     $('dailyLimit').value = String(f.daily_limit || 1);
     $('sameAcad').checked = f.same_academy_daily !== 0;
+    /* ⚠️ 값이 없으면 「요구함」이 기본입니다 (서버 blog_require_t1() 과 같은 규칙) */
+    if ($('reqT1')) $('reqT1').checked = f.require_t1 !== false;
     var cap = Number(A.MONTH_CAP) || 30;
     $('monthCap').value = String(cap);
     $('capNow').textContent = String(cap);
@@ -1920,7 +1922,9 @@
     v.ad_lines = lines;
     v.form = Object.assign({}, v.form, {
       daily_limit: Number($('dailyLimit').value) || 1,
-      same_academy_daily: $('sameAcad').checked ? 1 : 0
+      same_academy_daily: $('sameAcad').checked ? 1 : 0,
+      /* 1차 줌을 배정 조건으로 볼지 — 서버 blog_require_t1() 이 같은 값을 읽습니다 */
+      require_t1: $('reqT1') ? !!$('reqT1').checked : true
     });
     /* 월 상한은 posts_auto_assign 이 settings.month_cap 을 직접 읽습니다 (form 안이 아닙니다) */
     v.month_cap = Math.max(1, Number($('monthCap').value) || 30);
@@ -1929,8 +1933,9 @@
     if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
     A.AD_LINES = lines; A.FORM = v.form; A.MONTH_CAP = v.month_cap;
     A.toast('저장했습니다 — 문구 ' + lines.length + '개 · 하루 ' + v.form.daily_limit
-      + '편 · 월 ' + v.month_cap + '편');
-    renderRules(); renderOrders();
+      + '편 · 월 ' + v.month_cap + '편 · 1차 줌 '
+      + (v.form.require_t1 ? '필요' : '안 봄'));
+    renderRules(); renderOrders(); renderAssign();
   };
 
   /* ── 태그 정하기 ──
@@ -2508,9 +2513,12 @@
         && (a.mode === 'live' || (a.mode === 'video' && a.confirmed_at));
     });
 
+    /* ⚠️ 1차 줌을 조건에서 빼 두셨으면 여기서도 따지면 안 됩니다 —
+       서버는 통과시키는데 화면만 「미참석」이라고 하면 또 헷갈립니다. */
+    var needT1 = (A.FORM || {}).require_t1 !== false;
     var miss = [];
-    if (!t1.length) miss.push('1차 줌 일정이 없습니다');
-    else if (!came) miss.push('1차 줌 미참석');
+    if (needT1 && !t1.length) miss.push('1차 줌 일정이 없습니다');
+    else if (needT1 && !came) miss.push('1차 줌 미참석');
     if (done < need.length) {
       miss.push('필수 영상 ' + done + '/' + need.length
         + (wait ? ' — ' + wait + '건은 요약을 냈고 확인 대기' : ''));

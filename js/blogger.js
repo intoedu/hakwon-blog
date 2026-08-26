@@ -186,7 +186,14 @@
     }).length;
     var t1 = SESS.filter(function (s) { return s.kind === 't1'; }).map(function (s) { return s.id; });
     var att1 = ATT.some(function (a) { return t1.indexOf(a.session_id) >= 0 && ['live', 'video'].indexOf(a.mode) >= 0; });
-    return { videoDone: done, videoWait: wait, videoNeed: req.length, t1: att1, ok: done >= req.length && att1 };
+    /* ⚠️ 1차 줌을 배정 조건에서 뺄 수 있습니다 (관리자 설정).
+       서버 blogger_ready 와 같은 규칙이어야 화면과 실제가 어긋나지 않습니다. */
+    var needT1 = (A.FORM || {}).require_t1 !== false;
+    return {
+      videoDone: done, videoWait: wait, videoNeed: req.length,
+      t1: att1, needT1: needT1,
+      ok: done >= req.length && (!needT1 || att1)
+    };
   }
 
   function renderInbox() {
@@ -213,8 +220,10 @@
     $('bGate').innerHTML = r.ok ? '' :
       '<div class="note warn" style="margin-bottom:18px"><b>아직 '
       + (RV ? '리뷰어 교육' : '교육') + '이 안 끝났습니다.</b> '
-      + '1차 교육 참석' + (r.t1 ? ' <span style="color:var(--ok)">✓</span>' : ' <b style="color:var(--bad)">미완</b>')
-      + ' · 필수 영상 ' + r.videoDone + '/' + r.videoNeed
+      + (r.needT1
+        ? '1차 교육 참석' + (r.t1 ? ' <span style="color:var(--ok)">✓</span>' : ' <b style="color:var(--bad)">미완</b>') + ' · '
+        : '')
+      + '필수 영상 ' + r.videoDone + '/' + r.videoNeed
       + '. 다 마치셔야 ' + A.josa(W.what, '이') + ' 배정됩니다. '
       + '<button class="link" data-go="b-edu">' + (RV ? '리뷰어 교육' : '교육') + ' 받으러 가기 →</button></div>';
 
@@ -338,8 +347,9 @@
        마치셔야 배정됩니다 (서버도 blogger_ready(id, track) 로 같게 봅니다). */
     $('bEduState').innerHTML = '<div class="card"><div class="steps">'
       + '<div class="step done">승인</div>'
-      + '<div class="step ' + (r.t1 ? 'done' : 'now') + '">1차 줌</div>'
-      + '<div class="step ' + (r.videoDone >= r.videoNeed && r.videoNeed ? 'done' : r.t1 ? 'now' : '') + '">영상 보기</div>'
+      + (r.needT1 ? '<div class="step ' + (r.t1 ? 'done' : 'now') + '">1차 줌</div>' : '')
+      + '<div class="step ' + (r.videoDone >= r.videoNeed && r.videoNeed ? 'done'
+          : (!r.needT1 || r.t1) ? 'now' : '') + '">영상 보기</div>'
       + '<div class="step ' + (r.ok ? 'now' : '') + '">첫 ' + W.what + ' 1건</div>'
       + '<div class="step">2차 줌</div></div>'
       + '<div class="note" style="margin-top:15px">'
@@ -348,7 +358,8 @@
       + (r.ok ? '<b>' + A.josa(W.edu, '을') + ' 마치셨습니다.</b> 이제 ' + A.josa(W.what, '이') + ' 배정됩니다.'
         + (RV ? ' 리뷰는 저희가 본문까지 써서 드립니다. 그대로 올리시면 됩니다.'
               : ' 첫 글을 쓰시면 2차 줌에서 같이 보면서 피드백해 드립니다.')
-        : '<b>1차 줌 참석과 필수 영상 요약</b>을 마치셔야 ' + A.josa(W.what, '이') + ' 배정됩니다. '
+        : '<b>' + (r.needT1 ? '1차 줌 참석과 필수 영상 요약' : '필수 영상 요약')
+        + '</b>을 마치셔야 ' + A.josa(W.what, '이') + ' 배정됩니다. '
         + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
         + (r.videoWait ? ' <b style="color:var(--wait)">' + r.videoWait
           + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
