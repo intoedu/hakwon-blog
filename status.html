@@ -355,9 +355,16 @@
         + '저희와 함께하는 블로거들이 각자의 블로그에 학원을 소개하는 글을 올립니다. '
         + '올라간 글은 최소 12개월 동안 지우지 않습니다.</div>';
 
+    /* 사업자 정보 — 블로그·리뷰 홍보를 파는 주체는 인투마케팅입니다(전자상거래법 표시 의무).
+       ⚠️ 이 페이지는 바깥 파일을 안 쓰기로 했으므로 값을 여기에 직접 적습니다.
+       사업자 정보가 바뀌면 여기도 같이 고쳐야 합니다. */
     h += '<div class="pgfoot">ESC 학원지원센터 · 010-7318-1790 · benjamin.leeeunchong08@gmail.com<br>'
       + '이 주소는 ' + W('학원','업체') + '별로 다릅니다. 다른 곳의 내용은 보이지 않습니다.<br>'
-      + '<span class="mono">' + fdate(d.now) + ' 기준</span></div>';
+      + '<span class="mono">' + fdate(d.now) + ' 기준</span>'
+      + '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);opacity:.85">'
+      + '인투마케팅 · 대표 양회광 · 사업자등록번호 306-24-53380<br>'
+      + '대전광역시 유성구 은구비남로33번길 13-8, 3397호 (지족동, 양지빌딩)</div>'
+      + '</div>';
 
     PG.innerHTML = h;
     wireUpload();
