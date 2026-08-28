@@ -87,8 +87,13 @@
       if (pw !== pw2) { A.msg('suMsg', '비밀번호 확인이 다릅니다.'); this.disabled = false; return; }
       var up = await A.sb.auth.signUp({ email: email, password: pw });
       if (up.error) {
+        /* ⚠️ 「이미 가입된 이메일」은 대개 **비밀번호를 잊고 다시 가입하려는 것**입니다.
+           그냥 「로그인하세요」라고만 하면 또 막힙니다. 어떻게 풀지 알려 줍니다. */
         A.msg('suMsg', /already/i.test(up.error.message)
-          ? '이미 가입된 이메일입니다. 로그인해 주세요.' : '가입에 실패했습니다: ' + up.error.message);
+          ? '이 이메일로는 이미 가입되어 있습니다. 새로 가입하지 마시고 로그인해 주세요. '
+            + '비밀번호가 기억나지 않으시면 담당자(010-7318-1790)에게 연락해 주시면 '
+            + '새 비밀번호를 만들어 드립니다.'
+          : '가입에 실패했습니다: ' + up.error.message);
         this.disabled = false; return;
       }
       uid = up.data.user.id;

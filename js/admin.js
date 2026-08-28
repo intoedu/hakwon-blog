@@ -360,6 +360,31 @@
       + '</dl>'
       + '<div class="row">' + btns + '</div></div>';
   }
+  /* 새 비밀번호를 보여 주는 창 — 저장하지 않으므로 닫으면 다시 못 봅니다.
+     그래서 「보내는 문구 복사」를 같이 둡니다. */
+  function showPw(who, pw) {
+    var m = $('pwModal');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'pwModal'; m.className = 'modal';
+      document.body.appendChild(m);
+    }
+    m.innerHTML = '<div class="mbox" style="max-width:520px">'
+      + '<h3>' + esc(who.name) + ' 님의 새 비밀번호</h3>'
+      + '<div class="note warn" style="margin:12px 0">'
+      + '<b>이 창을 닫으면 다시 못 봅니다.</b> 저장해 두지 않기 때문입니다. '
+      + '지금 복사해서 본인에게 전해 주세요.</div>'
+      + '<div style="font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:1px;'
+      + 'text-align:center;padding:16px;background:var(--surface-2);border-radius:10px;'
+      + 'border:1px solid var(--line);user-select:all">' + esc(pw) + '</div>'
+      + '<div class="mono" style="margin-top:10px">아이디(이메일) · ' + esc(who.email || '-') + '</div>'
+      + '<div class="row" style="margin-top:16px">'
+      + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '">📋 보낼 문구 복사</button>'
+      + '<button class="btn" data-pwclose="1">닫았습니다</button></div></div>';
+    m.classList.add('on');
+    m.dataset.who = who.id;
+  }
+
   /* ── 블로그 주소 칸 ──
      ⚠️ 네이버 아이디는 소문자만 씁니다. 대문자로 적어 내신 분들 주소가 안 열렸는데
      (blog.naver.com/Haeun_726 → 없는 아이디), 그동안 고칠 데가 없어서
@@ -493,6 +518,11 @@
       + kvrow('네이버 아이디', p.naver_id ? '<span class="mono">' + esc(p.naver_id) + '</span>' : '')
       + kvrow('블로그 별명', esc(p.blog_alias || ''))
       + kvrow('블로그 주소', nidCell(p))
+      + kvrow('로그인', '<span class="mono">' + esc(p.email || '-') + '</span> '
+        + '<button class="btn btn-s" data-pwreset="' + p.id + '" '
+        + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다">🔑 비밀번호 초기화</button>'
+        + '<div class="mono" style="margin-top:4px">비밀번호는 <b>블로그 센터 전용</b>입니다 — '
+        + '메일 비밀번호가 아닙니다</div>')
       + kvrow('이웃 수', '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span>'
         + (p.neighbors != null ? ' · 확인 <b>' + won(p.neighbors) + '명</b>'
           + (p.neighbors_checked_at ? ' <span class="mono">(' + A.fdate(p.neighbors_checked_at) + ')</span>' : '')
@@ -4055,6 +4085,45 @@
     }
     /* [50+] — 한참 내려도 안 보이는 경우. 999 로 넣고 숫자 칸은 잠급니다.
        다시 누르면 풀립니다. 비워 두는 것(=아직 안 재봄)과 구분되어야 합니다. */
+    /* 🔑 비밀번호 초기화 — 임시 비밀번호를 만들어 화면에 한 번만 보여 줍니다.
+       ⚠️ 메일로 안 보냅니다: 도메인이 없어 메일이 스팸으로 가고, 가입 때 메일 인증을
+       안 받았기 때문에 **실제로 못 받는 주소**로 가입한 분도 있습니다.
+       알림과 같은 방식으로 관리자가 받아서 카톡으로 전해 주시면 됩니다. */
+    if ((t = e.target.closest('[data-pwclose]'))) {
+      $('pwModal').classList.remove('on'); $('pwModal').innerHTML = ''; return;
+    }
+    if ((t = e.target.closest('[data-pwcopy]'))) {
+      var mm = $('pwModal');
+      var w2 = A.PEOPLE.filter(function (x) { return x.id === (mm && mm.dataset.who); })[0] || {};
+      var msg2 = w2.name + '님, 안녕하세요. ESC 학원지원센터입니다.\n'
+        + '비밀번호를 새로 만들어 드렸습니다.\n\n'
+        + '들어가는 곳 : ' + location.origin + location.pathname.replace(/[^/]*$/, '') + '\n'
+        + '아이디 : ' + (w2.email || '') + '\n'
+        + '비밀번호 : ' + t.dataset.pwcopy + '\n\n'
+        + '이 비밀번호는 블로그 센터에서만 씁니다. 메일 비밀번호가 아닙니다.\n'
+        + '들어가신 뒤에는 다른 분이 보지 못하게 이 메시지를 지워 주세요.'
+        + '\n\n' + (A.SIGN || 'ESC 이은총 드림');
+      navigator.clipboard.writeText(msg2).then(function () {
+        A.toast('문구를 복사했습니다 — ' + (w2.phone || '연락처 없음') + ' 으로 보내세요');
+      }, function () { A.toast('복사에 실패했습니다'); });
+      return;
+    }
+    if ((t = e.target.closest('[data-pwreset]'))) {
+      var who = A.PEOPLE.filter(function (x) { return x.id === t.dataset.pwreset; })[0] || {};
+      if (!confirm(who.name + ' 님의 비밀번호를 새로 만들까요?\n\n'
+        + '지금 쓰던 비밀번호는 즉시 못 쓰게 됩니다.\n'
+        + '새 비밀번호는 이 화면에 한 번만 보이니, 본인에게 꼭 전해 주세요.')) return;
+      t.disabled = true; t.textContent = '만드는 중…';
+      try {
+        var rr = await A.sb.functions.invoke('reset-password', { body: { blogger_id: who.id } });
+        var dd = rr.data || {};
+        if (rr.error || dd.error) throw new Error(dd.error || rr.error.message);
+        showPw(who, dd.password);
+      } catch (err) { A.toast('실패: ' + err.message); }
+      t.disabled = false; t.textContent = '🔑 비밀번호 초기화';
+      return;
+    }
+
     /* 블로그 주소 고치기 */
     if ((t = e.target.closest('[data-nidedit]'))) {
       NID_EDIT[t.dataset.nidedit] = true;
