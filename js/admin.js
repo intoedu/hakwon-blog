@@ -179,10 +179,14 @@
       + fgroup('일이 돌아가면', [[6, '검수하기', 'review'], [7, '진행 현황', 'posts'], [8, '정산하기', 'pay']])
       + '</div>';
 
-    var toReview = POSTS.filter(function (p) { return p.status === 'submitted'; }).length;
-    var toVerify = POSTS.filter(function (p) { return p.status === 'published'; }).length;
-    var unass = POSTS.filter(function (p) { return p.status === 'pending'; }).length;
-    var late = POSTS.filter(function (p) {
+    /* ⚠️ 예전엔 갈래를 안 걸러서 **리뷰 글이 블로그 검수 배지에 잡혔습니다** —
+       검수할 글이 하나도 없는데 「검수하기 ②」가 떠 있던 원인입니다.
+       리뷰는 「6 올라왔는지 확인」이 따로 세고 있습니다(cRvCheck). */
+    var BP = POSTS.filter(isBlogPost);
+    var toReview = BP.filter(function (p) { return p.status === 'submitted'; }).length;
+    var toVerify = BP.filter(function (p) { return p.status === 'published'; }).length;
+    var unass = BP.filter(function (p) { return p.status === 'pending'; }).length;
+    var late = BP.filter(function (p) {
       return p.due_date && A.dday(p.due_date) < 0 &&
         ['pending', 'assigned', 'writing', 'rework'].indexOf(p.status) >= 0;
     }).length;
@@ -852,8 +856,10 @@
   /* 갈래(블로그/리뷰)마다 같은 모양으로 두 번 그립니다.
      교육 내용은 다르지만 화면이 같아야 관리자가 헷갈리지 않습니다. */
   function renderEdu() {
-    paintEdu('blog',   { sess: 'eduSessions',   mats: 'eduMaterials',   sum: 'eduSummaries',   prog: 'eduProgress' });
-    paintEdu('review', { sess: 'rvEduSessions', mats: 'rvEduMaterials', sum: 'rvEduSummaries', prog: 'rvEduProgress' });
+    paintEdu('blog',   { sess: 'eduSessions',   mats: 'eduMaterials',   sum: 'eduSummaries',
+                         prog: 'eduProgress',   att: 'eduAtt' });
+    paintEdu('review', { sess: 'rvEduSessions', mats: 'rvEduMaterials', sum: 'rvEduSummaries',
+                         prog: 'rvEduProgress', att: 'rvEduAtt' });
   }
   function paintEdu(TK, ID) {
     if (!$(ID.sess)) return;
@@ -897,61 +903,201 @@
         + '<button class="btn btn-s" data-delmat="' + m.id + '">삭제</button></div>';
     }).join('') + '</div>' : A.empty('영상 자료가 없습니다.');
 
-    renderSummaries(TK, ID.sum, MATS);
+    renderSummaries(TK, ID.sum, MATS, SESSIONS);
 
-    var appr = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
-    var t1 = SESSIONS.filter(function (s) { return s.kind === 't1'; }).map(function (s) { return s.id; });
-    var t2 = SESSIONS.filter(function (s) { return s.kind === 't2'; }).map(function (s) { return s.id; });
+    var t1 = SESSIONS.filter(function (x) { return x.kind === 't1'; }).map(function (x) { return x.id; });
+    var t2 = SESSIONS.filter(function (x) { return x.kind === 't2'; }).map(function (x) { return x.id; });
     var req = MATS.filter(function (m) { return m.required; });
+    var needT1 = (A.FORM || {}).require_t1 !== false;
 
-    $(ID.prog).innerHTML = appr.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>이름</th><th>공동체</th><th>1차 교육</th><th>영상</th><th>2차 교육</th><th>글 받을 수 있나</th></tr></thead><tbody>'
-      + appr.map(function (p) {
-        var a1 = ATT.filter(function (a) { return a.blogger_id === p.id && t1.indexOf(a.session_id) >= 0; })[0];
-        var a2 = ATT.filter(function (a) { return a.blogger_id === p.id && t2.indexOf(a.session_id) >= 0; })[0];
-        var mine = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'approved'; }).length;
-        var wt = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'submitted'; }).length;
-        var need = req.length;
-        var okNow = READY[TK] && READY[TK][p.id];
-        return '<tr><td><b>' + esc(p.name) + '</b></td><td>' + esc(A.commName(p.community_id)) + '</td>'
-          + '<td>' + (a1 ? (a1.mode === 'live' ? '<span class="chip c-ok">참석</span>'
-            : '<span class="chip c-wait">녹화본</span>') : '<span class="chip c-bad">아직</span>') + '</td>'
-          + '<td>' + (need === 0 ? '<span class="chip c-off">없음</span>'
-            : mine >= need ? '<span class="chip c-ok">' + mine + '/' + need + '</span>'
-              : '<span class="chip c-bad">' + mine + '/' + need + '</span>')
-          + (wt ? ' <span class="chip c-wait">요약 ' + wt + '건 확인 대기</span>' : '') + '</td>'
-          + '<td>' + (a2 ? '<span class="chip c-ok">참석</span>' : '<span class="chip c-off">—</span>') + '</td>'
-          + '<td>' + (okNow ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
-      }).join('') + '</tbody></table></div>' : A.empty('승인된 사람이 없습니다.');
+    /* 「챙길 것이 있는 사람」을 위로 올립니다 —
+       30명을 다 내려가며 찾지 않아도 되게. ①확인 대기 ②아직 못 받음 ③가능 */
+    var appr = A.PEOPLE.filter(function (p) {
+      return p.status === 'approved' && inComm(p.id);
+    }).map(function (p) {
+      var a1 = ATT.filter(function (a) { return a.blogger_id === p.id && t1.indexOf(a.session_id) >= 0; })[0];
+      var a2 = ATT.filter(function (a) { return a.blogger_id === p.id && t2.indexOf(a.session_id) >= 0; })[0];
+      var mineN = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'approved'; }).length;
+      var wt = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'submitted'; }).length;
+      /* 줌 녹화본을 냈는데 아직 확인 안 한 것 — 이게 관리자가 할 일입니다 */
+      var zw = ATT.filter(function (a) {
+        return a.blogger_id === p.id && a.mode === 'video' && a.note && !a.confirmed_at
+          && (t1.indexOf(a.session_id) >= 0 || t2.indexOf(a.session_id) >= 0);
+      }).length;
+      var okNow = READY[TK] && READY[TK][p.id];
+      return { p: p, a1: a1, a2: a2, mine: mineN, wt: wt, zw: zw, ok: okNow,
+               rank: (wt + zw) ? 0 : okNow ? 2 : 1 };
+    }).sort(function (a, b) {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      if ((b.wt + b.zw) !== (a.wt + a.zw)) return (b.wt + b.zw) - (a.wt + a.zw);
+      return (a.p.name || '').localeCompare(b.p.name || '');
+    });
+
+    var todoN = appr.filter(function (x) { return x.rank === 0; }).length;
+    $(ID.prog).innerHTML = '<div class="row" style="margin-bottom:10px">'
+      + commPick('eduComm2' + (TK === 'review' ? 'R' : ''))
+      + '<span class="mono">' + appr.length + '명'
+      + (todoN ? ' · <b style="color:var(--wait)">확인할 것이 있는 사람 ' + todoN + '명 (맨 위)</b>' : '')
+      + '</span></div>'
+      + (appr.length ? '<div class="tblbox tblscroll"><table>'
+      + '<thead><tr><th>이름</th><th>공동체</th>' + (needT1 ? '<th>1차 교육</th>' : '')
+      + '<th>영상</th><th>2차 교육</th><th>글 받을 수 있나</th></tr></thead><tbody>'
+      + appr.map(function (x) {
+        var p = x.p;
+        return '<tr' + (x.rank === 0 ? ' class="sent"' : '') + '>'
+          + '<td><b>' + esc(p.name) + '</b></td><td>' + esc(A.commName(p.community_id)) + '</td>'
+          + (needT1 ? '<td>' + (x.a1 ? (x.a1.mode === 'live' ? '<span class="chip c-ok">참석</span>'
+            : x.a1.confirmed_at ? '<span class="chip c-ok">녹화본</span>'
+              : '<span class="chip c-wait">녹화본 확인 대기</span>')
+            : '<span class="chip c-bad">아직</span>') + '</td>' : '')
+          + '<td>' + (req.length === 0 ? '<span class="chip c-off">없음</span>'
+            : x.mine >= req.length ? '<span class="chip c-ok">' + x.mine + '/' + req.length + '</span>'
+              : '<span class="chip c-bad">' + x.mine + '/' + req.length + '</span>')
+          + (x.wt ? ' <span class="chip c-wait">요약 ' + x.wt + '건 대기</span>' : '') + '</td>'
+          + '<td>' + (x.a2 ? '<span class="chip c-ok">참석</span>' : '<span class="chip c-off">—</span>') + '</td>'
+          + '<td>' + (x.ok ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' : A.empty('해당하는 사람이 없습니다.'));
   }
 
   /* 낸 요약 확인 — 영상을 정말 봤는지는 요약을 읽어보면 압니다.
      본 시간·붙여넣기 여부를 같이 보여 주니 의심스러운 것만 골라 보시면 됩니다. */
-  function renderSummaries(TK, boxId, MATS) {
+  /* ── 낸 내용 확인하기 ──
+     ⭐ 유튜브 영상 요약과 **줌 녹화본 요약**을 한자리에 모읍니다.
+     예전엔 줌 녹화본 요약이 「참석 체크」 화면 안에 숨어 있어서, 관리자가 줌 일정을
+     하나씩 눌러 들어가야만 보였습니다(그러면서 아래 표까지 사라졌습니다).
+     둘 다 「읽고 통과시켜야 이수」로 성격이 같으니 같은 곳에서 처리합니다. */
+  var EDU_COMM = '';        /* 공동체 거르기 — 교육 화면 전체가 같이 씁니다 */
+
+  function commPick(id) {
+    return '<select class="inp" style="width:auto;padding:5px 9px;font-size:13px" id="' + id + '">'
+      + '<option value="">공동체 전체</option>'
+      + A.COMMS.map(function (c) {
+        return '<option value="' + c.id + '"' + (EDU_COMM === c.id ? ' selected' : '') + '>'
+          + esc(c.name) + '</option>';
+      }).join('')
+      + '<option value="esc"' + (EDU_COMM === 'esc' ? ' selected' : '') + '>ESC (직원)</option></select>';
+  }
+  function inComm(bid) {
+    if (!EDU_COMM) return true;
+    var p = A.PEOPLE.filter(function (x) { return x.id === bid; })[0];
+    if (!p) return false;
+    return EDU_COMM === 'esc' ? !p.community_id : p.community_id === EDU_COMM;
+  }
+  function commOfBlogger(bid) {
+    var p = A.PEOPLE.filter(function (x) { return x.id === bid; })[0];
+    return p ? A.commName(p.community_id) : '-';
+  }
+
+  function renderSummaries(TK, boxId, MATS, SESSIONS) {
     var box = $(boxId); if (!box) return;
     var mine = {}; MATS.forEach(function (m) { mine[m.id] = 1; });
-    var TPROG = ALLPROG.filter(function (g) { return mine[g.material_id]; });
-    var wait = TPROG.filter(function (g) { return g.status === 'submitted'; })
-      .sort(function (a, b) { return (a.submitted_at || '') < (b.submitted_at || '') ? -1 : 1; });
-    var judged = TPROG.filter(function (g) { return g.status !== 'submitted' && g.summary; })
-      .sort(function (a, b) { return (a.reviewed_at || '') > (b.reviewed_at || '') ? -1 : 1; }).slice(0, 10);
+    var sids = {}; (SESSIONS || []).forEach(function (x) { sids[x.id] = x; });
 
-    if (!wait.length && !judged.length) {
-      box.innerHTML = A.empty('아직 올라온 요약이 없습니다. 블로거가 영상을 보고 요약을 내면 여기에 뜹니다.');
+    /* ① 영상 요약 */
+    var vWait = ALLPROG.filter(function (g) {
+      return mine[g.material_id] && g.status === 'submitted' && inComm(g.blogger_id);
+    }).sort(function (a, b) { return (a.submitted_at || '') < (b.submitted_at || '') ? -1 : 1; });
+    var vDone = ALLPROG.filter(function (g) {
+      return mine[g.material_id] && g.status !== 'submitted' && g.summary && inComm(g.blogger_id);
+    }).sort(function (a, b) { return (a.reviewed_at || '') > (b.reviewed_at || '') ? -1 : 1; });
+
+    /* ② 줌 녹화본 요약 — 못 온 사람이 녹화본을 보고 낸 것 */
+    var zWait = ATT.filter(function (a) {
+      return sids[a.session_id] && a.mode === 'video' && a.note && !a.confirmed_at && inComm(a.blogger_id);
+    });
+    var zDone = ATT.filter(function (a) {
+      return sids[a.session_id] && a.mode === 'video' && a.note && a.confirmed_at && inComm(a.blogger_id);
+    });
+
+    /* ── 맨 위: 무엇을 보고 판단하는지 (질문과 내용을 한 번만 펼쳐 둡니다) ── */
+    var head = '<div class="row" style="margin-bottom:12px">'
+      + commPick('eduComm' + (TK === 'review' ? 'R' : ''))
+      + '<span class="mono">확인할 것 <b>' + (vWait.length + zWait.length) + '건</b>'
+      + (vWait.length ? ' · 영상 ' + vWait.length : '')
+      + (zWait.length ? ' · 줌 녹화본 ' + zWait.length : '') + '</span></div>'
+      + '<details style="margin-bottom:14px">'
+      + '<summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">'
+      + '📖 확인 질문과 영상 내용 펼쳐 보기 <span class="mono">(답이 맞는지 여기서 대조하세요)</span></summary>'
+      + '<div class="note" style="margin-top:10px">'
+      + (MATS.length ? MATS.map(function (m) {
+          return '<div style="margin-bottom:10px"><b>' + esc(m.title) + '</b>'
+            + (m.required ? ' <span class="chip c-bad">필수</span>' : '')
+            + ' <a class="mono" href="' + esc(m.url) + '" target="_blank" rel="noopener">영상 열기 ↗</a>'
+            + '<div class="mono" style="margin-top:3px">'
+            + (m.check_question
+              ? '확인 질문 · <b>' + esc(m.check_question) + '</b>'
+              : '확인 질문 없음 — 「영상 자료」에서 넣으실 수 있습니다')
+            + ' · 요약 ' + (m.min_chars || 150) + '자 이상</div></div>';
+        }).join('') : '<span class="mono">영상 자료가 없습니다.</span>')
+      + ((SESSIONS || []).length
+        ? '<div class="sec" style="margin-top:6px">줌 녹화본</div>'
+          + SESSIONS.map(function (x) {
+            return '<div class="mono">' + (x.kind === 't1' ? '1차 교육' : '2차 교육') + ' · '
+              + A.fdt(x.held_at) + ' · '
+              + (x.replay_url
+                ? '<a href="' + esc(x.replay_url) + '" target="_blank" rel="noopener">녹화본 열기 ↗</a>'
+                : '녹화본 주소가 아직 없습니다') + '</div>';
+          }).join('')
+        : '')
+      + '</div></details>';
+
+    if (!vWait.length && !zWait.length && !vDone.length && !zDone.length) {
+      box.innerHTML = head + A.empty(EDU_COMM
+        ? '이 공동체에서 올라온 것이 없습니다.'
+        : '아직 올라온 것이 없습니다. 영상 요약이나 줌 녹화본 요약을 내면 여기에 뜹니다.');
       return;
     }
-    box.innerHTML = (wait.length ? wait.map(sumCard).join('')
-      : '<div class="note ok">확인을 기다리는 요약이 없습니다.</div>')
-      + (judged.length ? '<div class="sec">이미 본 것</div>'
-        + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>영상</th>'
-        + '<th>결과</th><th>누가 · 언제</th></tr></thead><tbody>'
-        + judged.map(function (g) {
-          return '<tr><td><b>' + esc(nameOf(g.blogger_id)) + '</b></td>'
-            + '<td>' + esc(matTitle(g.material_id)) + '</td>'
-            + '<td>' + (g.status === 'approved'
-              ? '<span class="chip c-ok">이수</span>' : '<span class="chip c-bad">다시쓰기</span>') + '</td>'
-            + '<td class="mono">' + esc(staffName(g.reviewed_by) || '-') + ' · ' + A.fdate(g.reviewed_at) + '</td></tr>';
+
+    var waitHtml = vWait.map(sumCard).join('') + zWait.map(function (a) {
+      return zoomCard(a, sids[a.session_id]);
+    }).join('');
+
+    /* 이미 본 것 — 둘을 한 표에 섞어서 최근 순으로 */
+    var done = vDone.map(function (g) {
+      return { at: g.reviewed_at, who: g.blogger_id, kind: '📹 영상',
+               what: matTitle(g.material_id), ok: g.status === 'approved', by: g.reviewed_by };
+    }).concat(zDone.map(function (a) {
+      var x = sids[a.session_id] || {};
+      return { at: a.confirmed_at, who: a.blogger_id, kind: '🎥 줌 녹화본',
+               what: (x.kind === 't1' ? '1차 교육' : '2차 교육'), ok: true, by: a.confirmed_by };
+    })).sort(function (a, b) { return (a.at || '') > (b.at || '') ? -1 : 1; }).slice(0, 20);
+
+    box.innerHTML = head
+      + (waitHtml || '<div class="note ok">확인을 기다리는 것이 없습니다. 👍</div>')
+      + (done.length ? '<div class="sec">이미 본 것</div>'
+        + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th><th>종류</th>'
+        + '<th>무엇</th><th>결과</th><th>누가 · 언제</th></tr></thead><tbody>'
+        + done.map(function (d) {
+          return '<tr><td><b>' + esc(nameOf(d.who)) + '</b></td>'
+            + '<td class="mono">' + esc(commOfBlogger(d.who)) + '</td>'
+            + '<td class="mono">' + d.kind + '</td>'
+            + '<td>' + esc(d.what) + '</td>'
+            + '<td>' + (d.ok ? '<span class="chip c-ok">이수</span>'
+              : '<span class="chip c-bad">다시쓰기</span>') + '</td>'
+            + '<td class="mono">' + esc(staffName(d.by) || '-') + ' · ' + A.fdate(d.at) + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '');
+  }
+
+  /* 줌 녹화본 요약 카드 — 영상 요약 카드와 같은 모양으로 (하는 일이 같으니까) */
+  function zoomCard(a, sess) {
+    var key = a.session_id + '|' + a.blogger_id;
+    sess = sess || {};
+    return '<div class="card" style="margin-bottom:12px">'
+      + '<div class="row" style="justify-content:space-between;margin-bottom:10px"><div>'
+      + '<b style="font-size:15px">' + esc(nameOf(a.blogger_id)) + '</b> '
+      + '<span class="mono">' + esc(commOfBlogger(a.blogger_id)) + ' · '
+      + (sess.kind === 't1' ? '1차 교육' : '2차 교육') + ' · ' + A.fdt(sess.held_at) + '</span></div>'
+      + '<div class="row" style="gap:6px">'
+      + '<span class="chip c-info">🎥 줌 녹화본</span>'
+      + '<span class="chip c-off">' + (a.note || '').length + '자</span></div></div>'
+      + (sess.replay_url
+        ? '<div class="mono" style="margin-bottom:8px">'
+          + '<a href="' + esc(sess.replay_url) + '" target="_blank" rel="noopener">녹화본 열기 ↗</a>'
+          + ' — 무엇을 봤어야 하는지 여기서 확인하세요</div>' : '')
+      + '<pre class="sumtext">' + esc(a.note || '') + '</pre>'
+      + '<div class="row" style="margin-top:12px">'
+      + '<button class="btn btn-a" data-attok="' + key + '">이수 처리</button>'
+      + '<button class="btn" data-attno="' + key + '">다시 보라기</button></div></div>';
   }
   function nameOf(id) {
     var p = A.PEOPLE.filter(function (x) { return x.id === id; })[0];
@@ -969,8 +1115,10 @@
     return '<div class="card" style="margin-bottom:12px">'
       + '<div class="row" style="justify-content:space-between;margin-bottom:10px"><div>'
       + '<b style="font-size:15px">' + esc(nameOf(g.blogger_id)) + '</b> '
-      + '<span class="mono">' + esc(m.title || '') + ' · ' + A.fdt(g.submitted_at) + '</span></div>'
+      + '<span class="mono">' + esc(commOfBlogger(g.blogger_id)) + ' · '
+      + esc(m.title || '') + ' · ' + A.fdt(g.submitted_at) + '</span></div>'
       + '<div class="row" style="gap:6px">'
+      + '<span class="chip c-info">📹 영상</span>'
       + '<span class="chip ' + (short ? 'c-bad' : 'c-ok') + '">본 시간 '
       + Math.floor((g.watched_sec || 0) / 60) + '분'
       + (need ? ' / 최소 ' + Math.round(need / 60) + '분' : '') + '</span>'
@@ -1495,6 +1643,16 @@
     this.classList.toggle('btn-a', PICTAG_ON);
     applyTagMode(); paintTagBar();
   };
+  /* 교육 화면의 공동체 고르개 — 세 곳(낸 내용·누가 어디까지·참석 체크)이 같은 값을 씁니다 */
+  document.addEventListener('change', function (e) {
+    if (e.target && /^eduComm/.test(e.target.id || '')) {
+      EDU_COMM = e.target.value || '';
+      renderEdu();
+      if (ATT_OPEN) attBox(ATT_OPEN);
+      return;
+    }
+  });
+
   document.addEventListener('change', function (e) {
     var t = e.target;
     if (t.dataset && (t.dataset.ptk || t.dataset.pts || t.dataset.ptx)) {
@@ -2873,7 +3031,9 @@
           return p.order_id === o.id && ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
         }).length;
         var d = A.dday(o.deadline);
-        return '<tr' + (todo ? ' class="clickme" data-openacad="' + o.id + '"' : '') + '>'
+        /* ⚠️ 예전엔 봐야 할 원고가 있을 때만 눌러 들어갈 수 있었습니다 →
+           검수가 다 끝난 학원은 확인하러 들어갈 방법이 아예 없었습니다. 항상 열립니다. */
+        return '<tr class="clickme" data-openacad="' + o.id + '">'
           + '<td><b>' + esc(o.academy_name) + '</b><div class="mono">' + esc(o.region || '') + '</div></td>'
           + '<td class="num">' + o.total_qty + '편</td>'
           + '<td><div class="mixcell">'
@@ -2953,8 +3113,29 @@
   /* 원고 표 — 학원별·공동체별 둘 다 같은 모양을 씁니다 */
   function rvHead(byComm) {
     return '<thead><tr><th>' + (byComm ? '학원' : '공동체') + '</th><th>누가</th>'
-      + '<th>블로그 제목</th><th>원고 낸 날</th><th style="min-width:180px">검수 기록</th>'
+      + '<th>블로그 제목</th><th style="min-width:150px">어디까지</th>'
+      + '<th>원고 낸 날</th><th style="min-width:180px">검수 기록</th>'
       + '<th>처리</th></tr></thead>';
+  }
+
+  /* 글 하나가 어디까지 왔는지 세 칸으로 —
+     ①원고 통과 ②블로그에 올리고 주소 넣음 ③우리가 열어보고 확인 끝 */
+  function stepChips(p) {
+    var st = p.status;
+    var passed = ['approved', 'published', 'verified', 'paid'].indexOf(st) >= 0;
+    var up = ['published', 'verified', 'paid'].indexOf(st) >= 0;
+    var done = ['verified', 'paid'].indexOf(st) >= 0;
+    function c(on, label) {
+      return '<span class="chip ' + (on ? 'c-ok' : 'c-off') + '">' + (on ? '✓ ' : '') + label + '</span>';
+    }
+    return '<div class="tagline" style="gap:4px">'
+      + c(passed, '원고 통과') + c(up, '주소 넣음') + c(done, '확인 끝') + '</div>'
+      + (st === 'rework' ? '<div class="mono" style="color:var(--bad)">고쳐 달라고 보냄</div>'
+        : st === 'submitted' ? '<div class="mono" style="color:var(--wait)">지금 볼 차례</div>' : '')
+      + (p.published_url
+        ? '<a class="mono" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">올린 글 ↗</a>'
+          + (p.keyword_rank ? ' <span class="mono">' + esc(A.rankText(p.keyword_rank)) + '</span>' : '')
+        : '');
   }
 
   /* 누가 언제 검수했는지 — 통과도 돌려보낸 것도, 왜 돌려보냈는지도 남깁니다.
@@ -3010,6 +3191,7 @@
         : '<span class="mono">담당자 미정</span>') + '</td>'
       + '<td><b>' + esc(p.keyword || '') + '</b>'
       + (dim ? '<div style="margin-top:3px">' + A.stChip(p.status) + '</div>' : '') + '</td>'
+      + '<td>' + stepChips(p) + '</td>'
       + '<td class="mono">' + (p.submitted_at ? A.fdate(p.submitted_at) : '아직') + '</td>'
       + '<td style="font-size:12.5px;line-height:1.6">' + reviewLog(p) + '</td>'
       + '<td><div class="row">'
@@ -3080,8 +3262,9 @@
       (todo.length ? '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'
         + todo.map(function (p) { return rvRow(p, false, false); }).join('') + '</tbody></table></div>'
         : A.empty('지금 볼 원고가 없습니다.'))
-      + (rest.length ? '<div class="sec">아직 원고가 안 온 글 · 이미 끝난 글 <small>'
-        + rest.length + '편 — 회색은 아직 손댈 게 없다는 뜻입니다</small></div>'
+      + (rest.length ? '<div class="sec">나머지 글 <small>'
+        + rest.length + '편 — 아직 원고가 안 온 글과 이미 끝난 글입니다. '
+        + '「어디까지」 칸으로 진행을 보실 수 있습니다</small></div>'
         + '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'
         + rest.map(function (p) { return rvRow(p, true, false); }).join('') + '</tbody></table></div>' : '');
     A.view('acad-posts');
@@ -3090,7 +3273,34 @@
   /* 올라간 글 확인 — 학원별로 묶고, 블로거 실명·공동체는 빼둡니다 */
   function renderLive() {
     var live = POSTS.filter(function (p) { return p.status === 'published' && isBlogPost(p); });
-    if (!live.length) { $('rvLive').innerHTML = A.empty('확인할 글이 없습니다.'); return; }
+    /* ⭐ 이미 확인이 끝난 글도 아래에 남겨 둡니다 — 「그 글 어떻게 됐더라」를
+       확인하러 다른 화면까지 가지 않아도 되게. 회색으로 구분합니다. */
+    var done = POSTS.filter(function (p) {
+      return ['verified', 'paid'].indexOf(p.status) >= 0 && isBlogPost(p);
+    }).sort(function (a, b) { return (a.verified_at || '') > (b.verified_at || '') ? -1 : 1; });
+
+    var doneHtml = done.length
+      ? '<div class="sec">이미 확인한 글 <small>' + done.length + '편 — 회색은 다 끝났다는 뜻입니다</small></div>'
+        + '<div class="tblbox tblscroll"><table><thead><tr><th>학원</th><th>누가</th>'
+        + '<th>노리는 검색어</th><th>순위</th><th>올린 날</th><th></th></tr></thead><tbody>'
+        + done.map(function (p) {
+          var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
+          return '<tr style="opacity:.6">'
+            + '<td class="mono">' + esc(orderName(p.order_id)) + '</td>'
+            + '<td>' + esc(b.name || '-') + '</td>'
+            + '<td>' + esc(p.keyword || '') + '</td>'
+            + '<td class="num">' + esc(A.rankText(p.keyword_rank) || '-') + '</td>'
+            + '<td class="mono">' + (p.published_at ? A.fdate(p.published_at) : '-') + '</td>'
+            /* 되돌리기 버튼은 두지 않습니다 — post_verify 는 published 상태만 받으므로
+               이미 확인이 끝난 글에는 눌러도 실패합니다. 안 되는 버튼은 없느니만 못합니다. */
+            + '<td>' + postLink(p.published_url, '글 보기 ↗') + '</td></tr>';
+        }).join('') + '</tbody></table></div>'
+      : '';
+
+    if (!live.length) {
+      $('rvLive').innerHTML = A.empty('지금 확인할 글이 없습니다.') + doneHtml;
+      return;
+    }
     var byOrder = {};
     live.forEach(function (p) { (byOrder[p.order_id] = byOrder[p.order_id] || []).push(p); });
 
@@ -3122,7 +3332,7 @@
             + '<button class="btn btn-s" data-unverify="' + p.id + '">문제 있음</button>'
             + '</div></div>';
         }).join('');
-    }).join('');
+    }).join('') + doneHtml;
   }
 
   $('btnReject').onclick = async function () {
@@ -4341,6 +4551,9 @@
     }
 
     if ((t = e.target.closest('[data-att]'))) { await openAttend(t.dataset.att); return; }
+    if ((t = e.target.closest('[data-attclose]'))) {
+      var was = ATT_OPEN; ATT_OPEN = null; if (was) attBox(was); return;
+    }
     if ((t = e.target.closest('[data-delmat]'))) {
       if (!confirm('이 자료를 지울까요?')) return;
       await A.sb.from('training_materials').delete().eq('id', t.dataset.delmat);
@@ -4391,42 +4604,53 @@
     }
   });
 
-  async function openAttend(sid) {
-    var s = SESSIONS.filter(function (x) { return x.id === sid; })[0]; if (!s) return;
-    var appr = A.PEOPLE.filter(function (p) { return p.status === 'approved'; });
-    $('eduProgress').innerHTML = '<div class="crumb"><b style="color:var(--ink)">'
-      + (s.kind === 't1' ? '1차 교육' : '2차 교육') + ' · ' + A.fdt(s.held_at) + '</b>'
-      + '<span class="mono">참석을 체크하세요. 못 온 사람은 녹화본을 봐야 이수됩니다</span></div>'
-      + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th><th>지금</th><th></th></tr></thead><tbody>'
+  /* ── 줌 참석 체크 ──
+     ⚠️ 예전엔 이걸 #eduProgress 에 그려서, 누르는 순간 아래의 「누가 어디까지 왔나」
+     표가 통째로 사라졌습니다. 이제 줌 일정 바로 아래 자기 자리(#eduAtt)에 폅니다.
+     ⚠️ 낸 요약을 여기서 읽던 것도 뺐습니다 — 「낸 내용 확인하기」로 올라갑니다.
+     그것 때문에 줄마다 높이가 들쭉날쭉해서 표가 늘어졌습니다. */
+  var ATT_OPEN = null;
+  function attBox(sid) {
+    var s2 = ALLSESS.filter(function (x) { return x.id === sid; })[0];
+    if (!s2) return;
+    var TK = (s2.track || 'blog');
+    var box = $(TK === 'review' ? 'rvEduAtt' : 'eduAtt');
+    if (!box) return;
+    if (ATT_OPEN !== sid) { box.innerHTML = ''; return; }
+
+    var appr = A.PEOPLE.filter(function (p) { return p.status === 'approved' && inComm(p.id); });
+    box.innerHTML = '<div class="card" style="margin:10px 0">'
+      + '<div class="row" style="justify-content:space-between;margin-bottom:10px">'
+      + '<b>' + (s2.kind === 't1' ? '1차 교육' : '2차 교육') + ' · ' + A.fdt(s2.held_at) + ' 참석 체크</b>'
+      + '<div class="row">' + commPick('eduComm3' + (TK === 'review' ? 'R' : ''))
+      + '<button class="btn btn-s" data-attclose="1">닫기</button></div></div>'
+      + '<div class="mono" style="margin-bottom:8px">못 온 사람이 녹화본을 보고 낸 요약은 '
+      + '<b>「낸 내용 확인하기」</b>에서 읽고 통과시키시면 됩니다.</div>'
+      + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th>'
+      + '<th>지금</th><th></th></tr></thead><tbody>'
       + appr.map(function (p) {
         var a = ATT.filter(function (x) { return x.session_id === sid && x.blogger_id === p.id; })[0];
         var now = !a ? '<span class="mono">체크 안 함</span>'
           : a.mode === 'live'
-            ? '<span class="chip c-ok">실시간 참석</span>'
+            ? '<span class="chip c-ok">실시간</span>'
               + (a.self_at ? ' <span class="chip">본인 체크</span>' : '')
             : a.mode === 'video'
-              ? (a.confirmed_at
-                ? '<span class="chip c-ok">녹화본 이수</span>'
-                : '<span class="chip c-wait">확인 기다림</span>')
+              ? (a.confirmed_at ? '<span class="chip c-ok">녹화본 이수</span>'
+                : '<span class="chip c-wait">녹화본 확인 대기</span>')
               : '<span class="chip c-bad">결석</span>';
-        /* 녹화본으로 봤다고 낸 사람은 요약을 읽고 통과시킵니다 */
-        var note = (a && a.mode === 'video' && a.note)
-          ? '<div class="note" style="margin-top:7px;font-size:12.5px">'
-            + '<b>낸 요약</b> · ' + esc(a.note)
-            + (a.confirmed_at ? '' :
-              '<div class="row" style="margin-top:8px">'
-              + '<button class="btn btn-a btn-s" data-attok="' + sid + '|' + p.id + '">이수 처리</button>'
-              + '<button class="btn btn-s" data-attno="' + sid + '|' + p.id + '">다시 보라기</button></div>')
-            + '</div>'
-          : '';
-        return '<tr><td><b>' + esc(p.name) + '</b></td><td>' + esc(A.commName(p.community_id)) + '</td>'
-          + '<td>' + now + note + '</td><td><div class="row">'
-          + '<button class="btn btn-s" data-mark="' + sid + '|' + p.id + '|live">실시간</button>'
-          + '<button class="btn btn-s" data-mark="' + sid + '|' + p.id + '|video">녹화본</button>'
-          + '<button class="btn btn-s" data-mark="' + sid + '|' + p.id + '|absent">결석</button>'
+        return '<tr><td><b>' + esc(p.name) + '</b></td>'
+          + '<td class="mono">' + esc(A.commName(p.community_id)) + '</td>'
+          + '<td>' + now + '</td><td><div class="row" style="gap:4px">'
+          + '<button class="btn btn-s" style="padding:3px 7px" data-mark="' + sid + '|' + p.id + '|live">실시간</button>'
+          + '<button class="btn btn-s" style="padding:3px 7px" data-mark="' + sid + '|' + p.id + '|video">녹화본</button>'
+          + '<button class="btn btn-s" style="padding:3px 7px" data-mark="' + sid + '|' + p.id + '|absent">결석</button>'
           + '</div></td></tr>';
-      }).join('') + '</tbody></table></div>';
-    window.scrollTo(0, document.body.scrollHeight);
+      }).join('') + '</tbody></table></div></div>';
+    box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  async function openAttend(sid) {
+    ATT_OPEN = (ATT_OPEN === sid) ? null : sid;   /* 같은 것을 또 누르면 접힙니다 */
+    attBox(sid);
   }
 
   /* 추가 폼 */

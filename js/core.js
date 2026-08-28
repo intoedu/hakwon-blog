@@ -61,10 +61,6 @@ window.ESC = (function () {
   };
   A.empty = function (t) { return '<div class="empty">' + A.esc(t) + '</div>'; };
 
-  /* ── 검색 순위 ──
-     한참 내려도 글이 안 보이는 경우가 많습니다. 그때 칸을 비워 두면 「아직 안 재봤다」와
-     구분이 안 됩니다. 그래서 **999 를 「50위 밖」**이라는 뜻으로 씁니다.
-     ⚠️ status.html 은 바깥 파일을 안 쓰므로 거기에도 같은 규칙이 따로 적혀 있습니다. */
   /* ── 네이버 아이디 정리 ──
      ⚠️ 네이버 아이디는 **소문자만** 씁니다. 대문자로 적어 내시면 blog.naver.com/Haeun_726 처럼
      열리지 않는 주소가 만들어집니다(실제로 신청자 여럿이 그랬습니다).
@@ -92,6 +88,10 @@ window.ESC = (function () {
     return p.neighbors_band || '-';
   };
 
+  /* ── 검색 순위 ──
+     한참 내려도 글이 안 보이는 경우가 많습니다. 그때 칸을 비워 두면 「아직 안 재봤다」와
+     구분이 안 됩니다. 그래서 **999 를 「50위 밖」**이라는 뜻으로 씁니다.
+     ⚠️ status.html 은 바깥 파일을 안 쓰므로 거기에도 같은 규칙이 따로 적혀 있습니다. */
   A.RANK_OUT = 999;
   A.rankText = function (n) {
     if (n == null || n === '') return '';
@@ -329,6 +329,9 @@ window.ESC = (function () {
 
     var pw = A.$('previewWho');
     if (pw) pw.classList.toggle('hide', !(rev || blg));
+    /* 블로거가 서른 명이 넘어가면 드롭다운에서 찾기가 힘듭니다 — 이름으로 좁힙니다 */
+    var pf = A.$('previewFind');
+    if (pf) pf.classList.toggle('hide', !blg);
     A.$('previewBar').classList.toggle('hide', !(rev || blg));
 
     if (rev || blg) { A.fillPreviewWho(mode); return; }  /* 화면 열기는 미리보기 쪽에서 */
@@ -347,12 +350,20 @@ window.ESC = (function () {
   A.fillPreviewWho = function (mode) {
     var pw = A.$('previewWho'); if (!pw) return;
     var blg = mode === 'blogger';
+    var q = ((A.$('previewFind') || {}).value || '').trim();
     var list = blg
       ? A.PEOPLE.filter(function (p) { return p.status === 'approved'; })
-        .map(function (p) { return { id: p.id, name: p.name, sub: '' }; })
+        .map(function (p) { return { id: p.id, name: p.name, sub: A.commName(p.community_id) }; })
       : A.BLOGSTAFF.map(function (s) {
         return { id: s.id, name: s.name || s.email, sub: s.blogRole };
       });
+    /* 이름으로 좁히기 — 지금 보고 있는 사람은 걸러져도 남겨 둡니다(화면과 목록이 어긋나지 않게) */
+    if (blg && q) {
+      var keep = pw.value;
+      list = list.filter(function (p) {
+        return p.id === keep || (p.name || '').toLowerCase().indexOf(q.toLowerCase()) >= 0;
+      });
+    }
 
     if (!list.length) {
       pw.innerHTML = '<option value="">' + (blg ? '승인된 블로거가 없습니다' : '검수자·관리자가 없습니다') + '</option>';
@@ -384,6 +395,10 @@ window.ESC = (function () {
        (예전엔 무조건 첫 사람을 열어서, 고른 이름과 화면이 어긋났습니다) */
     var keep = list.some(function (p) { return p.id === cur; });
     A.pickPreview(mode, keep ? cur : list[0].id);
+  };
+
+  if (A.$('previewFind')) A.$('previewFind').oninput = function () {
+    if (A.VIEW_AS === 'blogger') A.fillPreviewWho('blogger');
   };
 
   A.pickPreview = function (mode, id) {

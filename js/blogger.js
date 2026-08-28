@@ -98,6 +98,9 @@
           /* 갈래 고르기(블로그/리뷰)도 잠그면 안 됩니다 — 무엇을 바꾸는 버튼이 아니라
              무엇을 볼지 고르는 칸입니다. 잠가 두면 관리자가 리뷰어 화면을 못 봅니다. */
           if (el.closest && el.closest('#bTrackSw')) return;
+          /* ⚠️ 사진 보기·받기도 잠그면 안 됩니다 — 무엇을 바꾸는 게 아니라 보는 것입니다.
+             잠가 두어서 관리자가 블로거 화면에서 사진을 못 보고 ZIP 도 못 받았습니다. */
+          if (el.matches && el.matches('[data-getpics],[data-zippics]')) return;
           el.disabled = true;
         });
     });
