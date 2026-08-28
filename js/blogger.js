@@ -217,7 +217,7 @@
     $('bhWho').textContent = A.ME.name + ' 님, 반갑습니다.';
     $('bStats').innerHTML =
       s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 ' + W.what)
-      + s(A.ME.level + '단계', '내 단계 (편당 ' + won(lv.rate) + '원)')
+      + s(A.ME.level + '단계', '내 단계 (' + rateLabel(lv) + ')')
       + s(won(monthDone.reduce(function (a, p) { return a + (p.payout_rate || 0); }, 0)), '이번 달 받을 돈 (원)');
 
     $('bGate').innerHTML = r.ok ? '' :
@@ -288,12 +288,25 @@
       + '<span class="lv' + (A.ME.level >= 5 ? ' l5' : A.ME.level === 4 ? ' l4' : '')
       + '" style="width:34px;height:34px;font-size:15px">' + A.ME.level + '</span>'
       + '<div style="flex:1"><b style="font-size:15px">' + A.ME.level + '단계 · ' + esc(lv.name) + '</b> '
-      + '<span class="mono">편당 ' + won(lv.rate) + '원</span>'
+      + '<span class="mono">' + rateLabel(lv) + '</span>'
       + '<div class="mono" style="margin-top:4px">'
-      + (next ? '다음은 ' + next.lv + '단계(' + esc(next.name) + ' · 편당 ' + won(next.rate) + '원)입니다. '
-        + (RV ? '리뷰를 제때 올리고 확인이 잘 되면 올라갑니다.'
-              : '글을 꾸준히 쓰고 한 번에 통과되면 올라갑니다.') : '가장 높은 단계입니다.')
-      + '<br><b>단계는 블로그·리뷰가 같이 씁니다.</b></div></div></div>'
+      /* ⚠️ 다음 단계 단가를 그냥 숫자로 적으면 안 됩니다 — settings.levels 는 프리미엄 학원
+         기준이라, 일반 학원 글(2배)을 받는 사람에겐 「지금 2,000원인데 다음 단계가 1,500원」
+         처럼 **승급하면 줄어드는 것처럼** 보입니다. 배수는 학원마다 다르고 블로거는 판매가를
+         못 읽으므로, 학원과 무관하게 늘 맞는 **비율**로 말합니다. */
+      + (next
+        ? '다음은 ' + next.lv + '단계(' + esc(next.name) + ')입니다. '
+          + (lv.rate ? '<b>지금보다 편당 '
+              + (Math.round(next.rate / lv.rate * 100) / 100) + '배</b>를 받습니다. ' : '')
+          + (RV ? '리뷰를 제때 올리고 확인이 잘 되면 올라갑니다.'
+                : '글을 꾸준히 쓰고 한 번에 통과되면 올라갑니다.')
+        : '가장 높은 단계입니다.')
+      + '<br><b>단계는 블로그·리뷰가 같이 씁니다.</b>'
+      + (myRates().length > 1
+        ? '<br><b>학원에 따라 편당 단가가 다릅니다.</b> 글마다 정해진 값은 「2 '
+          + (RV ? '리뷰 올리기' : '글 쓰기') + '」에서 보실 수 있습니다.'
+        : '')
+      + '</div></div></div>'
       + (RV
         ? '<div class="note warn" style="margin-top:14px"><b>정해 드린 시각에 올려 주세요.</b><br>'
         + '같은 가게 리뷰가 한꺼번에 올라가면 바로 티가 납니다. '
@@ -339,6 +352,22 @@
         + (waiting ? '내용 미리 보기' : '올리러 가기') + '</button></div></div>';
     }).join('') : A.empty('지금 맡으신 리뷰가 없습니다. 배정되면 여기에 뜹니다.'));
   }
+  /* ⚠️ 단계 단가(settings.levels)는 **프리미엄 회원 학원 기준**입니다.
+     일반 회원 학원 글은 두 배가 나가는데, 화면엔 「편당 1,000원」이라 적혀 있고
+     받을 돈은 2,000원으로 떠서 헷갈렸습니다. 맡은 글의 실제 단가로 말합니다.
+     (판매가는 블로거가 못 읽으므로 배수를 계산할 수 없습니다 — 자기 글 값을 씁니다) */
+  function myRates() {
+    var r = {};
+    MY.forEach(function (p) { if (p.payout_rate) r[p.payout_rate] = 1; });
+    return Object.keys(r).map(Number).sort(function (a, b) { return a - b; });
+  }
+  function rateLabel(lv) {
+    var rs = myRates();
+    if (!rs.length) return '편당 ' + won(lv.rate) + '원부터';
+    if (rs.length === 1) return '편당 ' + won(rs[0]) + '원';
+    return '편당 ' + won(rs[0]) + '~' + won(rs[rs.length - 1]) + '원';
+  }
+
   function s(n, label) {
     return '<div class="stat"><b>' + (typeof n === 'number' ? won(n) : esc(n)) + '</b><span>' + label + '</span></div>';
   }

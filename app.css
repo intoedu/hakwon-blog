@@ -299,13 +299,20 @@ select.inp{cursor:pointer}
 .bar i{display:block;height:100%;background:var(--ok);border-radius:20px}
 .bar.mid i{background:var(--amber)}
 
+/* ⚠️⚠️ `.step` 은 **두 곳에서 서로 다른 것**을 가리킵니다 —
+   ① 여기: 교육 진행 알약(승인 → 1차 줌 → 영상 …) ② 아래 478줄쯤: 글쓰기 세 단계 카드.
+   예전엔 둘 다 그냥 `.step` 이라 **이쪽 규칙이 카드에도 먹었습니다** →
+   카드가 display:flex 가 되어 글자가 한 글자씩 세로로 쏟아지고,
+   `.step.now` 의 주황 배경이 카드 전체를 덮었습니다.
+   그래서 알약 쪽은 전부 `.steps` 안에서만 먹도록 좁혔습니다. 이 접두사를 떼지 마세요. */
 .steps{display:flex;align-items:center;flex-wrap:wrap;font-size:12.5px}
-.step{display:flex;align-items:center;gap:7px;padding:6px 13px;border:1px solid var(--line);
-      background:var(--surface);color:var(--muted);font-weight:600}
-.step:first-child{border-radius:20px 0 0 20px} .step:last-child{border-radius:0 20px 20px 0}
-.step+.step{border-left:0}
-.step.done{background:var(--ok-bg);color:var(--ok);border-color:transparent}
-.step.now{background:var(--amber);color:#1A1206;border-color:transparent}
+.steps .step{display:flex;align-items:center;gap:7px;padding:6px 13px;border:1px solid var(--line);
+      background:var(--surface);color:var(--muted);font-weight:600;
+      border-radius:0;margin-bottom:0}
+.steps .step:first-child{border-radius:20px 0 0 20px} .steps .step:last-child{border-radius:0 20px 20px 0}
+.steps .step+.step{border-left:0}
+.steps .step.done{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.steps .step.now{background:var(--amber);color:#1A1206;border-color:transparent}
 
 .matlist{display:grid;gap:10px}
 .mat{display:flex;gap:13px;align-items:center;background:var(--surface);border:1px solid var(--line);
@@ -474,9 +481,10 @@ td.num.bad{color:var(--bad)}
 .tagline span{font-size:12.5px;font-weight:650;padding:3px 9px;border-radius:999px;
      background:color-mix(in srgb,var(--amber) 13%,transparent);color:var(--amber)}
 
-/* 글쓰기 세 단계 — 지금 할 칸만 색이 살고, 끝난 칸은 회색, 아직인 칸은 잠깁니다 */
-.step{border:1px solid var(--line);border-radius:12px;background:var(--surface);
-     padding:16px 18px;margin-bottom:12px}
+/* 글쓰기 세 단계 — 지금 할 칸만 색이 살고, 끝난 칸은 회색, 아직인 칸은 잠깁니다.
+   ⚠️ display 를 명시합니다 — 위쪽 알약 규칙이 다시 새어 들어와도 카드가 안 깨지게. */
+.step{display:block;border:1px solid var(--line);border-radius:12px;background:var(--surface);
+     padding:16px 18px;margin-bottom:12px;color:var(--ink);font-weight:400}
 .step .sh{display:flex;align-items:center;gap:9px;font-size:14.5px;font-weight:750;margin-bottom:12px}
 .step .sn{display:grid;place-items:center;width:23px;height:23px;flex:none;border-radius:50%;
      background:var(--line);color:var(--muted);font-size:12px;font-weight:800}
