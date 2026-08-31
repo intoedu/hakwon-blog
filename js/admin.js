@@ -1890,7 +1890,9 @@
         c.forEach(function (z) {
           d.forEach(function (w) {
             if (filterOn && badCombo(x, z, y, w)) { dropped++; return; }
-            all.push({ kw: x + ' ' + z + ' ' + y + ' ' + w, brief: z + ' · ' + w });
+            /* ⭐ 과목(y)을 같이 실어 보냅니다 — 이게 있어야 소재와 사진이
+               제목과 같은 과목으로 갑니다 (서버 posts_generate 가 씁니다) */
+            all.push({ kw: x + ' ' + z + ' ' + y + ' ' + w, brief: z + ' · ' + w, subject: y });
           });
         });
       });
@@ -1907,7 +1909,7 @@
 
     var per = Math.ceil(picked.length / weeks);
     KWDRAFT = picked.map(function (p, i) {
-      return { keyword: p.kw, brief: p.brief, week: Math.floor(i / per) + 1 };
+      return { keyword: p.kw, brief: p.brief, subject: p.subject, week: Math.floor(i / per) + 1 };
     });
     $('kwInfo').innerHTML = '쓸 만한 조합 ' + all.length + '개 중 <b>' + picked.length
       + '개</b>를 뽑아 ' + weeks + '주로 나눴습니다 (주당 약 ' + per + '편)'
@@ -1916,11 +1918,13 @@
     $('kwOut').innerHTML = '<table><thead><tr>'
       + '<th style="width:34px"><input type="checkbox" id="kwAll" checked></th>'
       + '<th>#</th><th>주차</th>'
-      + '<th>이 글이 노릴 검색어 — 제목에 그대로 들어갑니다</th><th>다룰 내용</th></tr></thead><tbody>'
+      + '<th>이 글이 노릴 검색어 — 제목에 그대로 들어갑니다</th><th>과목</th><th>다룰 내용</th></tr></thead><tbody>'
       + KWDRAFT.map(function (p, i) {
         return '<tr><td><input type="checkbox" class="kw-pick" value="' + i + '" checked></td>'
           + '<td class="mono">' + (i + 1) + '</td><td class="mono">' + p.week + '주차</td>'
-          + '<td><b>' + esc(p.keyword) + '</b></td><td class="mono">' + esc(p.brief) + '</td></tr>';
+          + '<td><b>' + esc(p.keyword) + '</b></td>'
+          + '<td class="mono">' + esc(p.subject || '-') + '</td>'
+          + '<td class="mono">' + esc(p.brief) + '</td></tr>';
       }).join('') + '</tbody></table>';
     $('kwAll').onclick = function () {
       var on = this.checked;

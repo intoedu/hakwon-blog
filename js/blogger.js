@@ -65,13 +65,21 @@
     PREVIEW = true; A.ME = who; CUR = null;
     A.$('previewName').textContent = who.name;
 
+    /* ⚠️ 미리보기는 my_posts 뷰가 아니라 blog_posts 를 직접 읽습니다(남의 것을 봐야 하므로).
+       그래서 뷰가 붙여 주던 **소재와 태그를 여기서 따로 가져와야** 합니다 —
+       안 그러면 관리자 눈에는 「이 글에서 다룰 이야기」가 통째로 빠져 보입니다. */
     var r = await A.sb.from('blog_posts')
       .select('*, blog_orders(academy_name,region,info_pack,academy_url,photo_paths,photo_note,'
-        + 'photo_tags,track,map_url,visit_type)')
+        + 'photo_tags,track,map_url,visit_type,tags),'
+        + 'blog_topics(title,body,subject,tags)')
       .eq('blogger_id', id).order('due_date');
     ALL_MY = (r.data || []).map(function (x) {
       var o = x.blog_orders || {}; delete x.blog_orders;
-      return Object.assign(x, o);
+      var t = x.blog_topics || {}; delete x.blog_topics;
+      Object.assign(x, o);
+      x.topic_title = t.title; x.topic_body = t.body;
+      x.topic_subject = t.subject; x.topic_tags = t.tags;
+      return x;
     });
     ALL_SESS = await A.sel('training_sessions', { order: 'held_at' });
     ALL_MATS = await A.sel('training_materials_public', { order: 'sort' });
@@ -1065,7 +1073,11 @@
       return out0;
     }
 
-    var subj = p.topic_subject || '';
+    /* ⭐ 사진은 **그 글의 과목**을 따라야 합니다.
+       예전엔 소재의 과목(topic_subject)만 봤는데, 소재가 과목을 안 보고 붙던 시절엔
+       제목은 국어인데 사진은 영어가 가는 일이 있었습니다.
+       이제 소재도 과목에 맞춰 붙지만, 글 자신의 과목을 먼저 봅니다. */
+    var subj = p.subject || p.topic_subject || '';
     var signs = rotate(all.filter(function (x) { return (tags[x] || {}).t === '간판·외부'; }));
     var rest = all.filter(function (x) { return (tags[x] || {}).t !== '간판·외부'; });
     var mine = rotate(rest.filter(function (x) { return subj && (tags[x] || {}).s === subj; }));
