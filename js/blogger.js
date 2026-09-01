@@ -812,6 +812,7 @@
           + '· ' + dailyRule() + '<br>'
           + '· 제목에 <b>' + esc(p.keyword || '') + '</b> 이 들어갔는지<br>'
           + '· 맨 아래 광고 표기가 있는지</div>'
+          + faceBox('사진에 학생·학부모 얼굴이 나왔다면')
         : '')
       + '<label class="f">올린 글 주소</label>'
       + '<input class="inp" id="pubUrl" placeholder="https://blog.naver.com/…" '
@@ -887,15 +888,42 @@
     if ($('btnPublish')) $('btnPublish').onclick = async function () {
       var u = $('pubUrl').value.trim();
       if (!/^https?:\/\//.test(u)) { A.toast('올린 글 주소를 넣어 주세요'); return; }
+      /* ⚠️ 서버도 막지만, 여기서 먼저 잡아야 「왜 안 되지」를 안 겪습니다 */
+      if (!faceChecked()) {
+        A.toast('사람 얼굴을 가렸는지 확인에 체크해 주세요');
+        var fb = $('faceOk'); if (fb) fb.closest('.note').scrollIntoView({ block: 'center' });
+        return;
+      }
       this.disabled = true;
       try {
-        await A.rpc('post_publish', { p_post: p.id, p_url: u, p_proof: null });
+        await A.rpc('post_publish', { p_post: p.id, p_url: u, p_proof: null, p_face_ok: true });
         A.toast('등록했습니다. 확인이 끝나면 정산에 잡힙니다');
         await A.loadBlogger(); A.show('b-inbox');
       } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }
     };
     lockPreview();          /* 글을 넘겨봐도 계속 잠겨 있게 */
   }
+  /* ── 사람 얼굴 가렸는지 확인 ──
+     ⚠️ 학원이 보낸 사진에는 **학생 얼굴**이, 리뷰 사진에는 **손님 얼굴**이 들어 있습니다.
+     「블로그에서 모자이크 하면 되지」라고 넘어갔다가 실제로 안 한 채 올라간 글이
+     이미 있었습니다. 초상권·개인정보 문제라 되돌리기가 어렵습니다.
+     그래서 본인이 체크해야만 올라갑니다 (서버 post_publish·review_done 도 막습니다). */
+  function faceBox(when) {
+    return '<div class="note warn" style="margin-bottom:12px">'
+      + '<label class="row" style="gap:9px;cursor:pointer;align-items:flex-start">'
+      + '<input type="checkbox" id="faceOk" style="margin-top:3px;width:18px;height:18px;flex:none">'
+      + '<span><b>사진 속 사람 얼굴을 다 가렸습니다.</b><br>'
+      + '<span class="mono">' + esc(when) + ' 얼굴을 모자이크나 블러로 가려 주세요. '
+      + '네이버 글쓰기에서 사진을 누르면 바로 할 수 있습니다. '
+      + '<b>본인 얼굴이 아닌 사람은 동의 없이 올리면 안 됩니다.</b></span></span></label></div>';
+  }
+  function faceChecked() {
+    var b = $('faceOk');
+    /* ⚠️ 칸이 없으면 통과시키면 안 됩니다 — 서버에는 true 를 보내게 되어 있어서
+       「확인 안 했는데 올라가는」 구멍이 됩니다. 블로그·리뷰 두 화면 모두 칸을 그립니다. */
+    return !!(b && b.checked);
+  }
+
   /* ── 검색어가 바뀐 글 ──
      관리자가 제목(검색어)을 내용에 맞게 고쳐 준 경우입니다. 여기서 눈에 띄게
      알려 주지 않으면 예전 제목 그대로 올려 버립니다.
@@ -1236,6 +1264,7 @@
           ? '<div class="note ok">올리신 것을 담당자가 확인하고 있습니다.</div>'
           : '<div class="note" style="margin-bottom:12px"><b>올리신 뒤</b> 그 화면을 캡처해서 아래에 올려 주세요.<br>'
             + '네이버 리뷰는 글마다 주소가 없어서 <b>캡처가 유일한 증거</b>입니다.</div>'
+            + faceBox('사진에 다른 손님 얼굴이 나왔다면')
             + '<label class="f">내 네이버 닉네임 <small>담당자가 지도에서 찾을 때 씁니다</small></label>'
             + '<input class="inp" id="rvNick" value="' + esc(p.memo || '') + '" placeholder="예: 먹보아저씨">'
             + '<label class="f" style="margin-top:12px">올린 화면 캡처</label>'
@@ -1257,6 +1286,11 @@
     if ($('btnRvDone')) $('btnRvDone').onclick = async function () {
       var f = $('rvShot').files && $('rvShot').files[0];
       if (!f) { A.toast('올린 화면 캡처를 골라 주세요'); return; }
+      if (!faceChecked()) {
+        A.toast('사람 얼굴을 가렸는지 확인에 체크해 주세요');
+        var fb2 = $('faceOk'); if (fb2) fb2.closest('.note').scrollIntoView({ block: 'center' });
+        return;
+      }
       this.disabled = true;
       try {
         var ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
@@ -1264,7 +1298,8 @@
         var upr = await A.sb.storage.from('request-photos').upload(path, f, { upsert: true });
         if (upr.error) throw new Error(upr.error.message);
         await A.rpc('review_done', {
-          p_post: p.id, p_proof: path, p_nick: $('rvNick').value.trim() || null
+          p_post: p.id, p_proof: path, p_nick: $('rvNick').value.trim() || null,
+          p_face_ok: true
         });
         A.toast('냈습니다. 담당자가 확인해 드립니다');
         await A.loadBlogger(); A.show('b-inbox');

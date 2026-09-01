@@ -3676,6 +3676,112 @@
   var PG_RV = [['pending','담당자 미정'],['assigned','맡김 · 올리기 전'],
     ['published','올림 · 확인 전'],['verified','확인 끝'],['paid','정산 완료']];
 
+  /* ── 맡긴 글 회수 ──
+     다른 관리자가 한 사람에게 같은 학원 글을 여러 편 줘 버리는 일이 있었습니다.
+     그동안은 되돌릴 방법이 「취소」뿐이었는데 그건 글 자체를 없애서 주문 편수가 모자라집니다.
+     회수는 **글은 그대로 두고 맡은 사람만 떼는 것**입니다. */
+  var TAKEBACK_OK = ['assigned', 'writing', 'rework', 'submitted'];
+  function takeBackBtn(p) {
+    if (!p.blogger_id || TAKEBACK_OK.indexOf(p.status) < 0) return '';
+    return '<button class="btn btn-s" data-takeback="' + p.id
+      + '" title="맡은 사람에게서 이 글을 되찾습니다. 글은 그대로 남습니다">↩ 회수</button>';
+  }
+
+  /* ══ 달력 — 며칠에 어떤 글이 올라갔나 ══
+     주문한 달부터 마감까지를 달마다 펼칩니다. 관리자는 공동체·이름까지 봅니다.
+     ⚠️ 학원 화면(status.html)에도 같은 달력이 **따로** 적혀 있습니다 —
+     거기는 바깥 파일을 안 쓰기로 했기 때문입니다. 한쪽만 고치면 어긋납니다. */
+  function ymd(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+      + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function parseYmd(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ''));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+  /* 달력이 덮을 기간 — 주문한 달 1일부터 마감(없으면 마지막 날짜)까지 */
+  function calRange(rows, orders) {
+    var days = [];
+    orders.forEach(function (o) {
+      [o.ordered_at, o.paid_at, o.deadline, o.created_at].forEach(function (x) {
+        var d = parseYmd(x); if (d) days.push(d);
+      });
+    });
+    rows.forEach(function (p) {
+      [p.publish_on, p.published_at].forEach(function (x) {
+        var d = parseYmd(x); if (d) days.push(d);
+      });
+    });
+    if (!days.length) return null;
+    days.push(new Date());        /* 마감이 지났어도 이번 달까지는 보여 줍니다 */
+    var lo = new Date(Math.min.apply(null, days)), hi = new Date(Math.max.apply(null, days));
+    return { from: new Date(lo.getFullYear(), lo.getMonth(), 1),
+             to:   new Date(hi.getFullYear(), hi.getMonth() + 1, 0) };
+  }
+  var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+  function renderPgCal(rows) {
+    var box = $('pgCal'); if (!box) return;
+    var oid = $('pgOrder').value;
+    var orders = A.ORDERS.filter(function (o) { return !oid || o.id === oid; });
+    var rg = calRange(rows, orders);
+    if (!rg) { box.innerHTML = A.empty('날짜가 잡힌 글이 없습니다.'); return; }
+
+    /* 하루에 여러 편이 들어갑니다 — 날짜별로 모읍니다 */
+    var byDay = {};
+    rows.forEach(function (p) {
+      var up = ['published', 'verified', 'paid'].indexOf(p.status) >= 0;
+      var d = up ? (p.published_at || '').slice(0, 10) || p.publish_on : p.publish_on;
+      if (!d) return;
+      (byDay[d] = byDay[d] || []).push({ p: p, up: up });
+    });
+
+    var today = ymd(new Date()), out = [], upTot = 0, planTot = 0;
+    for (var m = new Date(rg.from); m <= rg.to; m.setMonth(m.getMonth() + 1)) {
+      var y = m.getFullYear(), mo = m.getMonth();
+      var first = new Date(y, mo, 1), last = new Date(y, mo + 1, 0);
+      var cells = '', mUp = 0, mPlan = 0;
+      for (var i = 0; i < first.getDay(); i++) cells += '<div class="pcal-d out"></div>';
+      for (var day = 1; day <= last.getDate(); day++) {
+        var key = ymd(new Date(y, mo, day));
+        var list = byDay[key] || [];
+        cells += '<div class="pcal-d' + (key === today ? ' today' : '')
+          + (new Date(y, mo, day).getDay() === 0 ? ' sun' : '') + '">'
+          + '<div class="pcal-n">' + day + '</div>'
+          + list.map(function (x) {
+              var b = A.PEOPLE.filter(function (z) { return z.id === x.p.blogger_id; })[0];
+              if (x.up) mUp++; else mPlan++;
+              var lateOne = !x.up && key < today;
+              return '<div class="pcal-x' + (x.up ? '' : lateOne ? ' late' : ' plan') + '" title="'
+                + esc((x.p.keyword || '') + ' · ' + (b ? b.name : '담당자 미정')) + '">'
+                + '<b>' + esc(b ? b.name : '미정') + '</b>'
+                + (b ? ' <span style="opacity:.75">' + esc(A.commName(b.community_id)) + '</span>' : '')
+                + '<br>' + esc(x.p.keyword || '')
+                + (x.p.keyword_rank ? ' · ' + esc(A.rankText(x.p.keyword_rank)) : '')
+                + '</div>';
+            }).join('') + '</div>';
+      }
+      var tail = (first.getDay() + last.getDate()) % 7;
+      if (tail) for (var t2 = tail; t2 < 7; t2++) cells += '<div class="pcal-d out"></div>';
+      upTot += mUp; planTot += mPlan;
+      out.push('<div class="pcal-m"><h4>' + y + '년 ' + (mo + 1) + '월'
+        + '<small>올라간 글 ' + mUp + '편 · 올릴 예정 ' + mPlan + '편</small></h4>'
+        + '<div class="pcal-g">'
+        + DOW.map(function (d, i2) {
+            return '<div class="pcal-hd' + (i2 === 0 ? ' sun' : '') + '">' + d + '</div>';
+          }).join('') + cells + '</div></div>');
+    }
+
+    box.innerHTML = '<div class="pcal-leg">'
+      + '<span><i style="background:var(--ok-bg);border:1px solid var(--ok)"></i>올라간 글</span>'
+      + '<span><i style="background:var(--ground);border:1px solid var(--line)"></i>올릴 예정</span>'
+      + '<span><i style="background:var(--bad-bg);border:1px solid var(--bad)"></i>올릴 날이 지났는데 아직 안 올라감</span>'
+      + '<span class="mono">칸 안은 <b>이름 · 공동체</b> 다음 줄이 검색어입니다</span>'
+      + '</div>' + '<div class="pcal">' + out.join('') + '</div>';
+    PG_CALSUM = '올라간 글 ' + upTot + '편 · 올릴 예정 ' + planTot + '편';
+  }
+  var PG_CALSUM = '';
+
   function renderProgress() {
     var RV = (A.TRACK || 'blog') === 'review';
 
@@ -3738,10 +3844,52 @@
           + '<td>' + (b ? esc(b.name) : '<span style="color:var(--muted)">아직 없음</span>') + '</td>'
           + '<td>' + A.stChip(p.status) + '</td>'
           + '<td class="mono' + (late ? '" style="color:var(--bad)' : '') + '">' + (p.due_date || '-') + '</td>'
-          + '<td>' + postLink(p.published_url, '글 보기 ↗') + '</td></tr>';
+          + '<td><div class="row" style="gap:6px">'
+          + postLink(p.published_url, '글 보기 ↗') + takeBackBtn(p) + '</div></td></tr>';
       }).join('') + '</tbody></table></div>'
       + (rows.length > 300 ? '<div class="mono" style="margin-top:8px">앞의 300개만 보여드립니다. 필터를 좁혀 주세요.</div>' : '')
       : A.empty('해당하는 글이 없습니다.');
+
+    renderPgCal(rows);
+    lateBox(oid);
+    pgViewPaint();
+  }
+
+  /* ── 올릴 날이 지난 글 ──
+     ⚠️ 예전에는 지난 날짜가 그대로 남았습니다. 그러면 밀린 것을 한꺼번에 통과시켰을 때
+     여러 편이 같은 날 올라가 「하루 1편」이 깨지고, 같은 학원 글이 한 블로그에 몰립니다.
+     이제 승인할 때 자동으로 다음 빈 날로 밀리고(post_review), 아직 승인 전인 것들은
+     여기서 한 번에 다시 깔 수 있습니다. */
+  function lateBox(oid) {
+    var box = $('pgLate'); if (!box) return;
+    var today = A.today();
+    var late = POSTS.filter(function (p) {
+      return (!oid || p.order_id === oid) && p.blogger_id && p.publish_on && p.publish_on < today
+        && ['assigned', 'writing', 'rework', 'submitted', 'approved'].indexOf(p.status) >= 0;
+    });
+    if (!late.length) { box.innerHTML = ''; return; }
+    var appr = late.filter(function (p) { return p.status === 'approved'; }).length;
+    box.innerHTML = '<div class="msg warn" style="margin:0 0 12px">'
+      + '<b>올릴 날이 지난 글이 ' + late.length + '편 있습니다.</b>'
+      + (appr ? ' 그중 <b>' + appr + '편은 이미 통과</b>해서 블로거가 지금 올리면 됩니다.' : '')
+      + '<br>이대로 두면 나중에 <b>여러 편이 같은 날 몰려</b> 올라가서 서로 검색어를 잡아먹습니다. '
+      + '아래 단추를 누르면 각자 <b>빈 날로 하루 한 편씩</b> 다시 깝니다.'
+      + '<div class="row" style="margin-top:10px">'
+      + '<button class="btn btn-p btn-s" data-resched="' + (oid || '') + '">📅 밀린 글 다시 깔기</button>'
+      + '<span class="mono">통과한 글을 승인할 때는 자동으로 밀립니다</span></div></div>';
+  }
+
+  /* 목록 / 달력 고르기 */
+  var PG_VIEW = 'list';
+  function pgViewPaint() {
+    document.querySelectorAll('[data-pgview]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.pgview === PG_VIEW);
+    });
+    var l = $('pgList'), c = $('pgCal');
+    if (l) l.classList.toggle('hide', PG_VIEW !== 'list');
+    if (c) c.classList.toggle('hide', PG_VIEW !== 'cal');
+    var hint = $('pgViewHint');
+    if (hint) hint.textContent = PG_VIEW === 'cal' ? PG_CALSUM : '';
   }
   $('pgOrder').onchange = renderProgress;
   $('pgStatus').addEventListener('change', renderProgress);
@@ -3995,14 +4143,16 @@
     order_paid: '입금 확인', first_post: '첫 글 올라감', half: '절반 진행', order_done: '전부 완료',
     approved_post: '원고 통과', edu_summary: '교육 요약 올라옴', edu_ok: '교육 이수 확인',
     edu_no: '교육 요약 다시쓰기', photos_added: '학원이 사진 보냄', published: '올라간 글 확인',
-    info_changed: '학원 내용 바뀜', keyword_changed: '검색어 바뀜'
+    info_changed: '학원 내용 바뀜', keyword_changed: '검색어 바뀜',
+    taken_back: '글 회수됨', taken_back_admin: '관리자가 회수함',
+    review_late: '우리가 늦은 검수', pub_late: '올릴 날 지남'
   };
   var KIND_OF = {
     blogger: ['assigned', 'due1', 'overdue', 'rework', 'approved_post', 'payout',
       'approved', 'rejected', 'edu_wait', 'edu_ok', 'edu_no', 'info_changed',
-      'keyword_changed', 'custom'],
+      'keyword_changed', 'taken_back', 'pub_late', 'custom'],
     staff: ['submitted', 'edu_summary', 'overdue_admin', 'unpaid_order', 'unassigned',
-      'academy_note', 'photos_added', 'custom'],
+      'academy_note', 'photos_added', 'taken_back_admin', 'review_late', 'custom'],
     academy: ['order_paid', 'first_post', 'half', 'order_done']
   };
   function kindKo(k) { return KIND_KO[k] || k; }
@@ -4373,6 +4523,58 @@
        ⚠️ 메일로 안 보냅니다: 도메인이 없어 메일이 스팸으로 가고, 가입 때 메일 인증을
        안 받았기 때문에 **실제로 못 받는 주소**로 가입한 분도 있습니다.
        알림과 같은 방식으로 관리자가 받아서 카톡으로 전해 주시면 됩니다. */
+    /* ── 📅 밀린 글 다시 깔기 ── */
+    if ((t = e.target.closest('[data-resched]'))) {
+      var ro = t.dataset.resched || null;
+      if (!confirm('올릴 날이 지난 글을 오늘 이후의 빈 날로 다시 깔까요?\n\n'
+        + '· 사람마다 하루 한 편이 되도록 벌립니다\n'
+        + '· 이미 올라간 글은 안 건드립니다\n'
+        + '· 원고 마감일도 같이 당겨집니다')) return;
+      t.disabled = true;
+      try {
+        var rr = await A.rpc('posts_reschedule_late', { p_order: ro }) || {};
+        await A.loadAdmin();
+        A.toast((rr.moved || 0) + '편의 날짜를 다시 깔았습니다');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
+    /* ── 목록 / 달력 ── */
+    if ((t = e.target.closest('[data-pgview]'))) {
+      PG_VIEW = t.dataset.pgview; pgViewPaint(); return;
+    }
+
+    /* ── ↩ 맡긴 글 회수 ── */
+    if ((t = e.target.closest('[data-takeback]'))) {
+      var tp = POSTS.filter(function (x) { return x.id === t.dataset.takeback; })[0];
+      if (!tp) { A.toast('글을 찾을 수 없습니다'); return; }
+      var tb = A.PEOPLE.filter(function (x) { return x.id === tp.blogger_id; })[0] || {};
+      var wrote = tp.status === 'submitted';
+      var msg = (tb.name || '이분') + ' 님에게서 이 글을 회수할까요?\n\n'
+        + '· ' + (tp.keyword || '') + '\n'
+        + '· ' + orderName(tp.order_id) + '\n\n'
+        + (wrote
+            ? '⚠️ 이분은 이미 원고를 냈습니다.\n'
+              + '회수하면 그 수고가 값을 못 받습니다. 따로 연락해 주셔야 합니다.\n\n'
+            : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
+        + '글은 그대로 남고, 맡은 사람만 떨어집니다 (다시 나눠주실 수 있습니다).';
+      if (!confirm(msg)) return;
+      var why = prompt('왜 회수하는지 한 줄 적어 주세요.\n(그대로 ' + (tb.name || '본인') + ' 님께 갑니다)',
+        '같은 학원 글이 한 분께 몰려서 조정합니다.');
+      if (why === null) return;
+      if (wrote && !confirm('마지막 확인입니다.\n\n'
+          + (tb.name || '이분') + ' 님이 낸 원고를 두고 회수합니다. 정말 진행할까요?')) return;
+      t.disabled = true;
+      try {
+        var tr = await A.rpc('post_unassign',
+          { p_post: tp.id, p_reason: why.trim() || null, p_force: wrote }) || {};
+        await A.loadAdmin();
+        A.toast((tr.blogger || '') + ' 님에게서 회수했습니다'
+          + (tr.by_owner ? '' : ' · 최고관리자에게 알림이 갑니다'));
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     /* ── ✏️ 검색어 고치기 ── */
     if ((t = e.target.closest('[data-kwedit]'))) { openKwEdit(t.dataset.kwedit); return; }
     if ((t = e.target.closest('[data-kwclose]'))) {

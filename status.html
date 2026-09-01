@@ -185,6 +185,79 @@
     return '<span class="rk ' + c + '">' + n + '위</span>';
   }
 
+  /* ══ 달력 — 며칠에 어떤 글이 올라갔나 ══
+     ⚠️ 관리자 화면(js/admin.js 의 renderPgCal)에도 같은 달력이 있습니다.
+     여기는 **학원용**이라 누가 썼는지(이름·공동체)는 절대 안 보여 줍니다 —
+     검색어와 노출 순위만 나갑니다. 한쪽만 고치면 두 화면이 어긋납니다.
+     CSS(.pcal / .pcal-m / .pcal-g / .pcal-d / .pcal-x)는 app.css 에 있습니다. */
+  var DOW = ['일','월','화','수','목','금','토'];
+  function ymd(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+      + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function parseYmd(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ''));
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+  }
+  function calHtml(orders, posts) {
+    var days = [];
+    orders.forEach(function (o) {
+      [o.ordered_at, o.paid_at, o.deadline].forEach(function (x) {
+        var d = parseYmd(x); if (d) days.push(d);
+      });
+    });
+    posts.forEach(function (p) { var d = parseYmd(p.at); if (d) days.push(d); });
+    if (!days.length) return '';
+    days.push(new Date());        /* 마감이 지났어도 이번 달까지는 보여 드립니다 */
+
+    var lo = new Date(Math.min.apply(null, days)), hi = new Date(Math.max.apply(null, days));
+    var from = new Date(lo.getFullYear(), lo.getMonth(), 1);
+    var to   = new Date(hi.getFullYear(), hi.getMonth() + 1, 0);
+
+    var byDay = {};
+    posts.forEach(function (p) {
+      var k = String(p.at || '').slice(0, 10);
+      if (!k) return;
+      (byDay[k] = byDay[k] || []).push(p);
+    });
+
+    var today = ymd(new Date()), out = [];
+    for (var m = new Date(from); m <= to; m.setMonth(m.getMonth() + 1)) {
+      var y = m.getFullYear(), mo = m.getMonth();
+      var first = new Date(y, mo, 1), last = new Date(y, mo + 1, 0);
+      var cells = '', cnt = 0;
+      for (var i = 0; i < first.getDay(); i++) cells += '<div class="pcal-d out"></div>';
+      for (var day = 1; day <= last.getDate(); day++) {
+        var key = ymd(new Date(y, mo, day));
+        var list = byDay[key] || [];
+        cnt += list.length;
+        cells += '<div class="pcal-d' + (key === today ? ' today' : '')
+          + (new Date(y, mo, day).getDay() === 0 ? ' sun' : '') + '">'
+          + '<div class="pcal-n">' + day + '</div>'
+          + list.map(function (p) {
+              return '<div class="pcal-x" title="' + esc(p.keyword || '') + '">'
+                + esc(p.keyword || W('글','리뷰'))
+                + (RV || p.rank == null ? ''
+                   : '<br><b>' + (p.rank >= 999 ? '50위 밖' : p.rank + '위') + '</b>')
+                + '</div>';
+            }).join('') + '</div>';
+      }
+      var tail = (first.getDay() + last.getDate()) % 7;
+      if (tail) for (var t2 = tail; t2 < 7; t2++) cells += '<div class="pcal-d out"></div>';
+      out.push('<div class="pcal-m"><h4>' + y + '년 ' + (mo + 1) + '월'
+        + '<small>' + cnt + '편 올라감</small></h4><div class="pcal-g">'
+        + DOW.map(function (dn, i2) {
+            return '<div class="pcal-hd' + (i2 === 0 ? ' sun' : '') + '">' + dn + '</div>';
+          }).join('') + cells + '</div></div>');
+    }
+
+    return '<div class="sec">날짜별로 보기 <small>주문하신 달부터 마감까지</small></div>'
+      + '<div class="pcal-leg"><span class="mono">'
+      + '한 칸이 하루입니다. 그날 올라간 ' + W('글','리뷰') + '이 칸 안에 쌓입니다'
+      + (RV ? '' : ' (아랫줄은 네이버 검색 순위)') + '.</span></div>'
+      + '<div class="pcal">' + out.join('') + '</div>';
+  }
+
   function render(d) {
     RV = (d.track === 'review');           /* 리뷰 주문이면 말을 바꿉니다 */
     if (RV) {
@@ -300,6 +373,9 @@
           + '<div class="notebody">' + esc(n.body) + '</div></div>';
       }).join('') + '</div>' : '')
       + '</div>';
+
+    /* 달력 — 며칠에 몇 편이 올라갔는지 */
+    h += calHtml(orders, posts);
 
     /* 올라간 글 */
     h += '<div class="sec">올라간 ' + W('글','리뷰') + ' <small>' + posts.length + '편'
