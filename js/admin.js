@@ -1795,39 +1795,45 @@
   /* ── 말이 안 되는 조합 걸러내기 ──
      네 축을 그냥 곱하면 "영어내신 수학학원", "송림고 예비중" 같은 게 나옵니다.
      학부모가 그렇게 검색하지 않으니 글을 써도 헛일입니다. */
-  /* 학교급을 1~5로 봅니다 — 1 초등 · 2 예비중 · 3 중등 · 4 예비고 · 5 고등/수능.
-     긴 말부터 찾아야 '예비중'이 '중등'보다 먼저 잡힙니다. */
-  var LV_WORDS = [
-    ['예비고', 4], ['예비중', 2], ['초등', 1], ['중등', 3], ['고등', 5],
-    ['수능', 5], ['재수', 5], ['정시', 5], ['모의고사', 5],
-    ['초1', 1], ['초2', 1], ['초3', 1], ['초4', 1], ['초5', 1], ['초6', 1],
-    ['중1', 3], ['중2', 3], ['중3', 3], ['고1', 5], ['고2', 5], ['고3', 5]
+  /* ══ 학교급을 「지금」과 「노리는 곳」 둘로 봅니다 (2026-09-01 다시 짬) ══
+     ⚠️⚠️ 예전에는 「예비고=4 · 중등=3」처럼 한 줄로만 보고 **한 칸 차이는 봐줬습니다**.
+     그래서 「예비고 중등수학내신」·「예비고 중등국어논술」이 그대로 통과했습니다.
+     예비고(중3)는 **고등을 준비하는** 학년인데 **중등** 과목을 파는 제목입니다 —
+     학부모는 그렇게 검색하지 않습니다. 제목이 이상하면 글을 안 읽습니다.
+
+     이제 낱말마다 두 가지를 봅니다.
+       · now — 지금 다니는 곳     (예비고 = 아직 중학교)
+       · aim — 이 말이 노리는 곳  (예비고 = 고등)
+     단계는 1 초등 · 2 중등 · 3 고등(수능) 셋뿐입니다. 「예비중」과 「중등」은
+     노리는 곳이 같고(2), 「예비고」와 「고등」도 같습니다(3). */
+  var STAGE_WORDS = [
+    /* [말, 지금, 노리는 곳] — ⚠️ 긴 말부터. '예비중'이 '중등'보다 먼저 잡혀야 합니다 */
+    ['예비고', 2, 3], ['예비중', 1, 2],
+    ['초등', 1, 1], ['중등', 2, 2], ['고등', 3, 3],
+    ['수능', 3, 3], ['재수', 3, 3], ['정시', 3, 3], ['모의고사', 3, 3],
+    ['초1', 1, 1], ['초2', 1, 1], ['초3', 1, 1], ['초4', 1, 1], ['초5', 1, 1], ['초6', 1, 1],
+    ['중1', 2, 2], ['중2', 2, 2], ['중3', 2, 2],
+    ['고1', 3, 3], ['고2', 3, 3], ['고3', 3, 3]
   ];
-  function lvOf(text) {
-    var t = String(text || ''), lv = 0;
-    for (var i = 0; i < LV_WORDS.length; i++) {
-      if (t.indexOf(LV_WORDS[i][0]) >= 0) { lv = LV_WORDS[i][1]; break; }
+  function stageOf(text) {
+    var t = String(text || '');
+    for (var i = 0; i < STAGE_WORDS.length; i++) {
+      if (t.indexOf(STAGE_WORDS[i][0]) >= 0)
+        return { now: STAGE_WORDS[i][1], aim: STAGE_WORDS[i][2],
+                 prep: STAGE_WORDS[i][1] !== STAGE_WORDS[i][2] };
     }
-    return lv;
+    return { now: 0, aim: 0, prep: false };
   }
-  /* 지역 자리에 학교 이름이 들어오면(영일초·매원중·태장고) 그 학교급을 봅니다 */
-  function schoolLv(region) {
+  /* 지역 자리에 학교 이름이 오면(안말초·매송중·태원고) 그 학교급 */
+  function schoolStage(region) {
     var t = String(region || '').trim();
     if (t.length < 2) return 0;
-    var last = t.slice(-1);
-    if (last === '초') return 1;
-    if (last === '중') return 3;
-    if (last === '고') return 5;
-    if (/초등학교$/.test(t)) return 1;
-    if (/중학교$/.test(t)) return 3;
-    if (/고등학교$/.test(t)) return 5;
+    if (/초등학교$/.test(t) || t.slice(-1) === '초') return 1;
+    if (/중학교$/.test(t)   || t.slice(-1) === '중') return 2;
+    if (/고등학교$/.test(t) || t.slice(-1) === '고') return 3;
     return 0;
   }
-  /* 두 학교급이 같이 쓰일 수 있나 — 한 칸 차이(예비중↔중등)까지는 봐줍니다 */
-  function lvClash(a, b) {
-    if (!a || !b) return false;
-    return Math.abs(a - b) >= 2;
-  }
+  var STAGE_KO = { 1: '초등', 2: '중등', 3: '고등' };
 
   function badCombo(region, grade, subject, purpose) {
     var whole = [region, grade, subject, purpose];
@@ -1851,20 +1857,28 @@
       if (hit.length >= 2) return '「' + DUP[k] + '」이 두 번';
     }
 
-    var sLv = lvOf(subject), gLv = lvOf(grade), pLv = lvOf(purpose), rLv = schoolLv(region);
+    var g = stageOf(grade), sb = stageOf(subject), pu = stageOf(purpose);
+    var rs = schoolStage(region);
 
-    /* ② 과목이 품은 학년 vs 고른 학년 (중등국어논술 + 고등 / 수능영어 + 초등) */
-    if (lvClash(sLv, gLv)) return '과목과 학년이 안 맞음';
+    /* ② 학년이 노리는 곳 ≠ 과목이 노리는 곳
+          「예비고 중등수학내신」이 여기서 걸립니다 — 예전에는 통과했습니다 */
+    if (g.aim && sb.aim && g.aim !== sb.aim)
+      return '학년은 ' + STAGE_KO[g.aim] + '인데 과목은 ' + STAGE_KO[sb.aim];
 
-    /* ③ 학교 이름 vs 학년 (송림고 + 예비중 / 이매초 + 고등) */
-    if (lvClash(rLv, gLv)) return '학교와 학년이 안 맞음';
+    /* ③ 학교 이름 vs 학년 — 다니는 학교이거나, 「예비」면 갈 학교까지만
+          (안말초 예비중 ○ · 매송중 예비중 ○(갈 학교) · 송림고 예비중 ✕) */
+    if (rs && g.now) {
+      var ok3 = (rs === g.now) || (g.prep && rs === g.now + 1);
+      if (!ok3) return '학교(' + STAGE_KO[rs] + ')와 학년이 안 맞음';
+    }
 
-    /* ④ 학교 이름 vs 과목 — 「영일초 수능영어」가 여기서 걸립니다.
-          예전에는 이 대조가 아예 없어서 그대로 통과했습니다. */
-    if (lvClash(rLv, sLv)) return '학교와 과목이 안 맞음';
+    /* ④ 학교 이름 vs 과목 — 「이매초 수능영어」·「돌마고 중등수학내신」이 걸립니다.
+          다니는 학교 것이거나 한 단계 위(곧 배울 것)까지만 봐줍니다. */
+    if (rs && sb.aim && (sb.aim < rs || sb.aim > rs + 1))
+      return '학교(' + STAGE_KO[rs] + ')와 과목(' + STAGE_KO[sb.aim] + ')이 안 맞음';
 
-    /* ⑤ 목적이 품은 학년 vs 나머지 (초등 대상인데 '수능 대비') */
-    if (lvClash(pLv, gLv) || lvClash(pLv, sLv) || lvClash(pLv, rLv))
+    /* ⑤ 목적이 노리는 곳도 학년·과목과 같아야 합니다 (초등 대상인데 '수능 대비') */
+    if (pu.aim && ((g.aim && pu.aim !== g.aim) || (sb.aim && pu.aim !== sb.aim)))
       return '목적과 학년이 안 맞음';
 
     /* ⑥ 과목과 '○○학원' 목적이 서로 다른 과목 (영어내신 + 수학학원) */
@@ -1879,8 +1893,33 @@
 
     /* ⑦ 지역 자리에 학교가 왔는데 목적이 다른 과목 학원인 경우는 그냥 둡니다
           (「영일초 영어학원」은 학부모가 실제로 이렇게 검색합니다) */
+
+    /* ⑧ 수능과 내신을 같이 쓰지 않습니다.
+          정시(수능)와 수시(내신)는 **반대 트랙**입니다. 한 제목에 같이 있으면
+          무엇을 파는 글인지 알 수 없어 아무도 안 누릅니다.
+          예) 「분당 고등 수능영어 내신」 */
+    var hasSuneung = whole.some(function (t) {
+      return /수능|정시|모의고사/.test(String(t || ''));
+    });
+    var hasNaesin = whole.some(function (t) { return /내신|수행평가/.test(String(t || '')); });
+    if (hasSuneung && hasNaesin) return '수능(정시)과 내신(수시)을 같이 씀';
+
+    /* ⑨ 초등에는 내신이 없습니다 (「초등 … 내신」·「○○초 초등 … 내신」) */
+    if ((g.aim === 1 || (!g.aim && rs === 1 && !sb.aim)) && hasNaesin)
+      return '초등에는 내신이 없음';
+
+    /* ⑩ 학교 이름을 지역 자리에 쓸 때 학년이 비면 누구에게 파는 글인지 모릅니다 —
+          막지는 않습니다. 조합이 확 줄어들기 때문입니다. */
     return null;
   }
+  /* 검색어 한 줄(「지역 학년 과목 목적」)을 그대로 넣어 검사합니다 */
+  function badKeyword(kw) {
+    var w = String(kw || '').trim().replace(/\s+/g, ' ').split(' ');
+    if (w.length < 2) return null;
+    return badCombo(w[0] || '', w[1] || '', w[2] || '', w.slice(3).join(' ') || '');
+  }
+  A.badKeyword = badKeyword;
+
   A.badCombo = badCombo;   /* 화면에서 골라낸 것만 저장할 때도 씁니다 */
 
   $('kwGo').onclick = function () {
@@ -3194,30 +3233,55 @@
      학원별로 들어가 보기 전에는 눈에 안 띄어서 그대로 검수를 통과하기 쉽습니다. */
   function mismatchBox() {
     var box = $('rvMismatch'); if (!box) return;
-    var bad = POSTS.filter(function (p) {
-      return isBlogPost(p) && !kwLive(p) && p.status !== 'cancelled' && subjBad(p);
+    var live = POSTS.filter(function (p) {
+      return isBlogPost(p) && !kwLive(p) && p.status !== 'cancelled';
     });
-    if (!bad.length) { box.innerHTML = ''; return; }
-    box.innerHTML = '<div class="msg err" style="margin:0 0 14px">'
-      + '<b>⚠️ 제목과 내용이 어긋난 글이 ' + bad.length + '편 있습니다.</b><br>'
-      + '제목은 한 과목을 파는데 글 내용은 다른 과목입니다. '
-      + '<b>다시 쓰게 하지 마세요</b> — 블로거는 우리가 준 대로 썼습니다. '
-      + '아래 <b>✏️</b> 를 눌러 <b>제목을 내용에 맞게</b> 바꿔 주시면 그 글이 그대로 살아납니다.'
-      + '<div class="tblbox tblscroll" style="margin-top:10px"><table>'
-      + '<thead><tr><th>학원</th><th>누가</th><th>지금 제목</th><th>실제 내용</th>'
-      + '<th>어디까지</th><th></th></tr></thead><tbody>'
-      + bad.map(function (p) {
-        var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
-        var d = subjBad(p);
-        return '<tr><td>' + esc(orderName(p.order_id)) + '</td>'
-          + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b>' : '<span class="mono">미배정</span>') + '</td>'
-          + '<td>' + esc(p.keyword || '') + ' <span class="chip c-off">' + esc(d.post) + '</span></td>'
-          + '<td><span class="chip c-wait">' + esc(d.topic) + '</span> '
-            + '<span class="mono">' + esc(d.title || '') + '</span></td>'
-          + '<td class="mono">' + (A.ST[p.status] ? A.ST[p.status][0] : esc(p.status)) + '</td>'
-          + '<td><button class="btn btn-p btn-s" data-kwedit="' + p.id + '">✏️ 제목 고치기</button></td>'
-          + '</tr>';
-      }).join('') + '</tbody></table></div></div>';
+    var bad = live.filter(subjBad);
+    /* ⚠️ 말 조합이 이상한 제목 — 「예비고 중등수학내신」처럼 학년과 과목이 반대인 것.
+       제목이 이상하면 아무도 안 누르므로 글을 아무리 잘 써도 헛일입니다. */
+    var odd = live.map(function (p) { return { p: p, why: A.badKeyword(p.keyword) }; })
+                  .filter(function (x) { return x.why; });
+    if (!bad.length && !odd.length) { box.innerHTML = ''; return; }
+
+    function tbl(rows, midHead, mid) {
+      return '<div class="tblbox tblscroll" style="margin-top:10px"><table>'
+        + '<thead><tr><th>학원</th><th>누가</th><th>지금 제목</th><th>' + midHead + '</th>'
+        + '<th>어디까지</th><th></th></tr></thead><tbody>'
+        + rows.map(function (r) {
+          var p = r.p || r;
+          var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
+          return '<tr><td>' + esc(orderName(p.order_id)) + '</td>'
+            + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b>' : '<span class="mono">미배정</span>') + '</td>'
+            + '<td>' + esc(p.keyword || '') + '</td>'
+            + '<td>' + mid(r) + '</td>'
+            + '<td class="mono">' + (A.ST[p.status] ? A.ST[p.status][0] : esc(p.status)) + '</td>'
+            + '<td><button class="btn btn-p btn-s" data-kwedit="' + p.id + '">✏️ 제목 고치기</button></td>'
+            + '</tr>';
+        }).join('') + '</tbody></table></div>';
+    }
+
+    box.innerHTML =
+      (bad.length ? '<div class="msg err" style="margin:0 0 14px">'
+        + '<b>⚠️ 제목과 내용이 어긋난 글이 ' + bad.length + '편 있습니다.</b><br>'
+        + '제목은 한 과목을 파는데 글 내용은 다른 과목입니다. '
+        + '<b>다시 쓰게 하지 마세요</b> — 블로거는 우리가 준 대로 썼습니다. '
+        + '아래 <b>✏️</b> 를 눌러 <b>제목을 내용에 맞게</b> 바꿔 주시면 그 글이 그대로 살아납니다.'
+        + tbl(bad, '실제 내용', function (p) {
+            var d = subjBad(p);
+            return '<span class="chip c-off">' + esc(d.post) + '</span> → '
+              + '<span class="chip c-wait">' + esc(d.topic) + '</span> '
+              + '<span class="mono">' + esc(d.title || '') + '</span>';
+          })
+        + '</div>' : '')
+      + (odd.length ? '<div class="msg warn" style="margin:0 0 14px">'
+        + '<b>⚠️ 제목의 말 조합이 이상한 글이 ' + odd.length + '편 있습니다.</b><br>'
+        + '예) <b>예비고 중등수학내신</b> — 예비고(중3)는 <b>고등</b>을 준비하는 학년인데 '
+        + '<b>중등</b> 과목을 팝니다. 학부모는 그렇게 검색하지 않습니다. '
+        + '<b>제목이 이상하면 글을 아무리 잘 써도 아무도 안 읽습니다.</b>'
+        + tbl(odd, '무엇이 이상한가', function (r) {
+            return '<span style="color:var(--bad)"><b>' + esc(r.why) + '</b></span>';
+          })
+        + '</div>' : '');
   }
 
   /* ── 고치는 창 ──
@@ -3293,11 +3357,18 @@
     function paint() {
       var v = inp.value, sj = subjOfKw(v);
       var same = t && t.subject && t.subject !== '공통' && sj && sj !== t.subject;
+      /* ⚠️ 과목만 맞으면 되는 게 아닙니다 — 「예비고 중등국어논술」처럼 말 조합 자체가
+         이상하면 아무도 안 누릅니다. 제가 9/1 오전에 고쳐 준 것 중에도 있었습니다. */
+      var why = A.badKeyword(v);
       $('kwNewSub').innerHTML = !v.trim() ? ''
         : '이 제목의 과목 · ' + (sj ? '<b>' + esc(sj) + '</b>' : '<b>모르겠음</b>')
           + (t && t.subject ? ' / 글 내용 · <b>' + esc(t.subject) + '</b>' : '')
           + (same ? ' <span style="color:var(--bad)">— 아직 안 맞습니다</span>'
-             : sj ? ' <span style="color:var(--ok)">— 맞습니다</span>' : '');
+             : sj ? ' <span style="color:var(--ok)">— 맞습니다</span>' : '')
+          + (why ? '<div style="color:var(--bad);margin-top:4px">'
+                 + '⚠️ 말 조합이 이상합니다 — <b>' + esc(why) + '</b></div>'
+                 : v.trim().split(/\s+/).length >= 3
+                   ? '<div style="color:var(--ok);margin-top:4px">말 조합은 괜찮습니다</div>' : '');
     }
     inp.oninput = paint; paint();
     inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
@@ -4597,6 +4668,11 @@
       var kwv = ($('kwNew') || {}).value || '';
       var kwy = (($('kwWhy') || {}).value || '').trim();
       if (!kwv.trim()) { A.toast('새 검색어를 적어 주세요'); return; }
+      var kwWhyBad = A.badKeyword(kwv);
+      if (kwWhyBad && !confirm('이 제목은 말 조합이 이상합니다.\n\n'
+          + '· ' + kwv.trim() + '\n· ' + kwWhyBad + '\n\n'
+          + '학부모가 이렇게 검색하지 않으면 글을 써도 헛일입니다.\n'
+          + '그래도 이대로 쓰시겠습니까?')) return;
       t.disabled = true; t.textContent = '바꾸는 중…';
       try {
         var kr = await A.rpc('post_set_keyword',
