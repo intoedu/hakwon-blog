@@ -3710,9 +3710,28 @@
     return out.join('<br>');
   }
 
+  /* ── 「보는 중」 표시 ──
+     원고를 열어만 보고 아직 승인도 돌려보내기도 안 한 글에 형광펜을 칠합니다.
+     한 학원에 20편씩 있으면 어디까지 봤는지 금세 잊습니다.
+     ⚠️ 서버에 안 남깁니다 — 이건 **검수하는 사람의 메모**이지 글의 상태가 아닙니다
+     (다른 검수자에게는 안 보입니다). 승인·돌려보내기를 하면 저절로 지워집니다. */
+  var SEEN_KEY = 'esc.rvSeen';
+  function seenLoad() {
+    try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function seenSave(o) { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch (e) {} }
+  var RV_SEEN = seenLoad();
+  function seenMark(id, on) {
+    if (on) RV_SEEN[id] = 1; else delete RV_SEEN[id];
+    seenSave(RV_SEEN);
+  }
+
   function rvRow(p, dim, byComm) {
     var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
-    var cls = dim ? ' style="opacity:.5"' : (p.rework_count > 0 ? ' class="sent"' : '');
+    var seen = !dim && p.status === 'submitted' && RV_SEEN[p.id];
+    var cls = dim ? ' style="opacity:.5"'
+      : ' class="' + (p.rework_count > 0 ? 'sent ' : '') + (seen ? 'seen' : '') + '"';
     return '<tr' + cls + '>'
       + '<td>' + (byComm ? '<b>' + esc(orderName(p.order_id)) + '</b>'
         : (b.name ? esc(A.commName(b.community_id))
@@ -3726,9 +3745,12 @@
       + '<td class="mono">' + (p.submitted_at ? A.fdate(p.submitted_at) : '아직') + '</td>'
       + '<td style="font-size:12.5px;line-height:1.6">' + reviewLog(p) + '</td>'
       + '<td><div class="row">'
-      + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url) + '" target="_blank" rel="noopener">원고 열기 ↗</a>' : '')
+      + (p.content_url ? '<a class="btn btn-s" href="' + esc(p.content_url)
+          + '" target="_blank" rel="noopener" data-seen="' + p.id + '">원고 열기 ↗</a>' : '')
       + (dim ? '' : '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
         + '<button class="btn btn-s" data-openrj="' + p.id + '">돌려보내기</button>')
+      + (seen ? ' <button class="btn btn-s" data-unseen="' + p.id
+          + '" title="아직 안 본 것으로 되돌립니다">↺ 표시 지우기</button>' : '')
       + '</div></td></tr>';
   }
 
@@ -3866,16 +3888,34 @@
     }).join('') + doneHtml;
   }
 
+  /* 「기타」를 고르면 직접 쓰는 칸이 열립니다 */
+  if ($('rjEtcOn')) $('rjEtcOn').onchange = function () {
+    var box = $('rjEtcBox');
+    if (box) box.classList.toggle('hide', !this.checked);
+    if (this.checked && $('rjEtc')) $('rjEtc').focus();
+  };
   $('btnReject').onclick = async function () {
     var reasons = [].map.call(document.querySelectorAll('.rj:checked'), function (c) { return c.value; });
+    /* ⭐ 기타 — 목록에 없는 것은 직접 씁니다. 여러 줄이면 줄마다 한 사유로 봅니다 */
+    var etcOn = $('rjEtcOn') && $('rjEtcOn').checked;
+    var etc = etcOn ? ($('rjEtc').value || '').split(/[\n,]/)
+        .map(function (x) { return x.trim(); }).filter(Boolean) : [];
+    if (etcOn && !etc.length) {
+      A.toast('「기타」를 고르셨으면 무엇을 고쳐야 하는지 적어 주세요');
+      $('rjEtc').focus(); return;
+    }
+    reasons = reasons.concat(etc);
     if (!reasons.length) { A.toast('고쳐야 할 것을 하나 이상 골라 주세요'); return; }
     this.disabled = true;
     try {
       await A.rpc('post_review', {
         p_post: RJ_POST, p_ok: false, p_reasons: reasons, p_note: $('rjNote').value.trim() || null
       });
+      seenMark(RJ_POST, false);                 /* 처리했으니 형광펜을 지웁니다 */
       A.toast('돌려보냈습니다');
       document.querySelectorAll('.rj').forEach(function (c) { c.checked = false; });
+      if ($('rjEtcOn')) { $('rjEtcOn').checked = false; $('rjEtc').value = ''; }
+      if ($('rjEtcBox')) $('rjEtcBox').classList.add('hide');
       $('rjNote').value = '';
       await A.loadAdmin(); rvBack();
     } catch (e) { A.toast('실패: ' + e.message); }
@@ -3937,6 +3977,34 @@
              to:   new Date(hi.getFullYear(), hi.getMonth() + 1, 0) };
   }
   var DOW = ['일', '월', '화', '수', '목', '금', '토'];
+  /* 달력 칸은 좁습니다 — 진행 현황 표보다 짧은 말을 씁니다 */
+  var CAL_ST = {
+    pending: '아직 안 맡김', assigned: '쓰는 중', writing: '쓰는 중',
+    submitted: '검수 대기', rework: '다시 쓰기', approved: '올릴 차례',
+    published: '올림 · 확인 전', verified: '확인 끝', paid: '정산 끝'
+  };
+
+  /* 글 한 편이 지나가는 길 — 진행 현황 맨 위에 한 번만 설명합니다 */
+  var STEPS = [
+    ['pending', '아직 안 맡김', '만들어는 뒀는데 맡을 사람이 없습니다'],
+    ['assigned', '쓰는 중', '블로거가 맡아서 원고를 쓰고 있습니다'],
+    ['submitted', '검수 대기', '원고가 왔습니다. 우리가 볼 차례입니다'],
+    ['rework', '다시 쓰기', '고쳐 달라고 돌려보냈습니다'],
+    ['approved', '올릴 차례', '원고는 통과. 올릴 날이 되면 블로거가 올립니다'],
+    ['published', '올림 · 확인 전', '블로그에 올라왔습니다. 검색 순위를 재야 합니다'],
+    ['verified', '확인 끝', '순위까지 확인. 이제 정산에 잡힙니다']
+  ];
+  function stepGuide() {
+    return '<div class="note" style="margin-bottom:12px">'
+      + '<b>글 한 편은 이 순서로 갑니다</b>'
+      + '<div class="stepline">'
+      + STEPS.map(function (s, i) {
+          return (i ? '<span class="stepar">→</span>' : '')
+            + '<span class="stepbox s' + s[0] + '"><b>' + esc(s[1]) + '</b>'
+            + '<small>' + esc(s[2]) + '</small></span>';
+        }).join('')
+      + '</div></div>';
+  }
 
   function renderPgCal(rows) {
     var box = $('pgCal'); if (!box) return;
@@ -3970,12 +4038,17 @@
               var b = A.PEOPLE.filter(function (z) { return z.id === x.p.blogger_id; })[0];
               if (x.up) mUp++; else mPlan++;
               var lateOne = !x.up && key < today;
+              /* ⭐ 아직 안 올라간 글은 **지금 어디까지 왔는지**를 같이 보여 줍니다.
+                 여러 단계를 다 띄우면 칸이 길어지므로 **지금 단계 하나만** 씁니다. */
+              var st = CAL_ST[x.p.status] || (A.ST[x.p.status] || [x.p.status])[0];
               return '<div class="pcal-x' + (x.up ? '' : lateOne ? ' late' : ' plan') + '" title="'
-                + esc((x.p.keyword || '') + ' · ' + (b ? b.name : '담당자 미정')) + '">'
+                + esc((x.p.keyword || '') + ' · ' + (b ? b.name : '담당자 미정')
+                      + ' · ' + st) + '">'
                 + '<b>' + esc(b ? b.name : '미정') + '</b>'
                 + (b ? ' <span style="opacity:.75">' + esc(A.commName(b.community_id)) + '</span>' : '')
                 + '<br>' + esc(x.p.keyword || '')
                 + (x.p.keyword_rank ? ' · ' + esc(A.rankText(x.p.keyword_rank)) : '')
+                + '<div class="pcal-st s' + esc(x.p.status) + '">' + esc(st) + '</div>'
                 + '</div>';
             }).join('') + '</div>';
       }
@@ -3990,11 +4063,12 @@
           }).join('') + cells + '</div></div>');
     }
 
-    box.innerHTML = '<div class="pcal-leg">'
+    box.innerHTML = stepGuide()
+      + '<div class="pcal-leg">'
       + '<span><i style="background:var(--ok-bg);border:1px solid var(--ok)"></i>올라간 글</span>'
       + '<span><i style="background:var(--ground);border:1px solid var(--line)"></i>올릴 예정</span>'
       + '<span><i style="background:var(--bad-bg);border:1px solid var(--bad)"></i>올릴 날이 지났는데 아직 안 올라감</span>'
-      + '<span class="mono">칸 안은 <b>이름 · 공동체</b> 다음 줄이 검색어입니다</span>'
+      + '<span class="mono">칸 안은 <b>이름 · 공동체 / 검색어 / 지금 단계</b> 입니다</span>'
       + '</div>' + '<div class="pcal">' + out.join('') + '</div>';
     PG_CALSUM = '올라간 글 ' + upTot + '편 · 올릴 예정 ' + planTot + '편';
   }
@@ -4731,6 +4805,7 @@
     if ((t = e.target.closest('[data-approve]'))) {
       t.disabled = true;
       try { await A.rpc('post_review', { p_post: t.dataset.approve, p_ok: true, p_reasons: [], p_note: null });
+        seenMark(t.dataset.approve, false);      /* 처리했으니 형광펜을 지웁니다 */
         A.toast('승인했습니다'); await A.loadAdmin(); rvBack(); }
       catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
@@ -4741,6 +4816,18 @@
        ⚠️ 메일로 안 보냅니다: 도메인이 없어 메일이 스팸으로 가고, 가입 때 메일 인증을
        안 받았기 때문에 **실제로 못 받는 주소**로 가입한 분도 있습니다.
        알림과 같은 방식으로 관리자가 받아서 카톡으로 전해 주시면 됩니다. */
+    /* ── 「보는 중」 형광펜 ── */
+    if ((t = e.target.closest('[data-seen]'))) {
+      seenMark(t.dataset.seen, true);
+      /* 링크는 그대로 새 창으로 열리게 두고, 표만 다시 그립니다 */
+      setTimeout(function () { A.refreshReview && A.refreshReview(); rvBack(); }, 50);
+      return;
+    }
+    if ((t = e.target.closest('[data-unseen]'))) {
+      seenMark(t.dataset.unseen, false);
+      A.refreshReview && A.refreshReview(); rvBack(); return;
+    }
+
     /* ── 📅 밀린 글 다시 깔기 ── */
     if ((t = e.target.closest('[data-resched]'))) {
       var ro = t.dataset.resched || null;

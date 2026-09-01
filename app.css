@@ -581,3 +581,35 @@ body.tk-review .tracksw button.on{color:#fff}
   .pcal-d{min-height:56px;padding:4px 3px}
   .pcal-x{font-size:10px;padding:2px 3px}
 }
+
+/* ── 진행 현황: 글 한 편이 지나가는 길 ── */
+.stepline{display:flex;flex-wrap:wrap;align-items:stretch;gap:5px;margin-top:10px}
+.stepar{align-self:center;color:var(--muted);font-size:13px}
+.stepbox{display:flex;flex-direction:column;gap:2px;padding:6px 9px;border-radius:8px;
+     border:1px solid var(--line);background:var(--surface);min-width:0}
+.stepbox b{font-size:12.5px;white-space:nowrap}
+.stepbox small{font-size:11px;color:var(--muted);line-height:1.35}
+.stepbox.spending{background:var(--ground)}
+.stepbox.sassigned,.stepbox.ssubmitted,.stepbox.sapproved{background:var(--info-bg);
+     border-color:var(--info)}
+.stepbox.srework{background:var(--bad-bg);border-color:var(--bad)}
+.stepbox.spublished{background:var(--amber-bg);border-color:var(--amber)}
+.stepbox.sverified{background:var(--ok-bg);border-color:var(--ok)}
+
+/* 달력 칸 안의 「지금 단계」 */
+.pcal-st{margin-top:2px;font-size:10px;font-weight:800;border-radius:3px;padding:1px 4px;
+     display:inline-block;background:var(--ground);color:var(--muted)}
+.pcal-st.sassigned,.pcal-st.swriting{background:var(--info-bg);color:var(--info)}
+.pcal-st.ssubmitted{background:var(--amber-bg);color:var(--amber)}
+.pcal-st.srework{background:var(--bad-bg);color:var(--bad)}
+.pcal-st.sapproved{background:var(--info-bg);color:var(--info)}
+.pcal-st.spublished,.pcal-st.sverified,.pcal-st.spaid{background:var(--ok-bg);color:var(--ok)}
+@media(max-width:720px){ .pcal-st{font-size:9px} .stepbox small{display:none} }
+
+/* ── 검수 중 「보는 중」 표시 ──
+   원고를 열어만 보고 아직 승인·돌려보내기를 안 한 글. 내 브라우저에만 남습니다
+   (localStorage). ⚠️ .sent(노란 줄, 다시 쓰기 이력)와 겹칠 수 있으므로 주황이 이깁니다 */
+tr.seen td{background:var(--amber-bg)}
+tr.seen td:first-child{box-shadow:inset 4px 0 0 var(--amber)}
+.seenmark{background:var(--amber-bg);border-left:4px solid var(--amber);
+     padding:1px 5px 1px 8px;border-radius:3px}

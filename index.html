@@ -866,7 +866,10 @@
           <div id="rvAcadPics"></div>
           <div class="note warn" style="margin-bottom:14px">
             <b style="background:var(--hl);padding:1px 5px;border-radius:3px">노란 줄이 그어진 글</b>
-            은 전에 돌려보냈던 글입니다. 왜 돌려보냈는지가 옆에 적혀 있습니다.
+            은 전에 돌려보냈던 글입니다. 왜 돌려보냈는지가 옆에 적혀 있습니다.<br>
+            <b class="seenmark">주황 줄이 그어진 글</b>
+            은 <b>[원고 열기]를 눌러 보기만 하고 아직 승인도 돌려보내기도 안 한 글</b>입니다.
+            승인하거나 돌려보내면 저절로 지워집니다. (내 화면에만 보입니다)
           </div>
           <div id="rvPosts"></div>
         </div>
@@ -884,6 +887,12 @@
               <label><input type="checkbox" class="rj" value="전화번호·주소가 틀렸습니다"> 전화번호 · 주소가 틀렸습니다</label>
               <label><input type="checkbox" class="rj" value="광고 표기가 빠졌습니다"> 광고 표기가 빠졌습니다</label>
               <label><input type="checkbox" class="rj" value="가보지 않았는데 가본 것처럼 썼습니다"> 가보지 않았는데 가본 것처럼 썼습니다</label>
+              <label><input type="checkbox" id="rjEtcOn"> <b>기타</b> <span class="mono">— 위에 없는 것은 직접 적어 주세요</span></label>
+            </div>
+            <div id="rjEtcBox" class="hide" style="margin-top:10px">
+              <label class="f">무엇을 고쳐야 하나요 <small>줄을 바꾸거나 쉼표로 나누면 여러 개로 갑니다</small></label>
+              <textarea class="inp" id="rjEtc" rows="2"
+                placeholder="예) 원장님 성함이 틀렸습니다&#10;예) 사진 순서가 글 내용과 안 맞습니다"></textarea>
             </div>
             <label class="f">더 할 말 (안 쓰셔도 됩니다)</label>
             <textarea class="inp" id="rjNote" placeholder="예: 세 번째 문단이 다른 분 글과 거의 같습니다"></textarea>
