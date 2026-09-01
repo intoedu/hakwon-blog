@@ -366,10 +366,13 @@
     var m = $('pwModal');
     if (!m) {
       m = document.createElement('div');
-      m.id = 'pwModal'; m.className = 'modal';
+      /* ⚠️ .modal/.mbox 라는 CSS 는 없습니다 — 그렇게 만들면 창이 뜨지 않고
+         화면 맨 아래에 그냥 붙습니다. 실제로 있는 것은 .ovl/.ovlcard 입니다. */
+      m.id = 'pwModal'; m.className = 'ovl hide';
       document.body.appendChild(m);
     }
-    m.innerHTML = '<div class="mbox" style="max-width:520px">'
+    m.innerHTML = '<div class="ovlcard" style="max-width:520px;'
+      + 'max-height:calc(100vh - 40px);overflow:auto">'
       + '<h3>' + esc(who.name) + ' 님의 새 비밀번호</h3>'
       + '<div class="note warn" style="margin:12px 0">'
       + '<b>이 창을 닫으면 다시 못 봅니다.</b> 저장해 두지 않기 때문입니다. '
@@ -381,7 +384,7 @@
       + '<div class="row" style="margin-top:16px">'
       + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '">📋 보낼 문구 복사</button>'
       + '<button class="btn" data-pwclose="1">닫았습니다</button></div></div>';
-    m.classList.add('on');
+    m.classList.remove('hide');
     m.dataset.who = who.id;
   }
 
@@ -1903,9 +1906,98 @@
     }
     var want = Math.max(1, Number($('kwN').value) || 100);
     var weeks = Math.max(1, Number($('kwW').value) || 4);
-    var picked = [];
-    if (want >= all.length) picked = all.slice();
+
+    /* ⚠️⚠️ 과목을 고르게 뽑습니다 (2026-09-01)
+       예전에는 만들어 둔 조합을 처음부터 끝까지 일정한 간격으로만 집었습니다.
+       그런데 걸러내기가 **과목마다 다른 개수**를 지웁니다 —
+       「중등국어논술」은 목적이 내신·학습코칭 둘뿐이고(영어학원·수학학원은 과목이 달라
+       빠집니다) 학년도 예비중·예비고 둘뿐이라, 살아남는 조합이 「전과목학습코칭」의
+       1/3밖에 안 됩니다. 간격으로 집으면 그 치우침이 그대로 남습니다.
+       실제로 국어 검색어가 거의 안 뽑혔고, 국어 소재를 맡을 제목이 없어
+       제목과 내용이 어긋난 글이 나왔습니다. */
+    var picked = [], shortOf = [];
+    var evenBox = $('kwEven'), even = !evenBox || evenBox.checked;
+    if (even) {
+      /* ⚠️ 「영어내신」과 「수능영어」는 서버에서 둘 다 **영어** 한 과목이 됩니다
+         (posts_generate → blog_subject_of). 소재와 사진도 그 과목으로 붙습니다.
+         그래서 균형은 반드시 **정리된 과목**으로 맞춰야 합니다 — 적어 넣은 낱말
+         그대로 맞추면 영어 낱말이 둘이라 영어만 두 배가 됩니다. */
+      var bySub = {}, subs = [];
+      all.forEach(function (p) {
+        var k = subjWord(p.subject) || p.subject || '(과목 없음)';
+        if (!bySub[k]) { bySub[k] = []; subs.push(k); }
+        bySub[k].push(p);
+      });
+      /* 몇 편씩 가져갈지 한 편씩 돌아가며 정합니다.
+         조합이 모자란 과목이 있으면 그만큼 다른 과목이 더 가져갑니다. */
+      var quota = {}, left = want, live = subs.slice();
+      subs.forEach(function (k) { quota[k] = 0; });
+      while (left > 0 && live.length) {
+        var before = left;
+        for (var qi = 0; qi < live.length && left > 0; qi++) {
+          if (quota[live[qi]] >= bySub[live[qi]].length) continue;
+          quota[live[qi]]++; left--;
+        }
+        live = live.filter(function (k) { return quota[k] < bySub[k].length; });
+        if (left === before) break;                 /* 더 뽑을 것이 없습니다 */
+      }
+      var fair = Math.ceil(want / subs.length);
+      var take = {};
+      subs.forEach(function (k) {
+        var pool = bySub[k], n = quota[k], out = [];
+        if (!n) out = [];
+        else if (n >= pool.length) out = pool.slice();
+        else {                                      /* 과목 안에서는 지역·학년·목적이 골고루 */
+          var st = pool.length / n;
+          for (var i2 = 0; i2 < n; i2++) out.push(pool[Math.floor(i2 * st)]);
+        }
+        take[k] = out;
+        if (pool.length < fair) shortOf.push(k + ' ' + pool.length + '개');
+      });
+      /* 과목을 번갈아 담습니다 — 글은 이 순서대로 배정되므로 주차마다 과목이 섞입니다 */
+      var idx = 0, more = true;
+      while (more) {
+        more = false;
+        for (var si = 0; si < subs.length; si++) {
+          if (idx < take[subs[si]].length) { picked.push(take[subs[si]][idx]); more = true; }
+        }
+        idx++;
+      }
+    } else if (want >= all.length) picked = all.slice();
     else { var step = all.length / want; for (var i = 0; i < want; i++) picked.push(all[Math.floor(i * step)]); }
+
+    /* 과목별로 몇 편이 됐는지 눈에 보이게 — 안 보여주면 또 모르고 넘어갑니다 */
+    (function () {
+      var box = $('kwBal'); if (!box) return;
+      var cnt = {}, order = [], raw = {};
+      picked.forEach(function (p) {
+        var k = subjWord(p.subject) || p.subject || '(과목 없음)';
+        if (!(k in cnt)) { cnt[k] = 0; raw[k] = {}; order.push(k); }
+        cnt[k]++; raw[k][p.subject] = (raw[k][p.subject] || 0) + 1;
+      });
+      order.sort(function (x, y) { return cnt[y] - cnt[x]; });
+      var most = cnt[order[0]] || 0, least = cnt[order[order.length - 1]] || 0;
+      var skew = most >= 3 && most >= least * 3;
+      box.innerHTML = '<div class="note' + (skew ? ' warn' : '') + '" style="margin-top:10px">'
+        + '<b>과목별로 몇 편</b> — '
+        + order.map(function (k) {
+            var rk = Object.keys(raw[k]);
+            return esc(k) + ' <b>' + cnt[k] + '편</b>'
+              + (rk.length > 1 || rk[0] !== k
+                  ? ' <span class="mono">(' + rk.map(function (r) {
+                      return esc(r) + ' ' + raw[k][r];
+                    }).join(' + ') + ')</span>' : '');
+          }).join(' · ')
+        + (shortOf.length
+            ? '<br><span class="mono">쓸 만한 조합이 모자란 과목 · ' + esc(shortOf.join(' · '))
+              + ' — 그 과목 지역·학년·목적을 더 넣으시면 늘어납니다</span>' : '')
+        + (skew
+            ? '<br><b style="color:var(--bad)">한 과목이 다른 과목의 3배가 넘습니다.</b> '
+              + '적은 과목의 소재를 맡을 제목이 모자라, 제목과 내용이 어긋난 글이 나올 수 있습니다.'
+            : '')
+        + '<br><span class="mono">이 개수가 「4 소재 넣기」의 과목별 소재 개수와 비슷해야 '
+        + '제목·내용·사진이 같은 과목으로 갑니다.</span></div>';
+    })();
 
     var per = Math.ceil(picked.length / weeks);
     KWDRAFT = picked.map(function (p, i) {
@@ -3144,10 +3236,11 @@
 
     var m = $('kwModal');
     if (!m) {
-      m = document.createElement('div'); m.id = 'kwModal'; m.className = 'modal';
+      m = document.createElement('div'); m.id = 'kwModal'; m.className = 'ovl hide';
       document.body.appendChild(m);
     }
-    m.innerHTML = '<div class="mbox" style="max-width:640px">'
+    m.innerHTML = '<div class="ovlcard" style="max-width:640px;'
+      + 'max-height:calc(100vh - 40px);overflow:auto">'
       + '<h3>검색어 고치기</h3>'
       + '<div class="mono" style="margin:4px 0 12px">'
       + esc(orderName(p.order_id)) + ' · ' + (b.name ? esc(b.name) + ' 님' : '아직 안 맡김')
@@ -3194,7 +3287,7 @@
       + '<button class="btn btn-p" data-kwsave="1">바꾸고 알리기</button>'
       + '<button class="btn" data-kwclose="1">닫기</button></div>'
       + '<div id="kwDone"></div></div>';
-    m.classList.add('on');
+    m.classList.remove('hide');
 
     var inp = $('kwNew');
     function paint() {
@@ -4284,7 +4377,7 @@
     if ((t = e.target.closest('[data-kwedit]'))) { openKwEdit(t.dataset.kwedit); return; }
     if ((t = e.target.closest('[data-kwclose]'))) {
       var km = $('kwModal');
-      if (km) { km.classList.remove('on'); km.innerHTML = ''; }
+      if (km) { km.classList.add('hide'); km.innerHTML = ''; }
       KW_POST = null; return;
     }
     /* ⚠️ 문구를 data- 속성에 통째로 넣지 않습니다 — 줄바꿈·따옴표가 섞인 긴 글입니다.
@@ -4333,7 +4426,7 @@
     }
 
     if ((t = e.target.closest('[data-pwclose]'))) {
-      $('pwModal').classList.remove('on'); $('pwModal').innerHTML = ''; return;
+      $('pwModal').classList.add('hide'); $('pwModal').innerHTML = ''; return;
     }
     if ((t = e.target.closest('[data-pwcopy]'))) {
       var mm = $('pwModal');
