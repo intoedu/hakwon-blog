@@ -3042,6 +3042,190 @@
     return !o || (o.track || 'blog') === 'blog';
   }
 
+  /* ══ ✏️ 검색어 고치기 ══
+     ⚠️ 왜 필요한가 — 소재가 과목을 안 보고 붙던 시절(8/28 이전)에 만들어진 글은
+     「제목은 국어인데 내용은 수학」인 채로 원고까지 나왔습니다. 다시 쓰게 하면
+     블로거만 억울합니다: 우리가 준 대로 썼고, 글 내용도 학원이 준 진짜 정보입니다.
+     제목(검색어)을 내용에 맞춰 바꿔 주면 그 글이 그대로 살아납니다. */
+  function topicOf(p) {
+    return ALLTOPICS.filter(function (x) { return x.id === p.topic_id; })[0] || null;
+  }
+  /* 제목의 과목과 내용(소재)의 과목이 어긋났나.
+     「공통」 소재는 어느 제목에나 붙어도 되므로 어긋남이 아닙니다. */
+  function subjBad(p) {
+    var t = topicOf(p);
+    if (!t || !t.subject || t.subject === '공통') return null;
+    if (!p.subject || p.subject === t.subject) return null;
+    return { post: p.subject, topic: t.subject, title: t.title };
+  }
+  function kwLive(p) { return ['published', 'verified', 'paid'].indexOf(p.status) >= 0; }
+
+  /* ⚠️⚠️ 아래 두 함수는 서버 blog_subject_of / blog_subject_from_keyword 와
+     **같은 규칙**이어야 합니다. 한쪽만 고치면 화면이 말하는 과목과 실제가 어긋납니다. */
+  function subjWord(w) {
+    w = String(w || '');
+    if (!w) return null;
+    if (w.indexOf('코칭') >= 0) return '학습코칭';
+    if (w.indexOf('영어') >= 0) return '영어';
+    if (w.indexOf('수학') >= 0) return '수학';
+    if (w.indexOf('국어') >= 0 || w.indexOf('논술') >= 0 || w.indexOf('문해') >= 0) return '국어';
+    return null;
+  }
+  /* 검색어는 「지역 학년 과목 목적」 순서 → 과목 자리(세 번째)를 먼저 봅니다.
+     ⚠️ 검색어 전체에서 낱말을 찾으면 「영어내신 학습코칭」이 학습코칭으로 잡힙니다. */
+  function subjOfKw(kw) {
+    var w = String(kw || '').trim().replace(/\s+/g, ' ').split(' ');
+    var ord = [2, 1, 3, 0];        /* 서버의 3·2·4·1번째 칸을 0부터 센 것 */
+    for (var i = 0; i < ord.length; i++) {
+      var s = subjWord(w[ord[i]]);
+      if (s) return s;
+    }
+    return null;
+  }
+  A.subjOfKw = subjOfKw;
+
+  /* 제목 칸에 붙는 것 — 과목 칩 · 고치기 단추 · 바뀐 기록 · 어긋남 경고 */
+  function kwCell(p) {
+    var bad = subjBad(p);
+    return (p.subject ? ' <span class="chip c-off">' + esc(p.subject) + '</span>' : '')
+      + (kwLive(p) ? '' : ' <button class="btn btn-s" data-kwedit="' + p.id
+          + '" title="이 글의 검색어(제목에 넣을 말)를 고칩니다">✏️</button>')
+      + (p.keyword_was
+          ? '<div class="mono" style="color:var(--wait)">제목 바꿈 · 예전 「'
+            + esc(p.keyword_was) + '」</div>' : '')
+      + (bad
+          ? '<div class="mono" style="color:var(--bad)">⚠️ 제목은 <b>' + esc(bad.post)
+            + '</b>인데 이 글이 다루는 내용은 <b>' + esc(bad.topic) + '</b>입니다</div>' : '');
+  }
+
+  /* 아직 안 올라간 글 중 제목과 내용이 어긋난 것을 검수 첫 화면에 모아 보여줍니다.
+     학원별로 들어가 보기 전에는 눈에 안 띄어서 그대로 검수를 통과하기 쉽습니다. */
+  function mismatchBox() {
+    var box = $('rvMismatch'); if (!box) return;
+    var bad = POSTS.filter(function (p) {
+      return isBlogPost(p) && !kwLive(p) && p.status !== 'cancelled' && subjBad(p);
+    });
+    if (!bad.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="msg err" style="margin:0 0 14px">'
+      + '<b>⚠️ 제목과 내용이 어긋난 글이 ' + bad.length + '편 있습니다.</b><br>'
+      + '제목은 한 과목을 파는데 글 내용은 다른 과목입니다. '
+      + '<b>다시 쓰게 하지 마세요</b> — 블로거는 우리가 준 대로 썼습니다. '
+      + '아래 <b>✏️</b> 를 눌러 <b>제목을 내용에 맞게</b> 바꿔 주시면 그 글이 그대로 살아납니다.'
+      + '<div class="tblbox tblscroll" style="margin-top:10px"><table>'
+      + '<thead><tr><th>학원</th><th>누가</th><th>지금 제목</th><th>실제 내용</th>'
+      + '<th>어디까지</th><th></th></tr></thead><tbody>'
+      + bad.map(function (p) {
+        var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
+        var d = subjBad(p);
+        return '<tr><td>' + esc(orderName(p.order_id)) + '</td>'
+          + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b>' : '<span class="mono">미배정</span>') + '</td>'
+          + '<td>' + esc(p.keyword || '') + ' <span class="chip c-off">' + esc(d.post) + '</span></td>'
+          + '<td><span class="chip c-wait">' + esc(d.topic) + '</span> '
+            + '<span class="mono">' + esc(d.title || '') + '</span></td>'
+          + '<td class="mono">' + (A.ST[p.status] ? A.ST[p.status][0] : esc(p.status)) + '</td>'
+          + '<td><button class="btn btn-p btn-s" data-kwedit="' + p.id + '">✏️ 제목 고치기</button></td>'
+          + '</tr>';
+      }).join('') + '</tbody></table></div></div>';
+  }
+
+  /* ── 고치는 창 ──
+     ⚠️ 소재(글 내용)는 여기서 안 바꿉니다. 이미 원고를 낸 글의 소재를 바꾸면
+     블로거가 쓴 내용과 지시가 어긋납니다. 서버도 pending·assigned 일 때만 소재를
+     다시 붙입니다. 이 창이 하는 일은 「제목을 내용에 맞추는 것」 하나입니다. */
+  var KW_POST = null;
+  function openKwEdit(pid) {
+    var p = POSTS.filter(function (x) { return x.id === pid; })[0];
+    if (!p) { A.toast('글을 찾을 수 없습니다'); return; }
+    if (kwLive(p)) { A.toast('이미 올라간 글은 제목을 바꿀 수 없습니다'); return; }
+    KW_POST = pid;
+    var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
+    var t = topicOf(p), bad = subjBad(p);
+    var wrote = ['submitted', 'rework', 'approved'].indexOf(p.status) >= 0;
+
+    var m = $('kwModal');
+    if (!m) {
+      m = document.createElement('div'); m.id = 'kwModal'; m.className = 'modal';
+      document.body.appendChild(m);
+    }
+    m.innerHTML = '<div class="mbox" style="max-width:640px">'
+      + '<h3>검색어 고치기</h3>'
+      + '<div class="mono" style="margin:4px 0 12px">'
+      + esc(orderName(p.order_id)) + ' · ' + (b.name ? esc(b.name) + ' 님' : '아직 안 맡김')
+      + ' · ' + esc((A.ST[p.status] || [p.status])[0]) + '</div>'
+
+      + (bad ? '<div class="msg err" style="margin-bottom:12px">'
+          + '<b>제목은 ' + esc(bad.post) + '인데 이 글이 다루는 내용은 '
+          + esc(bad.topic) + '입니다.</b><br>'
+          + '제목을 <b>' + esc(bad.topic) + '</b> 쪽으로 바꾸시면 글이 그대로 살아납니다.'
+          + '</div>' : '')
+
+      + '<dl class="kv">'
+      + '<dt>지금 제목</dt><dd><b>' + esc(p.keyword || '-') + '</b>'
+        + (p.subject ? ' <span class="chip c-off">' + esc(p.subject) + '</span>' : '') + '</dd>'
+      + '<dt>이 글이 다룰 내용</dt><dd>'
+        + (t ? esc(t.title || '')
+             + (t.subject ? ' <span class="chip c-wait">' + esc(t.subject) + '</span>' : '')
+           : '<span class="mono">소재가 안 붙어 있습니다</span>') + '</dd>'
+      + (p.keyword_was ? '<dt>예전 제목</dt><dd class="mono">' + esc(p.keyword_was) + '</dd>' : '')
+      + '</dl>'
+
+      + '<div class="fld" style="margin-top:14px"><label class="f">'
+        + '새 검색어 — 지역 · 학년 · 과목 · 목적 순서로 띄어 씁니다</label>'
+      + '<input class="inp" id="kwNew" value="' + esc(p.keyword || '') + '" '
+        + 'placeholder="이매동 예비중 중등국어논술 학습코칭" autocomplete="off">'
+      + '<div class="mono" id="kwNewSub" style="margin-top:6px"></div></div>'
+
+      + '<div class="fld"><label class="f">'
+        + '왜 바꾸는지 — 블로거에게 그대로 갑니다 (안 적으셔도 됩니다)</label>'
+      + '<input class="inp" id="kwWhy" autocomplete="off" '
+        + 'value="' + (bad ? '쓰신 내용이 ' + esc(bad.topic) + '이라 제목을 내용에 맞췄습니다.' : '') + '"></div>'
+
+      + '<div class="note' + (wrote ? '' : ' warn') + '" style="margin-top:12px">'
+      + (wrote
+          ? '이미 원고를 내신 글입니다. <b>글 내용과 소재는 그대로 둡니다.</b> '
+            + '블로거는 <b>제목 한 줄만</b> 고치면 됩니다.'
+          : '아직 원고가 안 온 글입니다. 과목이 바뀌면 <b>이 글이 다룰 내용(소재)도 '
+            + '새 과목에 맞춰 다시 붙습니다.</b>')
+      + (b.name ? ' 바꾸면 <b>' + esc(b.name) + '</b> 님에게 알림이 만들어집니다.'
+                : ' 아직 맡은 사람이 없어 알릴 곳은 없습니다.')
+      + '</div>'
+
+      + '<div class="row" style="margin-top:16px">'
+      + '<button class="btn btn-p" data-kwsave="1">바꾸고 알리기</button>'
+      + '<button class="btn" data-kwclose="1">닫기</button></div>'
+      + '<div id="kwDone"></div></div>';
+    m.classList.add('on');
+
+    var inp = $('kwNew');
+    function paint() {
+      var v = inp.value, sj = subjOfKw(v);
+      var same = t && t.subject && t.subject !== '공통' && sj && sj !== t.subject;
+      $('kwNewSub').innerHTML = !v.trim() ? ''
+        : '이 제목의 과목 · ' + (sj ? '<b>' + esc(sj) + '</b>' : '<b>모르겠음</b>')
+          + (t && t.subject ? ' / 글 내용 · <b>' + esc(t.subject) + '</b>' : '')
+          + (same ? ' <span style="color:var(--bad)">— 아직 안 맞습니다</span>'
+             : sj ? ' <span style="color:var(--ok)">— 맞습니다</span>' : '');
+    }
+    inp.oninput = paint; paint();
+    inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+  }
+
+  /* 바꾼 뒤 블로거에게 보낼 문구 — 우리는 카톡 자동발송을 못 하므로 복사만 해 드립니다 */
+  function kwMsg(r) {
+    return (r.blogger || '') + '님, 안녕하세요. ESC 학원지원센터입니다.\n'
+      + (r.academy || '') + ' 글의 검색어(제목에 넣을 말)를 바꿨습니다.\n\n'
+      + '· 예전 : ' + (r.was || '-') + '\n'
+      + '· 새로 : ' + (r.keyword || '') + '\n\n'
+      + (r.why ? r.why + '\n\n' : '')
+      + (['submitted', 'rework', 'approved'].indexOf(r.status) >= 0
+          ? '글 내용은 그대로 두셔도 됩니다. 쓰신 내용에 제목이 안 맞아서 제목 쪽을 고친 것입니다.\n'
+            + '원고 제목에서 예전 검색어만 새 검색어로 바꿔 주세요.\n'
+            + '다시 쓰실 필요는 없습니다.'
+          : '아직 안 쓰신 글입니다. 새 검색어로 써 주세요.'
+            + (r.topic_moved ? '\n이 글에서 다룰 이야기도 같이 바뀌었으니 센터에서 다시 확인해 주세요.' : ''))
+      + '\n\n' + (A.SIGN || 'ESC 이은총 드림');
+  }
+
   function renderReview() {
     var draft = POSTS.filter(function (p) { return p.status === 'submitted' && isBlogPost(p); });
     var live = POSTS.filter(function (p) { return p.status === 'published' && isBlogPost(p); });
@@ -3053,6 +3237,8 @@
     $('rvByHint').textContent = (A.MY_COMMS || []).length
       ? '보라색으로 칠해진 줄이 내가 맡은 공동체입니다'
       : (RV_BY === 'comm' ? '글을 쓴 사람의 공동체로 묶었습니다' : '');
+
+    mismatchBox();
 
     if (RV_BY === 'comm') { renderReviewByComm(draft); return; }
 
@@ -3223,7 +3409,7 @@
           : '<span class="mono">—</span>')) + '</td>'
       + '<td>' + (b.name ? '<b>' + esc(b.name) + '</b> ' + A.lvBadge(b.level || 1)
         : '<span class="mono">담당자 미정</span>') + '</td>'
-      + '<td><b>' + esc(p.keyword || '') + '</b>'
+      + '<td><b>' + esc(p.keyword || '') + '</b>' + kwCell(p)
       + (dim ? '<div style="margin-top:3px">' + A.stChip(p.status) + '</div>' : '') + '</td>'
       + '<td>' + stepChips(p) + '</td>'
       + '<td class="mono">' + (p.submitted_at ? A.fdate(p.submitted_at) : '아직') + '</td>'
@@ -3716,11 +3902,12 @@
     order_paid: '입금 확인', first_post: '첫 글 올라감', half: '절반 진행', order_done: '전부 완료',
     approved_post: '원고 통과', edu_summary: '교육 요약 올라옴', edu_ok: '교육 이수 확인',
     edu_no: '교육 요약 다시쓰기', photos_added: '학원이 사진 보냄', published: '올라간 글 확인',
-    info_changed: '학원 내용 바뀜'
+    info_changed: '학원 내용 바뀜', keyword_changed: '검색어 바뀜'
   };
   var KIND_OF = {
     blogger: ['assigned', 'due1', 'overdue', 'rework', 'approved_post', 'payout',
-      'approved', 'rejected', 'edu_wait', 'edu_ok', 'edu_no', 'info_changed', 'custom'],
+      'approved', 'rejected', 'edu_wait', 'edu_ok', 'edu_no', 'info_changed',
+      'keyword_changed', 'custom'],
     staff: ['submitted', 'edu_summary', 'overdue_admin', 'unpaid_order', 'unassigned',
       'academy_note', 'photos_added', 'custom'],
     academy: ['order_paid', 'first_post', 'half', 'order_done']
@@ -4093,6 +4280,58 @@
        ⚠️ 메일로 안 보냅니다: 도메인이 없어 메일이 스팸으로 가고, 가입 때 메일 인증을
        안 받았기 때문에 **실제로 못 받는 주소**로 가입한 분도 있습니다.
        알림과 같은 방식으로 관리자가 받아서 카톡으로 전해 주시면 됩니다. */
+    /* ── ✏️ 검색어 고치기 ── */
+    if ((t = e.target.closest('[data-kwedit]'))) { openKwEdit(t.dataset.kwedit); return; }
+    if ((t = e.target.closest('[data-kwclose]'))) {
+      var km = $('kwModal');
+      if (km) { km.classList.remove('on'); km.innerHTML = ''; }
+      KW_POST = null; return;
+    }
+    /* ⚠️ 문구를 data- 속성에 통째로 넣지 않습니다 — 줄바꿈·따옴표가 섞인 긴 글입니다.
+       비밀번호 초기화와 같은 방식으로, 누를 때 만들어 복사합니다. */
+    if ((t = e.target.closest('[data-kwcopy]'))) {
+      var kmm = $('kwModal'), kres = kmm && kmm._kwResult;
+      if (!kres) { A.toast('복사할 문구가 없습니다'); return; }
+      try { await navigator.clipboard.writeText(kwMsg(kres));
+        A.toast('문구를 복사했습니다'
+          + (kres.phone ? ' — ' + kres.phone + ' 으로 보내세요' : ' — 연락처가 없습니다'));
+      } catch (err) { A.toast('복사에 실패했습니다'); }
+      return;
+    }
+    if ((t = e.target.closest('[data-kwsave]'))) {
+      var kwv = ($('kwNew') || {}).value || '';
+      var kwy = (($('kwWhy') || {}).value || '').trim();
+      if (!kwv.trim()) { A.toast('새 검색어를 적어 주세요'); return; }
+      t.disabled = true; t.textContent = '바꾸는 중…';
+      try {
+        var kr = await A.rpc('post_set_keyword',
+          { p_post: KW_POST, p_keyword: kwv, p_subject: null, p_note: kwy || null }) || {};
+        kr.why = kwy;
+        var kmod = $('kwModal'); if (kmod) kmod._kwResult = kr;
+        await A.loadAdmin();
+        /* 창은 닫지 않습니다 — 여기서 보낼 문구를 복사하셔야 합니다 */
+        var box = $('kwDone');
+        if (box) box.innerHTML = '<div class="msg ok" style="margin-top:14px">'
+          + '<b>바꿨습니다.</b> ' + esc(kr.was || '') + ' → <b>' + esc(kr.keyword || '') + '</b>'
+          + (kr.subject ? ' <span class="chip c-off">' + esc(kr.subject) + '</span>' : '')
+          + (kr.topic_moved ? '<br>이 글이 다룰 내용(소재)도 새 과목에 맞춰 다시 붙였습니다.' : '')
+          + (kr.notified
+              ? '<br><b>블로거에게 알림이 만들어졌습니다.</b> 아직 자동으로 보내지지는 않습니다 — '
+                + '아래 문구를 복사해 카톡으로 전해 주세요.'
+                + '<div class="row" style="margin-top:10px">'
+                + '<button class="btn btn-p btn-s" data-kwcopy="1">📋 보낼 문구 복사</button></div>'
+              : '<br>아직 맡은 사람이 없어 알릴 곳은 없습니다.')
+          + '</div>';
+        var sv = document.querySelector('[data-kwsave]');
+        if (sv) sv.remove();
+        A.refreshReview && A.refreshReview();
+      } catch (err) {
+        A.toast('실패: ' + err.message);
+        t.disabled = false; t.textContent = '바꾸고 알리기';
+      }
+      return;
+    }
+
     if ((t = e.target.closest('[data-pwclose]'))) {
       $('pwModal').classList.remove('on'); $('pwModal').innerHTML = ''; return;
     }

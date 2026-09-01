@@ -274,6 +274,9 @@
         : p.status === 'rework' ? '고치러 가기' : '글 쓰러 가기';
       return '<div class="job' + (late ? ' due' : '') + '"><div>'
         + '<h4>' + esc(p.keyword || '') + '</h4>'
+        + (p.keyword_changed_at && p.keyword_was
+            ? '<div class="mono" style="color:var(--wait)">📌 제목이 바뀌었습니다 — '
+              + '들어가서 확인해 주세요</div>' : '')
         + '<div class="meta">' + esc(p.academy_name) + ' · ' + won(p.payout_rate) + '원 · '
         + (p.status === 'rework'
           ? '<b style="color:var(--bad)">다시 쓰기 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
@@ -690,6 +693,7 @@
       + (p.status === 'rework' ? '<div class="note bad" style="margin-bottom:12px"><b>고쳐야 할 것</b><br>'
         + (p.reject_reasons || []).map(function (r) { return '· ' + esc(r); }).join('<br>')
         + (p.review_note ? '<br><br>' + esc(p.review_note) : '') + '</div>' : '')
+      + kwChangedBox(p)
       + '<dl class="kv">'
       + '<dt>제목에 꼭 넣을 말</dt><dd><b>' + esc(p.keyword || '') + '</b></dd>'
       + '<dt>이 글이 다룰 것</dt><dd>' + esc(p.brief || '-') + '</dd>'
@@ -892,6 +896,25 @@
     };
     lockPreview();          /* 글을 넘겨봐도 계속 잠겨 있게 */
   }
+  /* ── 검색어가 바뀐 글 ──
+     관리자가 제목(검색어)을 내용에 맞게 고쳐 준 경우입니다. 여기서 눈에 띄게
+     알려 주지 않으면 예전 제목 그대로 올려 버립니다.
+     ⚠️ 이미 올린 글에는 안 보여 줍니다 — 그때는 알려 봐야 할 수 있는 일이 없습니다. */
+  function kwChangedBox(p) {
+    if (!p.keyword_changed_at || !p.keyword_was) return '';
+    if (['published', 'verified', 'paid'].indexOf(p.status) >= 0) return '';
+    var wrote = ['submitted', 'rework', 'approved'].indexOf(p.status) >= 0;
+    return '<div class="note warn" style="margin-bottom:12px">'
+      + '<b>📌 제목에 넣을 말(검색어)이 바뀌었습니다.</b><br>'
+      + '<span class="mono" style="text-decoration:line-through">' + esc(p.keyword_was) + '</span>'
+      + ' → <b>' + esc(p.keyword || '') + '</b><br>'
+      + (wrote
+          ? '<b>다시 쓰실 필요는 없습니다.</b> 쓰신 내용에 제목이 안 맞아서 제목 쪽을 '
+            + '내용에 맞춰 고친 것입니다. 원고 <b>제목 한 줄만</b> 새 검색어로 바꿔 주세요.'
+          : '아직 안 쓰신 글입니다. 아래 새 검색어로 써 주세요.')
+      + '</div>';
+  }
+
   /* 이 글에서 다룰 이야기 — 학원이 보낸 글감 중 이 글 몫만 보여줍니다.
      통째로 주면 50편이 서로 비슷해져 검색에서 통째로 밀립니다. */
   function topicBlock(p) {
