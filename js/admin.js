@@ -1763,6 +1763,68 @@
       + ' <button class="link" data-goassign="' + o.id + '">5번으로 가기 →</button></div>';
   }
 
+  /* ⚠️⚠️ 소재에 없는 학년으로 제목을 만들면 「고등 수능영어」인데 내용은 중1 이야기가 됩니다.
+     혼공기적학원이 실제로 그랬습니다 — 소재가 거의 다 중등인데 제목은 고등·수능을 팔았습니다.
+     **글을 만들기 전에** 여기서 잡아 줍니다. */
+  function stageWarn(picked) {
+    var oid = $('kwOrder').value;
+    var tps = ALLTOPICS.filter(function (t) { return t.order_id === oid; });
+    if (!tps.length || !picked.length) return '';
+
+    var have = {};                                  /* 소재가 가진 학년 */
+    tps.forEach(function (t) { have[t.stage || '공통'] = (have[t.stage || '공통'] || 0) + 1; });
+    var anyStage = !!(have['초'] || have['중'] || have['고']);
+    if (!anyStage) return '<div class="note" style="margin-top:10px">'
+      + '<b>소재에 학년이 안 적혀 있습니다.</b> 「4 소재 넣기」에서 소재마다 '
+      + '<b>초·중·고</b>를 골라 주시면, 제목의 학년까지 맞춰 드립니다.</div>';
+
+    /* ⚠️⚠️ 두 번 틀렸던 곳입니다.
+       ① 학년만 보면 「고등 소재가 수학뿐인데 고등 영어 제목」이 통과합니다.
+       ② 「공통」 과목 소재를 지원으로 세면 그것 **하나가 전부를 통과**시킵니다
+          (혼공기적은 공통 소재가 [위치·원스톱] 하나뿐인데 50편을 다 덮어 버렸습니다).
+       그래서 **과목이 정확히 같은 소재**만 지원으로 셉니다. */
+    function hasTopic(subj, want) {
+      return tps.some(function (t) {
+        if (subj && t.subject !== subj) return false;
+        return !t.stage || t.stage === '공통' || want.indexOf(t.stage) >= 0;
+      });
+    }
+    var bad = {}, nBad = 0;
+    picked.forEach(function (p) {
+      var w = String(p.kw).split(' ');
+      var g = stagesOfGrade(w[1]) || [], sb = stagesOfSubject(w[2]) || [];
+      var want = sb.length ? sb : g;
+      if (!want.length) return;
+      var subj = subjWord(p.subject) || null;
+      if (hasTopic(subj, want)) return;
+      var k = (subj || '전부') + ' ' + want.join('·') + '등';
+      (bad[k] = bad[k] || []).push(p.kw); nBad++;
+    });
+    var ks = Object.keys(bad);
+    if (!ks.length) return '';
+    /* 어떤 소재를 갖고 있는지 과목×학년으로 보여 줍니다 */
+    var grid = {};
+    function stgKo(x) { return !x || x === '공통' ? '학년 무관' : x + '등'; }
+    tps.forEach(function (t) {
+      var k = (t.subject || '과목 없음') + ' ' + stgKo(t.stage);
+      grid[k] = (grid[k] || 0) + 1;
+    });
+    return '<div class="msg err" style="margin-top:10px">'
+      + '<b>⚠️ 지금 있는 소재로는 쓸 수 없는 제목이 ' + nBad + '편 있습니다.</b><br>'
+      + '<b>가진 소재</b> — ' + Object.keys(grid).sort().map(function (k) {
+          return esc(k) + ' ' + grid[k] + '개';
+        }).join(' · ') + '<br>'
+      + '<b>맞는 소재가 없는 제목</b><br>'
+      + ks.map(function (k) {
+          return '· <b>' + esc(k) + '</b> 소재가 없는데 그런 제목이 ' + bad[k].length
+            + '편 — 예) ' + esc(bad[k][0]);
+        }).join('<br>')
+      + '<br><br>이대로 만들면 <b>제목은 고등인데 내용은 중학생 이야기</b>인 글이 나옵니다. '
+      + '학원에 그 소재를 더 받으시거나, <b>지역·학년·과목 칸에서 그것을 빼고</b> 다시 만드세요.<br>'
+      + '<span class="mono">「공통」 소재로 때울 수는 있지만, 공통 소재는 몇 개 안 되니 '
+      + '그 소재만 여러 번 쓰이게 됩니다 (유사문서 위험).</span></div>';
+  }
+
   /* 입금 전이면 글을 만들 수 없습니다 — 다 만들고 나서 알면 늦으니 미리 알려줍니다 */
   function kwPaidCheck() {
     var o = A.ORDERS.filter(function (x) { return x.id === $('kwOrder').value; })[0];
@@ -2035,7 +2097,8 @@
               + '적은 과목의 소재를 맡을 제목이 모자라, 제목과 내용이 어긋난 글이 나올 수 있습니다.'
             : '')
         + '<br><span class="mono">이 개수가 「4 소재 넣기」의 과목별 소재 개수와 비슷해야 '
-        + '제목·내용·사진이 같은 과목으로 갑니다.</span></div>';
+        + '제목·내용·사진이 같은 과목으로 갑니다.</span></div>'
+        + stageWarn(picked);
     })();
 
     var per = Math.ceil(picked.length / weeks);
@@ -2159,6 +2222,14 @@
           return '<option value="' + s + '"' + ((t.subject || '') === s ? ' selected' : '') + '>'
             + (s || '과목…') + '</option>';
         }).join('') + '</select>'
+        /* ⭐ 학년 — 이게 있어야 「고등 수능영어」 제목에 중1 이야기가 안 붙습니다 */
+        + '<select class="inp" data-tpstg="' + i + '" style="width:auto" '
+        + 'title="이 소재는 누구에게 하는 이야기인가 — 제목의 학년을 여기에 맞춥니다">'
+        + [['', '학년…'], ['공통', '학년 무관'], ['초', '초등 대상'],
+           ['중', '중등 대상'], ['고', '고등 대상']].map(function (s) {
+          return '<option value="' + s[0] + '"' + ((t.stage || '') === s[0] ? ' selected' : '') + '>'
+            + s[1] + '</option>';
+        }).join('') + '</select>'
         + '<button class="xdel" data-tpdel="' + i + '" title="지우기">×</button></div>'
         + '<textarea class="inp" data-tpb="' + i + '" rows="4" '
         + 'placeholder="블로거가 읽을 내용을 붙여넣으세요">' + esc(t.body || '') + '</textarea>'
@@ -2173,9 +2244,12 @@
       var ti = document.querySelector('[data-tpt="' + i + '"]');
       var bo = document.querySelector('[data-tpb="' + i + '"]');
       var su = document.querySelector('[data-tpsub="' + i + '"]');
+      var st = document.querySelector('[data-tpstg="' + i + '"]');
       var tg = document.querySelector('[data-tptag="' + i + '"]');
       out.push({ title: ti ? ti.value.trim() : '', body: bo ? bo.value.trim() : '',
                  subject: su ? su.value : (t.subject || ''),
+                 /* ⚠️ 안 보내면 서버가 지웁니다 (topics_set 은 지우고 다시 넣습니다) */
+                 stage: st ? st.value : (t.stage || ''),
                  tags: tg ? splitTags(tg.value) : (t.tags || []) });
     });
     return out;
@@ -3189,6 +3263,58 @@
     if (!p.subject || p.subject === t.subject) return null;
     return { post: p.subject, topic: t.subject, title: t.title };
   }
+
+  /* ══ 학년(학교급)도 맞아야 합니다 (2026-09-01 추가) ══
+     ⚠️⚠️ 8/28 에 **과목만** 맞추고 학년은 아무도 안 봤습니다. 그래서
+     「서현역 **고등 수능영어** 영어학원」인데 내용이
+     「초등 땐 잘하던 아이가 **중1 첫 시험**에서 무너지는 이유」인 글이 나왔습니다.
+     제목·내용·사진 셋이 다 맞아야 합니다.
+
+     ⭐ 「예비X」는 **두 급을 걸칩니다** — 지금은 X-1 이고 X 를 찾아 읽습니다.
+        예비중(초6) = 초·중 · 예비고(중3) = 중·고
+     ⚠️⚠️ 아래 셋은 서버 `blog_stages_of_grade` · `blog_stages_of_subject` ·
+     `blog_stage_mismatch` 와 **같은 규칙**이어야 합니다. 한쪽만 고치면 어긋납니다. */
+  function stagesOfGrade(w) {
+    w = String(w || '');
+    if (!w) return null;
+    if (w.indexOf('예비중') >= 0) return ['초', '중'];
+    if (w.indexOf('예비고') >= 0) return ['중', '고'];
+    if (/고등|고1|고2|고3|수능|정시|재수/.test(w)) return ['고'];
+    if (/중등|중1|중2|중3/.test(w))               return ['중'];
+    if (/초등|초1|초2|초3|초4|초5|초6/.test(w))   return ['초'];
+    return null;
+  }
+  /* 과목말이 못 박는 급. 「중등○○」은 중등생과 **예비중**이 함께 찾습니다 */
+  function stagesOfSubject(w) {
+    w = String(w || '');
+    if (!w) return null;
+    if (/수능|정시|고등/.test(w))    return ['고'];
+    if (/중등|중1|중2|중3/.test(w)) return ['초', '중'];
+    if (/초등/.test(w))             return ['초'];
+    return null;
+  }
+  function stageBad(kw, stage) {
+    if (!stage || stage === '공통') return null;
+    var w = String(kw || '').trim().replace(/\s+/g, ' ').split(' ');
+    if (w.length < 3) return null;
+    var g = stagesOfGrade(w[1]), sb = stagesOfSubject(w[2]);
+    /* 조사(는/은)가 낱말마다 달라지므로 「…」 뒤에 바로 붙이지 않습니다 */
+    if (sb && sb.indexOf(stage) < 0)
+      return '「' + w[2] + '」 제목은 ' + sb.join('·') + '등 이야기인데, 글 내용은 '
+        + stage + '등입니다';
+    if (g && g.indexOf(stage) < 0)
+      return '「' + w[1] + '」 제목은 ' + g.join('·') + '등이 읽는 글인데, 글 내용은 '
+        + stage + '등입니다';
+    return null;
+  }
+  A.stageBad = stageBad;
+  /* 이 글의 제목이 소재와 안 맞으면 왜 안 맞는지 */
+  function gradeBad(p) {
+    var t = topicOf(p);
+    if (!t) return null;
+    var why = stageBad(p.keyword, t.stage);
+    return why ? { why: why, title: t.title, stage: t.stage } : null;
+  }
   function kwLive(p) { return ['published', 'verified', 'paid'].indexOf(p.status) >= 0; }
 
   /* ⚠️⚠️ 아래 두 함수는 서버 blog_subject_of / blog_subject_from_keyword 와
@@ -3226,7 +3352,10 @@
             + esc(p.keyword_was) + '」</div>' : '')
       + (bad
           ? '<div class="mono" style="color:var(--bad)">⚠️ 제목은 <b>' + esc(bad.post)
-            + '</b>인데 이 글이 다루는 내용은 <b>' + esc(bad.topic) + '</b>입니다</div>' : '');
+            + '</b>인데 이 글이 다루는 내용은 <b>' + esc(bad.topic) + '</b>입니다</div>' : '')
+      + (function () { var gb = gradeBad(p);
+          return gb ? '<div class="mono" style="color:var(--bad)">⚠️ ' + esc(gb.why) + '</div>' : '';
+        })();
   }
 
   /* 아직 안 올라간 글 중 제목과 내용이 어긋난 것을 검수 첫 화면에 모아 보여줍니다.
@@ -3237,11 +3366,14 @@
       return isBlogPost(p) && !kwLive(p) && p.status !== 'cancelled';
     });
     var bad = live.filter(subjBad);
+    /* ⚠️ 과목은 맞는데 **학년**이 안 맞는 글 — 「고등 수능영어」인데 내용은 중1 이야기 */
+    var grd = live.filter(function (p) { return !subjBad(p) && gradeBad(p); })
+                  .map(function (p) { return { p: p, g: gradeBad(p) }; });
     /* ⚠️ 말 조합이 이상한 제목 — 「예비고 중등수학내신」처럼 학년과 과목이 반대인 것.
        제목이 이상하면 아무도 안 누르므로 글을 아무리 잘 써도 헛일입니다. */
     var odd = live.map(function (p) { return { p: p, why: A.badKeyword(p.keyword) }; })
                   .filter(function (x) { return x.why; });
-    if (!bad.length && !odd.length) { box.innerHTML = ''; return; }
+    if (!bad.length && !grd.length && !odd.length) { box.innerHTML = ''; return; }
 
     function tbl(rows, midHead, mid) {
       return '<div class="tblbox tblscroll" style="margin-top:10px"><table>'
@@ -3271,6 +3403,16 @@
             return '<span class="chip c-off">' + esc(d.post) + '</span> → '
               + '<span class="chip c-wait">' + esc(d.topic) + '</span> '
               + '<span class="mono">' + esc(d.title || '') + '</span>';
+          })
+        + '</div>' : '')
+      + (grd.length ? '<div class="msg err" style="margin:0 0 14px">'
+        + '<b>⚠️ 제목의 학년이 글 내용과 안 맞는 글이 ' + grd.length + '편 있습니다.</b><br>'
+        + '과목은 맞는데 <b>누구에게 하는 이야기인지</b>가 다릅니다. 예) 제목은 '
+        + '<b>「고등 수능영어」</b>인데 내용은 <b>「중1 첫 시험에서 무너지는 이유」</b>. '
+        + '고등학생 학부모가 눌러 들어와서 중학생 이야기를 보면 바로 나갑니다.'
+        + tbl(grd, '무엇이 안 맞나', function (r) {
+            return '<span style="color:var(--bad)"><b>' + esc(r.g.why) + '</b></span>'
+              + '<div class="mono">' + esc(r.g.title || '') + '</div>';
           })
         + '</div>' : '')
       + (odd.length ? '<div class="msg warn" style="margin:0 0 14px">'
@@ -3322,6 +3464,8 @@
       + '<dt>이 글이 다룰 내용</dt><dd>'
         + (t ? esc(t.title || '')
              + (t.subject ? ' <span class="chip c-wait">' + esc(t.subject) + '</span>' : '')
+             + (t.stage && t.stage !== '공통'
+                 ? ' <span class="chip c-wait">' + esc(t.stage) + '등 대상</span>' : '')
            : '<span class="mono">소재가 안 붙어 있습니다</span>') + '</dd>'
       + (p.keyword_was ? '<dt>예전 제목</dt><dd class="mono">' + esc(p.keyword_was) + '</dd>' : '')
       + '</dl>'
@@ -3360,11 +3504,14 @@
       /* ⚠️ 과목만 맞으면 되는 게 아닙니다 — 「예비고 중등국어논술」처럼 말 조합 자체가
          이상하면 아무도 안 누릅니다. 제가 9/1 오전에 고쳐 준 것 중에도 있었습니다. */
       var why = A.badKeyword(v);
+      var stg = t && t.stage ? stageBad(v, t.stage) : null;   /* 학년까지 봅니다 */
       $('kwNewSub').innerHTML = !v.trim() ? ''
         : '이 제목의 과목 · ' + (sj ? '<b>' + esc(sj) + '</b>' : '<b>모르겠음</b>')
-          + (t && t.subject ? ' / 글 내용 · <b>' + esc(t.subject) + '</b>' : '')
-          + (same ? ' <span style="color:var(--bad)">— 아직 안 맞습니다</span>'
-             : sj ? ' <span style="color:var(--ok)">— 맞습니다</span>' : '')
+          + (t && t.subject ? ' / 글 내용 · <b>' + esc(t.subject) + '</b>'
+              + (t.stage && t.stage !== '공통' ? ' <b>' + esc(t.stage) + '등</b>' : '') : '')
+          + (same ? ' <span style="color:var(--bad)">— 과목이 안 맞습니다</span>'
+             : sj ? ' <span style="color:var(--ok)">— 과목은 맞습니다</span>' : '')
+          + (stg ? '<div style="color:var(--bad);margin-top:4px">⚠️ ' + esc(stg) + '</div>' : '')
           + (why ? '<div style="color:var(--bad);margin-top:4px">'
                  + '⚠️ 말 조합이 이상합니다 — <b>' + esc(why) + '</b></div>'
                  : v.trim().split(/\s+/).length >= 3
@@ -4668,6 +4815,10 @@
       var kwv = ($('kwNew') || {}).value || '';
       var kwy = (($('kwWhy') || {}).value || '').trim();
       if (!kwv.trim()) { A.toast('새 검색어를 적어 주세요'); return; }
+      var kwTop = topicOf(POSTS.filter(function (x) { return x.id === KW_POST; })[0] || {});
+      var kwStg = kwTop && kwTop.stage ? stageBad(kwv, kwTop.stage) : null;
+      if (kwStg && !confirm('이 제목은 글 내용과 학년이 안 맞습니다.\n\n'
+          + '· ' + kwv.trim() + '\n· ' + kwStg + '\n\n그래도 이대로 쓰시겠습니까?')) return;
       var kwWhyBad = A.badKeyword(kwv);
       if (kwWhyBad && !confirm('이 제목은 말 조합이 이상합니다.\n\n'
           + '· ' + kwv.trim() + '\n· ' + kwWhyBad + '\n\n'
