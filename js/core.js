@@ -32,8 +32,15 @@ window.ESC = (function () {
     var d = new Date(s);
     return A.fdate(s) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   };
-  A.today = function () { return new Date().toISOString().slice(0, 10); };
-  A.thisMonth = function () { return new Date().toISOString().slice(0, 7); };
+  /* ⚠️⚠️ 「오늘」은 **한국 날짜**여야 합니다.
+     toISOString() 은 UTC 라서 **한국시간 오전 9시에** 날이 바뀝니다. 그래서
+     발행일이 오늘인 글도 오전 9시 전에는 「아직 그날이 아닙니다」로 막혔습니다
+     (2026-09-02 홍예원 님 신고). 서버도 같은 이유로 blog_today() 를 씁니다.
+     한국은 서머타임이 없어 UTC+9 로 고정해도 됩니다. */
+  A.KST = 9 * 3600000;
+  A.kstNow = function () { return new Date(Date.now() + A.KST); };
+  A.today = function () { return A.kstNow().toISOString().slice(0, 10); };
+  A.thisMonth = function () { return A.kstNow().toISOString().slice(0, 7); };
   A.dday = function (d) {
     if (!d) return null;
     return Math.round((new Date(d + 'T00:00:00') - new Date(A.today() + 'T00:00:00')) / 86400000);

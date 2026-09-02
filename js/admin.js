@@ -4022,7 +4022,7 @@
       (byDay[d] = byDay[d] || []).push({ p: p, up: up });
     });
 
-    var today = ymd(new Date()), out = [], upTot = 0, planTot = 0;
+    var today = A.today(), out = [], upTot = 0, planTot = 0;   /* 한국 날짜 */
     for (var m = new Date(rg.from); m <= rg.to; m.setMonth(m.getMonth() + 1)) {
       var y = m.getFullYear(), mo = m.getMonth();
       var first = new Date(y, mo, 1), last = new Date(y, mo + 1, 0);
