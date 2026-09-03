@@ -4714,9 +4714,9 @@
     { t: '블로그 센터 (여기)', d: '블로거·검수자·관리자가 로그인해서 들어오는 곳입니다.',
       u: function () { return baseUrl(); }, who: '승인된 블로거·직원에게' },
     { t: 'ESC 홈페이지', d: '학원이 의뢰를 넣는 곳입니다. 블로그 홍보 신청도 여기서 받습니다.',
-      u: function () { return 'https://intoedu.github.io/hakwon-support/'; }, who: '학원에게' },
+      u: function () { return 'https://intomarketing.co.kr/hakwon/'; }, who: '학원에게' },
     { t: 'ESC 관리자 (의뢰 관리)', d: '인력·컨텐츠·마케팅 의뢰를 관리하고, 직원 권한을 주는 곳입니다.',
-      u: function () { return 'https://intoedu.github.io/hakwon-support/admin.html'; }, who: 'ESC 직원만' }
+      u: function () { return 'https://intomarketing.co.kr/hakwon/admin.html'; }, who: 'ESC 직원만' }
   ];
 
   function linkRow(title, desc, url, who, extra) {
@@ -5703,7 +5703,7 @@
   ['goEscStaff', 'goEscStaff2'].forEach(function (id) {
     var b = $(id);
     if (b) b.onclick = function () {
-      window.open('https://intoedu.github.io/hakwon-support/admin.html#staff', '_blank', 'noopener');
+      window.open('https://intomarketing.co.kr/hakwon/admin.html#staff', '_blank', 'noopener');
     };
   });
 
