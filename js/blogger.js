@@ -124,6 +124,11 @@
     ATT = await A.sel('training_attendance');
     PAY = await A.sel('blog_payouts', { order: 'month', asc: false });
     NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
+    /* 관리자가 만들어 준 임시 비밀번호를 아직 쓰고 있는지 (my_account 는 본인 것만 보입니다) */
+    try {
+      var acc = await A.sel('my_account');
+      A.PW_TEMP = !!(acc && acc[0] && acc[0].pw_temp_at);
+    } catch (e) { A.PW_TEMP = false; }
     applyTrack();
     renderInbox(); renderEdu(); renderWork(); renderPay();
   };
@@ -227,6 +232,18 @@
       s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 ' + W.what)
       + s(A.ME.level + '단계', '내 단계 (' + rateLabel(lv) + ')')
       + s(won(monthDone.reduce(function (a, p) { return a + (p.payout_rate || 0); }, 0)), '이번 달 받을 돈 (원)');
+
+    /* ⚠️ 임시 비밀번호는 카톡 대화방에 그대로 남아 있습니다. 본인 것으로 바꾸게 띄웁니다.
+       막지는 않습니다 — 급한 일은 그대로 하실 수 있어야 합니다. */
+    var pw = $('pwWarn');
+    if (pw) pw.innerHTML = (A.PW_TEMP && !PREVIEW)
+      ? '<div class="note warn" style="margin-bottom:18px">'
+        + '<b>🔑 비밀번호를 바꿔 주세요.</b> 지금 쓰시는 것은 담당자가 만들어 드린 '
+        + '임시 비밀번호입니다. <b>카톡에 그대로 남아 있어</b> 다른 사람이 볼 수 있습니다.'
+        + '<div class="row" style="margin-top:10px">'
+        + '<button class="btn btn-p btn-s" data-pwme="1">🔑 지금 바꾸기</button>'
+        + '<span class="mono">1분이면 됩니다</span></div></div>'
+      : '';
 
     $('bGate').innerHTML = r.ok ? '' :
       '<div class="note warn" style="margin-bottom:18px"><b>아직 '

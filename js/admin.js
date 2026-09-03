@@ -381,6 +381,9 @@
       + 'text-align:center;padding:16px;background:var(--surface-2);border-radius:10px;'
       + 'border:1px solid var(--line);user-select:all">' + esc(pw) + '</div>'
       + '<div class="mono" style="margin-top:10px">아이디(이메일) · ' + esc(who.email || '-') + '</div>'
+      + '<div class="note" style="margin-top:10px">본인이 들어가서 <b>[🔑 비밀번호 바꾸기]</b>로 '
+      + '바꿀 때까지, 이 비밀번호가 카톡 대화방에 남습니다. '
+      + '들어오시면 <b>바꾸라는 안내가 뜹니다.</b></div>'
       + '<div class="row" style="margin-top:16px">'
       + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '">📋 보낼 문구 복사</button>'
       + '<button class="btn" data-pwclose="1">닫았습니다</button></div></div>';
@@ -4952,8 +4955,9 @@
         + '들어가는 곳 : ' + location.origin + location.pathname.replace(/[^/]*$/, '') + '\n'
         + '아이디 : ' + (w2.email || '') + '\n'
         + '비밀번호 : ' + t.dataset.pwcopy + '\n\n'
-        + '이 비밀번호는 블로그 센터에서만 씁니다. 메일 비밀번호가 아닙니다.\n'
-        + '들어가신 뒤에는 다른 분이 보지 못하게 이 메시지를 지워 주세요.'
+        + '이 비밀번호는 블로그 센터에서만 씁니다. 메일 비밀번호가 아닙니다.\n\n'
+        + '⚠️ 들어가시면 왼쪽 아래 [🔑 비밀번호 바꾸기]로 본인만 아는 것으로 바꿔 주세요.\n'
+        + '그다음 이 메시지를 지워 주세요. 여기 적힌 비밀번호가 대화방에 계속 남습니다.'
         + '\n\n' + (A.SIGN || 'ESC 이은총 드림');
       navigator.clipboard.writeText(msg2).then(function () {
         A.toast('문구를 복사했습니다 — ' + (w2.phone || '연락처 없음') + ' 으로 보내세요');

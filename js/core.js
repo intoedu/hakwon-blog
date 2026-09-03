@@ -453,6 +453,63 @@ window.ESC = (function () {
     window.scrollTo(0, 0);
   };
 
+  /* ══ 🔑 내 비밀번호 바꾸기 ══
+     실제 변경은 supabase auth.updateUser 가 합니다 — **본인 것만** 바꿀 수 있게
+     Supabase 가 막아 주므로 서버에 따로 만들 것이 없습니다.
+     ⚠️ 창은 `.ovl`/`.ovlcard` 를 씁니다. `.modal`/`.mbox` 라는 CSS 는 없습니다
+        (있는 줄 알고 만들었다가 창이 화면 맨 아래에 붙은 적이 있습니다). */
+  A.pwBoxClose = function () {
+    var m = A.$('pwMe');
+    if (m) { m.classList.add('hide'); m.innerHTML = ''; }
+  };
+  A.pwBox = function () {
+    var m = A.$('pwMe');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'pwMe'; m.className = 'ovl hide';
+      document.body.appendChild(m);
+    }
+    var temp = A.PW_TEMP;          /* 관리자가 만들어 준 비밀번호를 쓰는 중인가 */
+    m.innerHTML = '<div class="ovlcard" style="max-width:460px;'
+      + 'max-height:calc(100vh - 40px);overflow:auto">'
+      + '<h3>비밀번호 바꾸기</h3>'
+      + (temp
+          ? '<div class="msg warn" style="margin:12px 0">'
+            + '<b>지금 쓰시는 비밀번호는 담당자가 만들어 드린 것입니다.</b><br>'
+            + '카톡에 그 비밀번호가 그대로 남아 있습니다. '
+            + '<b>본인만 아는 것으로 바꿔 주세요.</b></div>'
+          : '<div class="lead" style="margin:10px 0 14px">'
+            + '이 비밀번호는 <b>블로그 센터에서만</b> 씁니다. 메일 비밀번호가 아닙니다.</div>')
+      + '<div class="fld"><label class="f">새 비밀번호 (6자 이상)</label>'
+      + '<input class="inp" id="pwMe1" type="password" autocomplete="new-password"></div>'
+      + '<div class="fld"><label class="f">한 번 더</label>'
+      + '<input class="inp" id="pwMe2" type="password" autocomplete="new-password"></div>'
+      + '<div id="pwMeMsg"></div>'
+      + '<div class="row" style="margin-top:6px">'
+      + '<button class="btn btn-p" data-pwmesave="1">바꾸기</button>'
+      + '<button class="btn" data-pwmeclose="1">닫기</button></div></div>';
+    m.classList.remove('hide');
+    var i = A.$('pwMe1'); if (i) i.focus();
+  };
+  A.pwBoxSave = async function (btn) {
+    var p1 = (A.$('pwMe1') || {}).value || '', p2 = (A.$('pwMe2') || {}).value || '';
+    if (p1.length < 6) { A.msg('pwMeMsg', '비밀번호는 6자 이상으로 해 주세요.'); return; }
+    if (p1 !== p2)     { A.msg('pwMeMsg', '두 칸이 서로 다릅니다.'); return; }
+    btn.disabled = true;
+    var r = await A.sb.auth.updateUser({ password: p1 });
+    if (r.error) {
+      A.msg('pwMeMsg', '바꾸지 못했습니다 — ' + r.error.message);
+      btn.disabled = false; return;
+    }
+    /* 「임시 비밀번호를 쓰는 중」 표시를 지웁니다. 실패해도 비밀번호는 이미 바뀌었으니
+       막지 않습니다 — 여기서 오류를 내면 「실패한 줄 알고」 또 바꾸게 됩니다. */
+    try { await A.sb.rpc('blogger_pw_changed'); } catch (e) {}
+    A.PW_TEMP = false;
+    A.pwBoxClose();
+    A.toast('비밀번호를 바꿨습니다. 다음부터 새 비밀번호로 들어오세요');
+    var w = A.$('pwWarn'); if (w) w.innerHTML = '';
+  };
+
   /* ── 공통 클릭 ── */
   document.addEventListener('click', async function (e) {
     var g = e.target.closest('[data-gate]');
@@ -460,6 +517,15 @@ window.ESC = (function () {
 
     var out = e.target.closest('[data-out]');
     if (out) { await A.sb.auth.signOut(); location.hash = ''; location.reload(); return; }
+
+    /* ── 🔑 스스로 비밀번호 바꾸기 ──
+       ⚠️ 그동안 이게 없었습니다. 잊어버리면 관리자가 임시 비밀번호를 만들어
+       **카톡으로** 보내 줬는데, 본인이 바꿀 방법이 없어 그 비밀번호를 영영 썼습니다.
+       카톡 대화방에 비밀번호가 그대로 남아 있는 셈입니다.
+       블로거·검수자·관리자가 같은 로그인을 쓰므로 여기 한 곳이면 다 됩니다. */
+    if (e.target.closest('[data-pwme]')) { A.pwBox(); return; }
+    if (e.target.closest('[data-pwmeclose]')) { A.pwBoxClose(); return; }
+    if (e.target.closest('[data-pwmesave]')) { await A.pwBoxSave(e.target.closest('[data-pwmesave]')); return; }
 
     var vb = e.target.closest('[data-view-btn]');
     if (vb) { A.applyView(vb.dataset.viewBtn); return; }
