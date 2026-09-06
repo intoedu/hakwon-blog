@@ -117,13 +117,20 @@
 
   A.loadBlogger = async function () {
     PREVIEW = false;
+    /* 🔴 반드시 내 것만 골라 읽습니다.
+       검수자·관리자를 **병행하는 블로거**는 표를 통째로 읽을 권한이 있어서,
+       거르지 않으면 남의 교육 이수·참석·정산·알림이 자기 것처럼 보입니다.
+       (2026-09-06 실제로 그렇게 보였습니다 — 남이 이수한 영상이 「이수 완료」로 떴습니다)
+       평범한 블로거는 어차피 자기 것만 보이므로 걸러도 결과가 같습니다. */
+    var meId = (A.SESSION && A.SESSION.user) ? A.SESSION.user.id : null;
     ALL_MY = await A.sel('my_posts', { order: 'due_date' });
     ALL_SESS = await A.sel('training_sessions', { order: 'held_at' });
     ALL_MATS = await A.sel('training_materials_public', { order: 'sort' });
-    MINE = await A.sel('training_progress');
-    ATT = await A.sel('training_attendance');
-    PAY = await A.sel('blog_payouts', { order: 'month', asc: false });
-    NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
+    MINE = await A.sel('training_progress',   { eq: { blogger_id: meId } });
+    ATT = await A.sel('training_attendance',  { eq: { blogger_id: meId } });
+    PAY = await A.sel('blog_payouts',   { eq: { blogger_id: meId }, order: 'month', asc: false });
+    NOTI = await A.sel('notifications',
+      { eq: { blogger_id: meId, audience: 'blogger' }, order: 'created_at', asc: false });
     /* 관리자가 만들어 준 임시 비밀번호를 아직 쓰고 있는지 (my_account 는 본인 것만 보입니다) */
     try {
       var acc = await A.sel('my_account');
