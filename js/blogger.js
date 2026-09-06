@@ -777,6 +777,16 @@
         + '<label class="row" style="gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">'
         + '<input type="checkbox" id="docShared"> '
         + '<span><b>공유 설정을 “링크가 있는 모든 사용자”로 바꿨습니다</b></span></label>'
+        /* ⭐ 모자이크는 예민한 문제라 두 번 짚습니다 —
+              여기서 「알고 있다」, 올릴 때 「가렸다」. 원고 단계에서 미리 알아야
+              사진을 다시 찍거나 고르는 수고를 덜 수 있습니다. */
+        + '<div class="note warn" style="margin-top:10px">'
+        + '<b>블로그에 올리실 때 사진 속 사람 얼굴은 반드시 가려야 합니다.</b><br>'
+        + '학생과 학부모의 얼굴입니다. 모자이크나 블러로 알아볼 수 없게 해 주세요.<br>'
+        + '<b>지금이 아니라 올릴 때</b> 하시면 되지만, 미리 아셔야 사진 고르기가 편합니다.</div>'
+        + '<label class="row" style="gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">'
+        + '<input type="checkbox" id="faceKnow"> '
+        + '<span><b>올릴 때 사람 얼굴을 가려야 한다는 것을 알고 있습니다</b></span></label>'
         + '<div style="margin-top:12px"><label class="f">남길 말 (안 쓰셔도 됩니다)</label>'
         + '<input class="inp" id="docMemo" value="' + esc(p.memo || '') + '"></div>'
         + '<div class="row" style="margin-top:14px"><button class="btn btn-a" id="btnSubmit">원고 내기</button>'
@@ -895,9 +905,21 @@
         $('docShared').closest('label').style.color = 'var(--bad)';
         return;
       }
+      /* ⚠️ 서버도 막습니다 — 여기서 먼저 잡아야 「왜 안 되지」를 안 겪습니다 */
+      if (!$('faceKnow') || !$('faceKnow').checked) {
+        A.toast('얼굴을 가려야 한다는 것을 확인하고 체크해 주세요');
+        if ($('faceKnow')) {
+          $('faceKnow').closest('label').style.color = 'var(--bad)';
+          $('faceKnow').closest('label').scrollIntoView({ block: 'center' });
+        }
+        return;
+      }
       this.disabled = true;
       try {
-        await A.rpc('post_submit', { p_post: p.id, p_url: u, p_memo: $('docMemo').value.trim() || null });
+        await A.rpc('post_submit', {
+          p_post: p.id, p_url: u, p_memo: $('docMemo').value.trim() || null,
+          p_face_known: true
+        });
         A.toast('냈습니다. 하루 안에 결과를 알려드립니다');
         await A.loadBlogger(); A.show('b-inbox');
       } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }

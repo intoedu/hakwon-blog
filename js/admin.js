@@ -875,7 +875,11 @@
     ATT = await A.sel('training_attendance');
     ALLPROG = await A.sel('training_progress');
     SESSIONS = ALLSESS; MATS = ALLMATS; TPROG = ALLPROG;   /* 예전 코드가 쓰는 이름 */
+    /* 직원 교육은 요약이 아니라 「봤습니다」 한 줄로 기록됩니다 */
+    try { SFSEEN = await A.sel('staff_training_seen'); }
+    catch (e) { SFSEEN = []; console.warn('직원 교육 기록', e.message); }
   };
+  var SFSEEN = [];
 
   async function loadEdu() {
     await A.loadTraining();
@@ -896,6 +900,67 @@
                          prog: 'eduProgress',   att: 'eduAtt' });
     paintEdu('review', { sess: 'rvEduSessions', mats: 'rvEduMaterials', sum: 'rvEduSummaries',
                          prog: 'rvEduProgress', att: 'rvEduAtt' });
+    paintStaffEdu();
+  }
+
+  /* ═══ 직원(검수자·관리자) 교육 ═══
+     블로거 교육과 같은 표(training_materials)를 쓰되 track='staff' 입니다.
+     ⚠️ 요약·검수가 없습니다 — 직원 요약을 읽어 줄 사람이 없어서
+        「봤습니다」 한 줄만 남깁니다. 안 본 사람이 누구인지는 다 보입니다. */
+  function myStaffId() {
+    return A.SESSION && A.SESSION.user ? A.SESSION.user.id : null;
+  }
+  function paintStaffEdu() {
+    var box = $('sfEduMats'); if (!box) return;
+    var MS = ALLMATS.filter(function (x) { return x.track === 'staff'; });
+    var me = myStaffId();
+
+    if ($('sfEduAdd')) $('sfEduAdd').classList.toggle('hide', !A.IS_ADMIN);
+
+    box.innerHTML = MS.length ? MS.map(function (m) {
+      var seen = SFSEEN.filter(function (x) {
+        return x.material_id === m.id && x.staff_id === me;
+      })[0];
+      return '<div class="card" style="margin-bottom:10px">'
+        + '<div class="row" style="gap:12px;align-items:flex-start;justify-content:space-between">'
+        + '<div style="flex:1;min-width:200px">'
+        + '<b style="font-size:14.5px">' + esc(m.title) + '</b>'
+        + (m.minutes ? ' <span class="mono">' + m.minutes + '분</span>' : '')
+        + '<div style="margin-top:8px" class="row">'
+        + '<a class="btn btn-s" href="' + esc(m.url) + '" target="_blank" rel="noopener">영상 열기 ↗</a>'
+        + (A.IS_ADMIN ? '<button class="btn btn-s" data-delsfmat="' + m.id + '">지우기</button>' : '')
+        + '</div></div>'
+        + '<div style="min-width:150px;text-align:right">'
+        + (seen
+          ? '<span class="chip c-ok">봤습니다</span><br>'
+            + '<button class="btn btn-s" style="margin-top:6px" data-unseen="' + m.id + '">취소</button>'
+          : '<button class="btn btn-a" data-seen="' + m.id + '">봤습니다</button>')
+        + '</div></div></div>';
+    }).join('') : '<div class="note">아직 올린 자료가 없습니다.</div>';
+
+    /* 누가 어디까지 — 최고관리자가 「아직 안 본 사람」을 부를 수 있어야 합니다 */
+    var who = $('sfEduWho'); if (!who) return;
+    var people = (A.BLOGSTAFF || []);
+    who.innerHTML = (!MS.length || !people.length)
+      ? '<div class="note">자료나 직원이 없습니다.</div>'
+      : '<div class="tblbox tblscroll"><table><thead><tr><th>직원</th><th>맡은 일</th>'
+        + MS.map(function (m) { return '<th>' + esc(m.title.slice(0, 14)) + '</th>'; }).join('')
+        + '<th>본 것</th></tr></thead><tbody>'
+        + people.map(function (st) {
+          var n = 0;
+          var tds = MS.map(function (m) {
+            var ok = SFSEEN.some(function (x) {
+              return x.material_id === m.id && x.staff_id === st.id;
+            });
+            if (ok) n++;
+            return '<td>' + (ok ? '✔' : '<span class="mono">–</span>') + '</td>';
+          }).join('');
+          return '<tr><td><b>' + esc(st.name) + '</b></td>'
+            + '<td class="mono">' + esc(st.blogRole) + '</td>' + tds
+            + '<td>' + (n === MS.length
+                ? '<span class="chip c-ok">다 봤습니다</span>'
+                : '<b>' + n + '</b> / ' + MS.length) + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
   }
   function paintEdu(TK, ID) {
     if (!$(ID.sess)) return;
@@ -5484,6 +5549,32 @@
       await A.sb.from('training_materials').delete().eq('id', t.dataset.delmat);
       A.toast('지웠습니다'); await loadEdu(); return;
     }
+    /* ── 직원 교육 ── */
+    if ((t = e.target.closest('[data-delsfmat]'))) {
+      if (!confirm('이 직원 교육 자료를 지울까요?\n본 기록도 같이 지워집니다.')) return;
+      var dr = await A.sb.from('training_materials').delete().eq('id', t.dataset.delsfmat);
+      if (dr.error) { A.toast('지우기 실패: ' + dr.error.message); return; }
+      A.toast('지웠습니다'); await loadEdu(); return;
+    }
+    if ((t = e.target.closest('[data-seen]'))) {
+      var mid = t.dataset.seen, sid = myStaffId();
+      if (!sid) { A.toast('로그인 정보를 못 찾았습니다'); return; }
+      t.disabled = true;
+      var ir = await A.sb.from('staff_training_seen')
+        .insert({ staff_id: sid, material_id: mid });
+      t.disabled = false;
+      if (ir.error) { A.toast('실패: ' + ir.error.message); return; }
+      A.toast('봤다고 남겼습니다'); await loadEdu(); return;
+    }
+    if ((t = e.target.closest('[data-unseen]'))) {
+      var mid2 = t.dataset.unseen, sid2 = myStaffId();
+      t.disabled = true;
+      var xr = await A.sb.from('staff_training_seen')
+        .delete().eq('staff_id', sid2).eq('material_id', mid2);
+      t.disabled = false;
+      if (xr.error) { A.toast('실패: ' + xr.error.message); return; }
+      A.toast('취소했습니다'); await loadEdu(); return;
+    }
     if ((t = e.target.closest('[data-sumok]')) || (t = e.target.closest('[data-sumno]'))) {
       var ok = !!t.dataset.sumok, k = (t.dataset.sumok || t.dataset.sumno).split('|');
       var nt = document.querySelector('[data-sumnote="' + (t.dataset.sumok || t.dataset.sumno) + '"]');
@@ -5635,6 +5726,23 @@
     this.disabled = false;
     if (r.error) { A.toast('추가 실패: ' + r.error.message); return; }
     $('nm_title').value = ''; $('nm_url').value = ''; $('nm_q').value = ''; $('nm_chars').value = '';
+    A.toast('자료를 올렸습니다'); await loadEdu();
+  };
+
+  /* 직원 교육 자료 올리기 — 같은 표에 track 만 'staff' 로 넣습니다.
+     ⚠️ 요약을 안 받으므로 min_chars·확인질문은 안 씁니다. 필수도 뜻이 없어 false 입니다. */
+  if ($('btnAddSfMat')) $('btnAddSfMat').onclick = async function () {
+    var title = $('sm_title').value.trim(), url = $('sm_url').value.trim();
+    if (!title || !url) { A.toast('제목과 주소를 넣어 주세요'); return; }
+    this.disabled = true;
+    var r = await A.sb.from('training_materials').insert({
+      title: title, url: url, minutes: Number($('sm_min').value) || null,
+      required: false, track: 'staff',
+      sort: ALLMATS.filter(function (x) { return x.track === 'staff'; }).length
+    }).select();
+    this.disabled = false;
+    if (r.error) { A.toast('추가 실패: ' + r.error.message); return; }
+    $('sm_title').value = ''; $('sm_url').value = ''; $('sm_min').value = '';
     A.toast('자료를 올렸습니다'); await loadEdu();
   };
 

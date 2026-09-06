@@ -168,6 +168,7 @@
       <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
       <div class="navlbl">챙길 것</div>
       <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
+      <button class="nav" data-go="s-edu">📚 직원 교육</button>
       <button class="nav" data-go="links">🔗 주소 모음</button>
     </div>
 
@@ -177,6 +178,7 @@
       <button class="nav" data-tk="review" data-go="r-check">올라왔는지 확인</button>
       <button class="nav" data-go="posts">진행 현황 보기</button>
       <button class="nav" data-go="r-pay">내 검수 정산</button>
+      <button class="nav" data-go="s-edu">📚 직원 교육</button>
       <button class="nav" data-go="noti">🔔 챙길 것</button>
     </div>
 
@@ -317,6 +319,37 @@
           <button class="btn btn-s" id="goEscStaff2" style="margin-left:6px">ESC 관리자 열기 ↗</button>
         </div>
       </div>
+    </section>
+
+    <!-- 직원(검수자·관리자) 교육 — 블로거 교육과 다른 자리입니다 -->
+    <section class="screen" data-screen="s-edu">
+      <div class="head"><div class="step-of">챙길 것</div>
+        <h1>직원 교육</h1>
+        <p>검수자·관리자가 볼 영상입니다. <b>블로거에게는 안 보입니다.</b></p></div>
+
+      <div class="note ok">
+        <b>여기는 요약을 안 받습니다.</b> 블로거 교육은 요약을 내고 누군가 읽어야 이수가 되지만,
+        직원 교육은 <b>봤다고 남기는 것</b>으로 끝납니다. 서로 검수할 사람이 없기 때문입니다.<br>
+        대신 <b>누가 아직 안 봤는지</b>는 아래에서 다 보입니다.
+      </div>
+
+      <div class="sec">볼 영상</div>
+      <div id="sfEduMats"></div>
+
+      <div class="card hide" id="sfEduAdd" style="margin-top:12px">
+        <div class="row">
+          <input class="inp" id="sm_title" style="width:auto;flex:1;min-width:140px" placeholder="자료 제목">
+          <input class="inp" id="sm_url" style="width:auto;flex:1;min-width:160px" placeholder="유튜브 주소">
+          <input class="inp" id="sm_min" type="number" style="width:90px" placeholder="분">
+          <button class="btn btn-p" id="btnAddSfMat">자료 올리기</button>
+        </div>
+        <div class="mono" style="margin-top:8px">
+          유튜브에 <b>일부공개</b>로 올리고 주소를 붙여넣으세요. 자료 올리기는 관리자만 됩니다.
+        </div>
+      </div>
+
+      <div class="sec">누가 어디까지 봤나</div>
+      <div id="sfEduWho"></div>
     </section>
 
     <!-- 2 블로거 교육 -->
