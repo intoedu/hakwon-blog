@@ -381,9 +381,14 @@
       + 'text-align:center;padding:16px;background:var(--surface-2);border-radius:10px;'
       + 'border:1px solid var(--line);user-select:all">' + esc(pw) + '</div>'
       + '<div class="mono" style="margin-top:10px">아이디(이메일) · ' + esc(who.email || '-') + '</div>'
-      + '<div class="note" style="margin-top:10px">본인이 들어가서 <b>[🔑 비밀번호 바꾸기]</b>로 '
-      + '바꿀 때까지, 이 비밀번호가 카톡 대화방에 남습니다. '
-      + '들어오시면 <b>바꾸라는 안내가 뜹니다.</b></div>'
+      + '<div class="note" style="margin-top:10px">본인이 들어가서 '
+      + '<b>왼쪽 아래 [🔑 비밀번호 바꾸기]</b>로 바꿀 때까지, 이 비밀번호가 카톡 대화방에 남습니다. '
+      /* ⚠️ 「바꾸라는 안내」 띠는 블로거 화면에만 있습니다. 블로거를 겸하지 않는
+         직원에게는 안 뜨므로, 안 뜬다고 적어야 관리자가 직접 말해 줍니다. */
+      + (A.PEOPLE.some(function (x) { return x.id === who.id; })
+          ? '들어오시면 <b>바꾸라는 안내가 뜹니다.</b>'
+          : '<b>직원 계정이라 안내 띠가 뜨지 않습니다</b> — 바꾸시라고 꼭 말씀해 주세요.')
+      + '</div>'
       + '<div class="row" style="margin-top:16px">'
       + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '">📋 보낼 문구 복사</button>'
       + '<button class="btn" data-pwclose="1">닫았습니다</button></div></div>';
@@ -640,6 +645,12 @@
         var p = A.PEOPLE.filter(function (x) { return x.id === s.id; })[0];
         var st = p ? stat(p.id) : {};
         var locked = s.role === 'owner' || !p;   /* 최고관리자·블로거가 아닌 ESC 직원은 여기서 못 바꿈 */
+        /* 🔑 비밀번호 초기화 —
+           ⚠️ 예전에는 이 단추가 **블로거 상세**에만 있어서, 블로거를 겸하지 않는
+           직원(박요엘·이예은·하영광)과 최고관리자는 비밀번호를 잊으면 들어올 길이
+           아예 없었습니다. 그래서 직원 표에도 답니다.
+           최고관리자 계정은 최고관리자에게만 보여 줍니다 — 서버도 같은 규칙입니다. */
+        var canPw = s.role !== 'owner' || A.IS_OWNER;
         return '<tr><td><b>' + esc(s.name || s.email) + '</b>'
           + '<div class="mono">' + esc(s.email || '') + '</div></td>'
           /* 소속은 ESC 관리자 페이지에서 정합니다 (직원 정보라 거기가 원본) */
@@ -662,6 +673,8 @@
           + '<td class="num">' + (st.done_month || 0) + '</td>'
           + '<td><div class="row">'
           + '<button class="btn btn-s" data-seeas="' + s.id + '">이 사람 화면 보기</button>'
+          + (canPw ? '<button class="btn btn-s" data-pwreset="' + s.id + '" '
+              + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다">🔑 비밀번호 초기화</button>' : '')
           + (locked ? '' : '<button class="btn btn-s" data-openpm="' + s.id + '">직분 바꾸기</button>')
           + '</div></td></tr>';
       }).join('') + '</tbody></table></div>';
@@ -5030,7 +5043,12 @@
       return;
     }
     if ((t = e.target.closest('[data-pwreset]'))) {
-      var who = A.PEOPLE.filter(function (x) { return x.id === t.dataset.pwreset; })[0] || {};
+      var pwid = t.dataset.pwreset;
+      /* ⚠️ 블로거 목록에서만 찾으면 안 됩니다 — 블로거를 겸하지 않는 직원은
+         A.PEOPLE 에 없어서 who.id 가 undefined 로 나갑니다(=조용히 실패). */
+      var who = A.PEOPLE.filter(function (x) { return x.id === pwid; })[0]
+             || (A.ALLSTAFF || []).filter(function (x) { return x.id === pwid; })[0];
+      if (!who) { A.toast('이 사람을 찾을 수 없습니다'); return; }
       if (!confirm(who.name + ' 님의 비밀번호를 새로 만들까요?\n\n'
         + '지금 쓰던 비밀번호는 즉시 못 쓰게 됩니다.\n'
         + '새 비밀번호는 이 화면에 한 번만 보이니, 본인에게 꼭 전해 주세요.')) return;
