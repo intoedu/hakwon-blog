@@ -4797,7 +4797,16 @@
     { t: 'ESC 홈페이지', d: '학원이 의뢰를 넣는 곳입니다. 블로그 홍보 신청도 여기서 받습니다.',
       u: function () { return 'https://intomarketing.co.kr/hakwon/'; }, who: '학원에게' },
     { t: 'ESC 관리자 (의뢰 관리)', d: '인력·컨텐츠·마케팅 의뢰를 관리하고, 직원 권한을 주는 곳입니다.',
-      u: function () { return 'https://intomarketing.co.kr/hakwon/admin.html'; }, who: 'ESC 직원만' }
+      u: function () { return 'https://intomarketing.co.kr/hakwon/admin.html'; }, who: 'ESC 직원만' },
+    { t: '인투마케팅 (회사 대표)', d: '회사 대표 페이지입니다. 학원지원센터는 이 밑에 있습니다.',
+      u: function () { return 'https://intomarketing.co.kr/'; }, who: '누구에게나' },
+    /* ⚠️ 아래 둘은 **법으로 걸어 둬야 하는 고지**입니다 (2026-09-08 게시 · 시행 09-10).
+       카카오 비즈니스 심사 3차 반려 사유가 「약관·개인정보처리방침에 사업자 정보 없음」이었습니다.
+       두 페이지 안의 사업자 정보 블록을 지우면 다시 반려됩니다. */
+    { t: '개인정보처리방침', d: '블로거·학원이 물어보면 이 주소를 보내시면 됩니다. 개인정보보호법상 공개 의무입니다.',
+      u: function () { return 'https://intomarketing.co.kr/privacy/'; }, who: '법적 고지' },
+    { t: '이용약관', d: '광고 표기·게시물 12개월 유지·원고료 지급 방식이 여기에 적혀 있습니다.',
+      u: function () { return 'https://intomarketing.co.kr/terms/'; }, who: '법적 고지' }
   ];
 
   function linkRow(title, desc, url, who, extra) {
