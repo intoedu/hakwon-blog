@@ -404,6 +404,7 @@
      「거절 → 재신청」밖에 방법이 없었습니다. 잘못 쓴 것뿐인데 너무 큰 벌입니다.
      여기서 그 자리에서 고칩니다. 정리는 서버 blogger_norm_nid() 가 한 번 더 합니다. */
   var NID_EDIT = {};
+  var BD_EDIT = {};                       /* 생년월일을 고치는 중인 사람 */
   function nidCell(p) {
     if (NID_EDIT[p.id]) {
       return '<span data-nidbox="' + p.id + '">'
@@ -4834,13 +4835,35 @@
 
   /* 나이 칸. 생년월일이 있으면 그쪽을, 없으면 옛 age 를 참고로 보여 줍니다. */
   function ageCell(p) {
-    if (p.birth_date) {
-      return '<b>' + ageGrade(p) + '세</b>'
-        + ' <span class="mono">' + esc(p.birth_date) + ' · 만 ' + ageReal(p) + '세</span>';
+    var body = p.birth_date
+      ? '<b>' + ageGrade(p) + '세</b>'
+        + ' <span class="mono">' + esc(p.birth_date) + ' · 만 ' + ageReal(p) + '세</span>'
+      : p.age
+        ? '<span class="mono">' + p.age + '세 · 본인이 적은 값 (생년월일 아직)</span>'
+        : '<span class="mono">아직 모름</span>';
+    if (!A.IS_ADMIN) return body;
+
+    /* ⚠️ 관리자·검수자는 생년월일 받는 화면을 아예 안 봅니다(boot 에서 먼저 갈라집니다).
+       직원 겸 블로거는 본인이 넣을 길이 없어서 여기서 넣어 줘야 합니다. */
+    if (!BD_EDIT[p.id]) {
+      return body + ' <button class="btn btn-s" data-bdedit="' + p.id + '">'
+        + (p.birth_date ? '고치기' : '생년월일 넣기') + '</button>';
     }
-    return p.age
-      ? '<span class="mono">' + p.age + '세 · 본인이 적은 값 (생년월일 아직)</span>'
-      : '<span class="mono">아직 모름</span>';
+    var b = (p.birth_date || '').split('-');
+    var num = function (x) { return x ? String(Number(x)) : ''; };
+    return body
+      + '<div class="row" style="gap:5px;margin-top:7px;flex-wrap:nowrap;max-width:340px">'
+      + '<input class="inp" data-bdy="' + p.id + '" type="number" placeholder="2010" '
+      + 'value="' + esc(b[0] || '') + '" style="flex:1.5;min-width:0">'
+      + '<span class="mono">년</span>'
+      + '<input class="inp" data-bdm="' + p.id + '" type="number" placeholder="5" '
+      + 'value="' + esc(num(b[1])) + '" style="flex:1;min-width:0">'
+      + '<span class="mono">월</span>'
+      + '<input class="inp" data-bdd="' + p.id + '" type="number" placeholder="17" '
+      + 'value="' + esc(num(b[2])) + '" style="flex:1;min-width:0">'
+      + '<span class="mono">일</span>'
+      + '<button class="btn btn-p btn-s" data-bdsave="' + p.id + '">저장</button>'
+      + '<button class="btn btn-s" data-bdcancel="' + p.id + '">취소</button></div>';
   }
 
   /* ═══ 🔗 주소 모음 ═══ */
@@ -5109,6 +5132,41 @@
       }, function () { A.toast('복사에 실패했습니다'); });
       return;
     }
+    /* ── 생년월일 넣기·고치기 (관리자) ── */
+    if ((t = e.target.closest('[data-bdedit]'))) {
+      BD_EDIT[t.dataset.bdedit] = true; renderStaffAll();
+      var f0 = document.querySelector('[data-bdy="' + t.dataset.bdedit + '"]');
+      if (f0) { f0.focus(); f0.select(); }
+      return;
+    }
+    if ((t = e.target.closest('[data-bdcancel]'))) {
+      delete BD_EDIT[t.dataset.bdcancel]; renderStaffAll(); return;
+    }
+    if ((t = e.target.closest('[data-bdsave]'))) {
+      var bid = t.dataset.bdsave;
+      var gv = function (k) {
+        var el = document.querySelector('[data-bd' + k + '="' + bid + '"]');
+        return el ? parseInt((el.value || '').trim(), 10) : NaN;
+      };
+      var yy = gv('y'), mm = gv('m'), dd = gv('d');
+      if (!yy || !mm || !dd) { A.toast('생년월일을 모두 넣어 주세요'); return; }
+      if (yy < 100) yy += (yy > 30 ? 1900 : 2000);
+      var dt0 = new Date(yy, mm - 1, dd);
+      if (dt0.getFullYear() !== yy || dt0.getMonth() !== mm - 1 || dt0.getDate() !== dd) {
+        A.toast('날짜를 다시 확인해 주세요'); return;
+      }
+      var iso0 = yy + '-' + ('0' + mm).slice(-2) + '-' + ('0' + dd).slice(-2);
+      t.disabled = true;
+      try {
+        var br = await A.rpc('blogger_set_birth_admin', { p_id: bid, p_birth: iso0 }) || {};
+        delete BD_EDIT[bid];
+        await A.loadAdmin();
+        A.toast((br.name || '') + ' 님 · ' + iso0 + ' (학년나이 ' + br.grade_age
+          + '세 · 만 ' + br.real_age + '세)');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     /* ── 보호자 동의 표시 (만 14세 미만) ── */
     if ((t = e.target.closest('[data-guardian]'))) {
       var gw = A.PEOPLE.filter(function (x) { return x.id === t.dataset.guardian; })[0] || {};
