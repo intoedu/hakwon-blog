@@ -303,7 +303,7 @@ window.ESC = (function () {
   A.gate = function (id) {
     A.$('app').classList.add('hide');
     A.$('gate').classList.remove('hide');
-    ['g-loading', 'g-login', 'g-signup', 'g-pending', 'g-rejected', 'g-paused', 'g-nostaff']
+    ['g-loading', 'g-login', 'g-signup', 'g-pending', 'g-rejected', 'g-paused', 'g-nostaff', 'g-birth']
       .forEach(function (g) { A.$(g).classList.toggle('hide', g !== id); });
   };
   /* 어느 얼굴로 들어갈지 — 'admin' 이면 전체, 'reviewer' 면 검수만.
@@ -523,6 +523,10 @@ window.ESC = (function () {
        **카톡으로** 보내 줬는데, 본인이 바꿀 방법이 없어 그 비밀번호를 영영 썼습니다.
        카톡 대화방에 비밀번호가 그대로 남아 있는 셈입니다.
        블로거·검수자·관리자가 같은 로그인을 쓰므로 여기 한 곳이면 다 됩니다. */
+    /* 생년월일 저장 — 엔터로도 되게 아래에서 한 번 더 받습니다 */
+    var bb = e.target.closest('#btnBirth');
+    if (bb) { await A.bdSave(bb); return; }
+
     if (e.target.closest('[data-pwme]')) { A.pwBox(); return; }
     if (e.target.closest('[data-pwmeclose]')) { A.pwBoxClose(); return; }
     if (e.target.closest('[data-pwmesave]')) { await A.pwBoxSave(e.target.closest('[data-pwmesave]')); return; }
@@ -758,6 +762,15 @@ window.ESC = (function () {
       A.gate('g-pending'); return;
     }
 
+    /* 🔴 생년월일을 아직 안 주신 분 — 여기서 한 번만 받습니다.
+       나이를 손으로 적게 두니 세는나이·만나이가 섞여 만 14세 경계를 못 가렸습니다.
+       ⚠️ 로그아웃은 이 화면에서도 됩니다. 갇히면 안 됩니다. */
+    if (!A.ME.birth_date) {
+      A.$('bdWho').textContent = A.ME.name + ' · ' + A.ME.email;
+      A.gate('g-birth');
+      return;
+    }
+
     A.$('navBlogger').classList.remove('hide');
     A.$('navAdmin').classList.add('hide');
     /* ⚠️ 여기서 VIEW_AS 를 반드시 'blogger' 로 둬야 합니다.
@@ -773,6 +786,45 @@ window.ESC = (function () {
     A.setTrack(savedB, false);
     A.openApp('b-inbox');
     await A.loadBlogger();
+  };
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var id = e.target && e.target.id;
+    if (id === 'bd_y' || id === 'bd_m' || id === 'bd_d') {
+      e.preventDefault();
+      var b = A.$('btnBirth'); if (b && !b.disabled) A.bdSave(b);
+    }
+  });
+
+  /* ── 생년월일 저장 ──
+     ⚠️ 안내는 **회색 한 줄**로만 합니다. 빨간 글씨나 느낌표를 쓰면
+     「내가 뭘 잘못했나」 싶어 그냥 나가버립니다. */
+  A.bdSave = async function (btn) {
+    var m = A.$('bdMsg');
+    var say = function (t) { m.textContent = t || ''; };
+    var num = function (id) { return parseInt((A.$(id).value || '').trim(), 10); };
+    var y = num('bd_y'), mo = num('bd_m'), d = num('bd_d');
+
+    if (!y || !mo || !d) { say('생년월일을 모두 넣어 주세요.'); return; }
+    if (y < 100) y += (y > 30 ? 1900 : 2000);        /* 「10」처럼 두 자리로 적는 분이 있습니다 */
+    /* 있지도 않은 날짜(2월 30일 같은 것)를 거릅니다 */
+    var dt = new Date(y, mo - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) {
+      say('날짜를 다시 확인해 주세요'); return;
+    }
+    var iso = y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2);
+
+    btn.disabled = true; say('');
+    try {
+      await A.rpc('blogger_set_birth', { p_birth: iso });
+      A.ME.birth_date = iso;
+      say('고맙습니다. 이제 그대로 쓰시면 됩니다.');
+      setTimeout(function () { A.boot(); }, 900);
+    } catch (e) {
+      say(/확인/.test(e.message) ? e.message : '날짜를 다시 확인해 주세요');
+      btn.disabled = false;
+    }
   };
 
   /* 기존 관리자페이지에서 #order=<id> 로 바로 들어올 수 있게 */

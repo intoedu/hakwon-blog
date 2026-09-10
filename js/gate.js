@@ -56,13 +56,26 @@
 
   $('btnSignup').onclick = async function () {
     var v = function (id) { return ($(id).value || '').trim(); };
-    var comm = v('su_comm'), name = v('su_name'), age = v('su_age');
+    var comm = v('su_comm'), name = v('su_name');
     var nid = v('su_nid'), alias = v('su_alias'), band = v('su_band'), phone = v('su_phone');
     var email = v('su_email'), pw = $('su_pw').value, pw2 = $('su_pw2').value;
 
     if (!comm) { A.msg('suMsg', '공동체를 골라 주세요.'); return; }
     if (comm === 'esc') comm = null;      /* ESC 직원 — 공동체 없음 */
     if (!name) { A.msg('suMsg', '이름을 입력해 주세요.'); return; }
+
+    /* ── 생년월일 ──
+       예전에는 「나이」를 손으로 적게 했습니다. 세는나이로 적는 분과 만나이로 적는 분이
+       섞여서, 만 14세 미만(법정대리인 동의가 필요한 경계)을 가릴 수가 없었습니다.
+       나이는 저장하지 않고 생년월일에서 매번 계산합니다. */
+    var by = parseInt(v('su_by'), 10), bm = parseInt(v('su_bm'), 10), bd = parseInt(v('su_bd'), 10);
+    if (!by || !bm || !bd) { A.msg('suMsg', '생년월일을 모두 넣어 주세요.'); return; }
+    if (by < 100) by += (by > 30 ? 1900 : 2000);
+    var bdt = new Date(by, bm - 1, bd);
+    if (bdt.getFullYear() !== by || bdt.getMonth() !== bm - 1 || bdt.getDate() !== bd) {
+      A.msg('suMsg', '날짜를 다시 확인해 주세요.'); return;
+    }
+    var birth = by + '-' + ('0' + bm).slice(-2) + '-' + ('0' + bd).slice(-2);
     if (!nid) { A.msg('suMsg', '블로그 네이버 아이디를 입력해 주세요.'); return; }
     /* 주소를 통째로 붙여넣었거나 대문자로 적었으면 여기서 바로잡습니다.
        ⚠️ 네이버 아이디는 소문자만 씁니다 — 대문자로 두면 안 열리는 주소가 됩니다. */
@@ -102,7 +115,7 @@
 
     var ins = await A.sb.from('bloggers').insert({
       id: uid, email: email || (A.SESSION && A.SESSION.user.email),
-      name: name, phone: phone, age: age ? Number(age) : null,
+      name: name, phone: phone, birth_date: birth,
       community_id: comm, naver_id: nid, blog_alias: alias || null,   /* null 이면 ESC 소속 */
       blog_url: 'https://blog.naver.com/' + nid,
       neighbors_band: band

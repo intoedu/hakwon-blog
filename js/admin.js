@@ -341,7 +341,9 @@
       + '<label class="row" style="gap:10px;margin:0;cursor:pointer;align-items:flex-start">'
       + '<input type="checkbox" class="pk-apply" value="' + p.id + '" style="margin-top:5px">'
       + '<span><h4>' + esc(p.name)
-      + (p.age ? ' <span class="mono">' + p.age + '세</span>' : '') + '</h4>'
+      + (p.birth_date ? ' <span class="mono">' + ageGrade(p) + '세</span>'
+         : p.age ? ' <span class="mono">' + p.age + '세?</span>' : '')
+      + minorChip(p) + '</h4>'
       + '<span class="meta">' + esc(A.commName(p.community_id)) + ' · ' + A.fdate(p.created_at) + ' 신청</span>'
       + '</span></label>'
       + chip + '</div>'
@@ -525,7 +527,24 @@
       + '<div class="sec" style="margin-top:0">신청서에 적은 것</div>'
       + '<dl class="kv">'
       + kvrow('공동체', esc(A.commName(p.community_id)))
-      + kvrow('이름 · 나이', esc(p.name) + (p.age ? ' · ' + p.age + '세' : ''))
+      + kvrow('이름', esc(p.name))
+      + kvrow('나이', ageCell(p))
+      + (needGuardian(p)
+        ? kvrow('보호자 동의',
+            (p.guardian_consent_at
+              ? '<span class="chip c-ok">받음</span> <span class="mono">'
+                + esc(A.fdate(p.guardian_consent_at)) + '</span>'
+              : '<span class="chip c-wait">아직</span>')
+            + (p.guardian_note ? '<div class="mono" style="margin-top:4px">'
+                + esc(p.guardian_note) + '</div>' : '')
+            + '<div class="row" style="margin-top:6px">'
+            + '<button class="btn btn-s" data-guardian="' + p.id + '" '
+            + 'data-on="' + (p.guardian_consent_at ? '0' : '1') + '">'
+            + (p.guardian_consent_at ? '동의 표시 지우기' : '보호자 동의 받았음으로 표시') + '</button>'
+            + '</div>'
+            + '<div class="mono" style="margin-top:5px">만 14세 미만은 법정대리인 동의가 있어야 '
+            + '개인정보를 처리할 수 있습니다 (개인정보보호법 제22조의2)</div>')
+        : '')
       + kvrow('네이버 아이디', p.naver_id ? '<span class="mono">' + esc(p.naver_id) + '</span>' : '')
       + kvrow('블로그 별명', esc(p.blog_alias || ''))
       + kvrow('블로그 주소', nidCell(p))
@@ -4785,6 +4804,45 @@
       }).join('') + '</tbody></table></div>' : '';
   }
 
+  /* ── 나이 ──
+     🔴 나이는 **저장하지 않습니다.** 생년월일에서 볼 때마다 계산합니다.
+     숫자로 저장해두면 해가 바뀔 때마다 손으로 고쳐야 합니다.
+     서버의 blog_age_grade() / blog_age_real() 과 같은 규칙입니다 — 한쪽만 고치지 마세요.
+       · 학년나이(세는나이) = 올해 − 태어난 해 + 1   → 화면에 보여 주는 값
+       · 만 나이 = 생일이 지났는지까지 따짐          → 만 14세 미만 판정 */
+  function ageGrade(p) {
+    if (!p || !p.birth_date) return null;
+    return Number(A.today().slice(0, 4)) - Number(p.birth_date.slice(0, 4)) + 1;
+  }
+  function ageReal(p) {
+    if (!p || !p.birth_date) return null;
+    var t = A.today(), a = Number(t.slice(0, 4)) - Number(p.birth_date.slice(0, 4));
+    if (t.slice(5) < p.birth_date.slice(5)) a -= 1;   /* 올해 생일이 아직 안 지났습니다 */
+    return a;
+  }
+  /* 만 14세 미만 = 법정대리인 동의가 필요한 사람 (개인정보보호법 제22조의2) */
+  function needGuardian(p) { var r = ageReal(p); return r != null && r < 14; }
+
+  /* 목록에 붙는 딱지 — 동의를 받았는지까지 한눈에 */
+  function minorChip(p) {
+    if (!needGuardian(p)) return '';
+    return p.guardian_consent_at
+      ? ' <span class="chip c-ok" title="' + esc(A.fdate(p.guardian_consent_at)) + ' 받음">'
+        + '만 ' + ageReal(p) + '세 · 보호자 동의 받음</span>'
+      : ' <span class="chip c-wait">만 ' + ageReal(p) + '세 · 보호자 동의 아직</span>';
+  }
+
+  /* 나이 칸. 생년월일이 있으면 그쪽을, 없으면 옛 age 를 참고로 보여 줍니다. */
+  function ageCell(p) {
+    if (p.birth_date) {
+      return '<b>' + ageGrade(p) + '세</b>'
+        + ' <span class="mono">' + esc(p.birth_date) + ' · 만 ' + ageReal(p) + '세</span>';
+    }
+    return p.age
+      ? '<span class="mono">' + p.age + '세 · 본인이 적은 값 (생년월일 아직)</span>'
+      : '<span class="mono">아직 모름</span>';
+  }
+
   /* ═══ 🔗 주소 모음 ═══ */
   function baseUrl() {
     return location.origin + location.pathname.replace(/[^/]*$/, '');
@@ -5051,6 +5109,26 @@
       }, function () { A.toast('복사에 실패했습니다'); });
       return;
     }
+    /* ── 보호자 동의 표시 (만 14세 미만) ── */
+    if ((t = e.target.closest('[data-guardian]'))) {
+      var gw = A.PEOPLE.filter(function (x) { return x.id === t.dataset.guardian; })[0] || {};
+      var gon = t.dataset.on === '1';
+      var gnote = null;
+      if (gon) {
+        gnote = prompt(gw.name + ' 님의 보호자 동의를 어떻게 받으셨나요?\n'
+          + '(예: 공동체장 통해 부모님 카톡 확인 · 2026-09-12)', '');
+        if (gnote === null) return;                 /* 취소 */
+      } else if (!confirm(gw.name + ' 님의 「보호자 동의 받음」 표시를 지울까요?')) return;
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_guardian_consent',
+          { p_id: gw.id, p_ok: gon, p_note: gnote || null });
+        await A.loadAdmin();
+        A.toast(gon ? '보호자 동의를 표시했습니다' : '표시를 지웠습니다');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-pwreset]'))) {
       var pwid = t.dataset.pwreset;
       /* ⚠️ 블로거 목록에서만 찾으면 안 됩니다 — 블로거를 겸하지 않는 직원은
