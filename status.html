@@ -266,9 +266,24 @@
        배정 전 · 작성 중 · 검수 중 · 발행 대기 · 발행 완료   (리뷰 : 배정 전 · 발행 대기 · 발행 완료)
      🔴 블로거 지연이 보이지 않게 글별 마감일·날짜는 넣지 않습니다. 발행 완료 글의 발행일만 보입니다.
      ⚠️ 「검수 중」부터 환불이 안 됩니다(환불정책-가격구조-0913 2장). 이 목록이 그 기준을 학원이 직접 보는 곳입니다. */
+  function postBtns(x) {
+    var u = safeUrl(x.url), kw = x.keyword || '';
+    return (u
+        ? (/demo_blog\d/.test(u)      /* 시연용으로 넣어둔 주소는 눌러도 안 열립니다 */
+          ? '<span class="btn btn-s" style="opacity:.6;cursor:default">시연용 주소</span> '
+          : '<a class="btn btn-s" href="' + esc(u) + '" target="_blank" rel="noopener nofollow">글 보기 ↗</a> ')
+        : '')
+      + (kw ? '<a class="btn btn-s" target="_blank" rel="noopener nofollow" href="https://search.naver.com/search.naver?query='
+        + encodeURIComponent(kw) + '">검색 ↗</a>' : '');
+  }
   var STAGE_CHIP = { '배정 전': 'c-off', '작성 중': 'c-wait', '검수 중': 'c-info', '발행 대기': 'c-info', '발행 완료': 'c-ok' };
   function itemsHtml(items) {
-    if (!items.length) return '';
+    /* 예전 「올라간 글」 표를 여기에 합쳤습니다(9/13) — 발행 완료 줄에 글 보기 · 검색 단추가 붙습니다 */
+    if (!items.length) {
+      return '<div class="sec">' + W('글','리뷰') + '별 진행</div>'
+        + '<div class="tblbox"><div class="empty">아직 ' + W('글','리뷰') + '이 없습니다. '
+        + '입금이 확인되면 ' + W('글','리뷰') + '이 만들어지고, 한 편씩 어디까지 왔는지 여기에 보입니다.</div></div>';
+    }
     var steps = RV ? ['배정 전', '발행 대기', '발행 완료']
                    : ['배정 전', '작성 중', '검수 중', '발행 대기', '발행 완료'];
     var cnt = {};
@@ -280,7 +295,7 @@
       + '<div class="tblbox tblscroll"><table><thead><tr>'
       + '<th style="width:36px">#</th><th>' + W('검색어','무엇에 대한 리뷰인지') + '</th>'
       + '<th style="width:96px">진행 단계</th><th style="width:90px">올린 날</th>'
-      + (RV ? '' : '<th style="width:80px">검색 순위</th>')
+      + (RV ? '' : '<th style="width:80px">검색 순위</th><th style="width:150px"></th>')
       + '</tr></thead><tbody>'
       + items.map(function (x, i) {
           var done = x.stage === '발행 완료';
@@ -288,7 +303,8 @@
             + '<td>' + esc(x.keyword || '') + '</td>'
             + '<td><span class="chip ' + (STAGE_CHIP[x.stage] || 'c-off') + '">' + esc(x.stage) + '</span></td>'
             + '<td class="mono">' + (done && x.at ? fdate(x.at) : '') + '</td>'
-            + (RV ? '' : '<td>' + (done ? rank(x.rank) : '') + '</td>')
+            + (RV ? '' : '<td>' + (done ? rank(x.rank) : '') + '</td>'
+              + '<td style="white-space:nowrap">' + (done ? postBtns(x) : '') + '</td>')
             + '</tr>';
         }).join('')
       + '</tbody></table></div>';
@@ -417,41 +433,6 @@
 
     /* 글별 진행 — 달력 아래, 한 편이 한 줄 */
     h += itemsHtml(d.items || []);
-
-    /* 올라간 글 */
-    h += '<div class="sec">올라간 ' + W('글','리뷰') + ' <small>' + posts.length + '편'
-      + W(' · 새 창에서 열립니다','') + '</small></div>';
-    if (!posts.length) {
-      h += '<div class="tblbox">' + '<div class="empty">아직 올라간 ' + W('글','리뷰') + '이 없습니다. '
-        + W('글','리뷰') + '이 올라가는 대로 여기에 하나씩 쌓입니다.</div></div>';
-    } else {
-      h += '<div class="tblbox tblscroll"><table><thead><tr>'
-        + '<th style="width:36px">#</th><th>' + W('이 글이 노린 검색어','무엇에 대한 리뷰인지') + '</th>'
-        + '<th style="width:90px">올린 날</th>'
-        /* 리뷰는 글마다 주소도 검색순위도 없습니다 — 그 칸을 아예 안 그립니다 */
-        + (RV ? '' : '<th style="width:80px">검색 순위</th><th style="width:150px"></th>')
-        + '</tr></thead><tbody>'
-        + posts.map(function (p, i) {
-          var u = safeUrl(p.url);
-          var kw = p.keyword || '';
-          return '<tr><td class="mono">' + (i + 1) + '</td>'
-            + '<td><b>' + esc(kw) + '</b></td>'
-            + '<td class="mono">' + fdate(p.at) + '</td>'
-            + (RV ? '' :
-              '<td>' + rank(p.rank) + '</td>'
-              + '<td style="white-space:nowrap">'
-              + (u
-                ? (/demo_blog\d/.test(u)      /* 시연용으로 넣어둔 주소는 눌러도 안 열립니다 */
-                  ? '<span class="btn btn-s" style="opacity:.6;cursor:default">시연용 주소</span> '
-                  : '<a class="btn btn-s" href="' + esc(u) + '" target="_blank" rel="noopener nofollow">글 보기 ↗</a> ')
-                : '')
-              + (kw ? '<a class="btn btn-s" target="_blank" rel="noopener nofollow" href="https://search.naver.com/search.naver?query='
-                + encodeURIComponent(kw) + '">검색 ↗</a>' : '')
-              + '</td>')
-            + '</tr>';
-        }).join('')
-        + '</tbody></table></div>';
-    }
 
     h += RV
       ? '<div class="note"><b>리뷰는 어디에서 보나요?</b><br>'
