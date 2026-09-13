@@ -84,9 +84,14 @@
         <div class="fld"><label class="f">보호자 성함</label><input class="inp" id="su_gName" autocomplete="off" placeholder="홍길동"></div>
         <div class="fld"><label class="f">보호자 휴대전화</label><input class="inp" id="su_gPhone" type="tel" inputmode="numeric" placeholder="010-0000-0000"></div>
       </div>
-      <div class="fld"><label class="f">나와의 관계</label>
-        <select class="inp" id="su_gRel"><option value="">고르세요</option><option>부</option><option>모</option>
-          <option>조부모</option><option>그 밖의 법정대리인</option></select></div>
+      <!-- 관계 = 부 / 모 / 기타 (개인정보처리방침 제2조 6번 「아동과의 관계」). 기타면 직접 적는 칸이 열립니다 -->
+      <div class="grid g2" style="gap:0 13px">
+        <div class="fld"><label class="f">나와의 관계</label>
+          <select class="inp" id="su_gRel"><option value="">고르세요</option><option>부</option><option>모</option>
+            <option value="기타">기타</option></select></div>
+        <div class="fld hide" id="su_gRelEtcBox"><label class="f">관계 직접 적기</label>
+          <input class="inp" id="su_gRelEtc" autocomplete="off" maxlength="20" placeholder="예) 후견인"></div>
+      </div>
     </div>
     <div class="grid g2" style="gap:0 13px">
       <div class="fld"><label class="f">블로그 네이버 아이디</label>

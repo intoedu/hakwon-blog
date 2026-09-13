@@ -75,6 +75,11 @@
   ['su_by', 'su_bm', 'su_bd'].forEach(function (id) {
     var el = $(id); if (el) el.addEventListener('input', suGuardianToggle);
   });
+  /* 관계에서 「기타」를 고르면 직접 적는 칸을 엽니다 (후견인 등) */
+  if ($('su_gRel')) $('su_gRel').addEventListener('change', function () {
+    $('su_gRelEtcBox').classList.toggle('hide', this.value !== '기타');
+    if (this.value === '기타') $('su_gRelEtc').focus();
+  });
 
   $('btnSignup').onclick = async function () {
     var v = function (id) { return ($(id).value || '').trim(); };
@@ -100,7 +105,10 @@
     var birth = by + '-' + ('0' + bm).slice(-2) + '-' + ('0' + bd).slice(-2);
 
     /* ── 만 14세 미만 → 보호자 정보 필수 ──
-       서버(bloggers_guard)가 가입 순간 consent_required 를 켜고, 보호자 동의 전에는 승인이 막힙니다. */
+       서버(bloggers_guard)가 가입 순간 consent_required 를 켜고, 보호자 동의 전에는 승인이 막힙니다.
+       🔴 보호자 번호가 들어오는 곳은 **여기 한 곳뿐**입니다. 알림톡 20번이 「신청하면서 보호자 연락처로
+          등록한 번호로 보내드립니다」라서, 다른 입력 경로(동의 화면·리더 대리 입력 등)를 만들면 문장이 틀려집니다.
+          서버도 가입 뒤에는 본인이 못 고치게 잠가 두었습니다. */
     var realAge = suRealAge(), minor = realAge != null && realAge < 14;
     var gName = '', gPhone = '', gRel = '';
     suGuardianToggle();
@@ -109,6 +117,10 @@
       if (!gName) { A.msg('suMsg', '보호자 성함을 적어 주세요.'); return; }
       if (!/^01[016789]\d{7,8}$/.test(gPhone)) { A.msg('suMsg', '보호자 휴대전화 번호를 다시 확인해 주세요.'); return; }
       if (!gRel) { A.msg('suMsg', '보호자와의 관계를 골라 주세요.'); return; }
+      if (gRel === '기타') {
+        gRel = v('su_gRelEtc');
+        if (!gRel) { A.msg('suMsg', '보호자와의 관계를 직접 적어 주세요. (예: 후견인)'); return; }
+      }
     }
     if (!nid) { A.msg('suMsg', '블로그 네이버 아이디를 입력해 주세요.'); return; }
     /* 주소를 통째로 붙여넣었거나 대문자로 적었으면 여기서 바로잡습니다.
