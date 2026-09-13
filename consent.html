@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>보호자 동의 · ESC 학원지원</title>
+<link rel="stylesheet" href="app.css">
+<!-- ═══════════════════════════════════════════════════════════════
+     보호자 동의 화면
+     https://center.intomarketing.co.kr/consent.html?k=#{동의키}
+
+     🔴 이 주소는 카카오 알림톡 20번(guardian_consent) 문구에 박힙니다.
+        심사가 끝나면 한 글자도 못 고칩니다.
+        파일 이름 · 위치(저장소 루트) · 파라미터 이름 k 를 바꾸지 마세요.
+
+     받는 사람은 블로거 본인이 아니라 **보호자**입니다.
+     서버 : consent_info(k) · consent_decide(k, p_agree, p_name, p_phone, p_relation)
+     status.html 처럼 바깥 라이브러리(CDN)를 하나도 안 씁니다 —
+     카카오톡 인앱 브라우저에서 CDN 이 막혀도 열려야 합니다.
+     ═══════════════════════════════════════════════════════════════ -->
+<style>
+  body{background:var(--ground)}
+  .pg{max-width:680px;margin:0 auto;padding:0 18px 70px}
+  .pgtop{border-bottom:1px solid var(--line);background:var(--surface)}
+  .pgtop .in{max-width:680px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:10px}
+  .pgtop .mk{width:34px;height:34px;border-radius:8px;background:var(--brand);color:var(--on-brand);
+             display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+  .pgtop b{display:block;font-size:14.5px}
+  .pgtop span{display:block;color:var(--muted);font-size:11.5px}
+
+  .hero{padding:28px 0 6px}
+  .hero h1{font-size:23px;font-weight:750;line-height:1.35;word-break:keep-all}
+  .hero p{color:var(--muted);font-size:14px;margin-top:8px;line-height:1.7;word-break:keep-all}
+
+  .who{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:18px;
+       display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .who label{display:block;color:var(--muted);font-size:11.5px;font-weight:700;margin-bottom:2px}
+  .who span{font-size:16px;font-weight:700;word-break:keep-all}
+  @media(max-width:480px){.who{grid-template-columns:1fr 1fr}.who>div:first-child{grid-column:1/-1}}
+
+  .sec{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:12px}
+  .sec h2{font-size:15.5px;font-weight:750;margin-bottom:10px}
+  .sec p,.sec li{font-size:14px;line-height:1.75;word-break:keep-all}
+  .sec ul{padding-left:18px;margin:0}
+  .sec li+li{margin-top:3px}
+  .sec .sub{font-size:12.5px;color:var(--muted);font-weight:700;margin:12px 0 4px}
+  .sec .sub:first-of-type{margin-top:0}
+  .tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+  .tbl td{padding:8px 0;border-bottom:1px solid var(--line);vertical-align:top;word-break:keep-all}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl td:first-child{color:var(--muted);width:42%;padding-right:12px}
+
+  .form{background:var(--surface);border:2px solid var(--brand);border-radius:14px;padding:20px;margin-top:18px}
+  .form h2{font-size:16px;font-weight:750;margin-bottom:14px}
+  .fl{margin-bottom:12px}
+  .fl label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
+  .fl .inp{width:100%}
+  .rel{display:flex;flex-wrap:wrap;gap:6px}
+  .rel button{border:1px solid var(--line);background:var(--surface);border-radius:999px;
+              padding:8px 14px;font-size:13.5px;cursor:pointer;font-family:inherit;color:var(--ink)}
+  .rel button.on{border-color:var(--brand);background:var(--brand);color:var(--on-brand);font-weight:700}
+  .chk{display:flex;gap:9px;align-items:flex-start;font-size:14px;line-height:1.6;margin:14px 0 4px;cursor:pointer}
+  .chk input{margin-top:4px;width:18px;height:18px;flex:none}
+  .acts{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .acts .btn{flex:1;min-width:140px;padding:13px 16px;font-size:15px}
+  .say{font-size:13.5px;margin-top:10px;min-height:1.2em;color:var(--muted)}
+
+  .done{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 20px;margin-top:18px;text-align:center}
+  .done .ic{font-size:34px;line-height:1}
+  .done h2{font-size:19px;font-weight:750;margin:10px 0 6px}
+  .done p{font-size:14px;color:var(--muted);line-height:1.7;word-break:keep-all}
+  .done .meta{font-size:13px;margin-top:10px;color:var(--ink-2)}
+  .link{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:13px;
+        cursor:pointer;font-family:inherit;margin-top:14px}
+
+  .foot{margin-top:28px;color:var(--muted);font-size:12px;text-align:center;line-height:1.8}
+  .foot a{color:inherit}
+  .empty{text-align:center;color:var(--muted);font-size:14px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="pgtop"><div class="in">
+  <div class="mk">ESC</div>
+  <div><b>ESC 학원지원</b><span>보호자 동의</span></div>
+</div></div>
+
+<div class="pg" id="PG">
+  <div class="empty" style="margin-top:60px">불러오는 중입니다…</div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var SB_URL = 'https://qkvebwxewttqtcryfycy.supabase.co';
+  var SB_KEY = 'sb_publishable_Me_R6M540Fg60nmEVqByTg_p-zD8pxa';
+  var PG = document.getElementById('PG');
+  var D = null, REL = '', SHOW_FORM = false;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  async function rpc(fn, body) {
+    var r = await fetch(SB_URL + '/rest/v1/rpc/' + fn, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var txt = await r.text(), data = null;
+    try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = null; }
+    if (!r.ok) throw new Error((data && data.message) || ('오류 ' + r.status));
+    return data;
+  }
+  function key() {
+    try { return (new URLSearchParams(location.search).get('k') || '').trim(); } catch (e) { return ''; }
+  }
+  function fdate(iso) {
+    var d = new Date(iso);
+    return d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 '
+      + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+  }
+  function ageText(d) {
+    if (d.age_real != null) return '만 ' + d.age_real + '세';
+    return d.age_grade != null ? d.age_grade + '세' : '-';
+  }
+
+  var FOOT = '<div class="foot">'
+    + '문의 · 이은총(ESC 학원지원 운영 담당) <a href="tel:01073181790">010-7318-1790</a> · '
+    + '<a href="mailto:info@intomarketing.co.kr">info@intomarketing.co.kr</a><br>'
+    + '<a href="https://intomarketing.co.kr/privacy/" target="_blank" rel="noopener">개인정보처리방침 전문</a><br><br>'
+    + '인투마케팅 · 대표 양회광 · 사업자등록번호 306-24-53380<br>'
+    + '대전광역시 유성구 은구비남로33번길 13-8, 3397호 · 카카오톡 채널 ESC 학원지원'
+    + '</div>';
+
+  function fail(title, sub) {
+    PG.innerHTML = '<div class="done"><div class="ic">📄</div>'
+      + '<h2>' + esc(title) + '</h2>'
+      + '<p>' + (sub || '받으신 카카오톡 메시지의 주소를 그대로 눌러 주세요.<br>'
+        + '계속 안 열리면 아래로 연락 주시면 바로 도와드리겠습니다.') + '</p></div>' + FOOT;
+  }
+
+  /* ── 동의할 내용 ── 개인정보처리방침(2026-09-10 시행) 제1·2·3·4·7조와 같은 내용입니다.
+     🔴 방침을 고치면 여기도 같이 고쳐야 합니다. */
+  function infoHtml(d) {
+    return ''
+      + '<div class="sec"><h2>왜 보호자 동의가 필요한가요</h2>'
+      + '<p>「개인정보 보호법」 제22조의2에 따라 <b>만 14세 미만</b> 아동의 개인정보를 처리하려면 '
+      + '법정대리인(보호자)의 동의를 받아야 합니다. 동의를 받은 뒤에만 처리합니다.</p></div>'
+
+      + '<div class="sec"><h2>어떤 정보를 받나요</h2>'
+      + '<div class="sub">신청자(' + esc(d.name) + ') — 필수</div>'
+      + '<p>이름, 휴대전화번호, 이메일 주소, 생년월일, 블로그 주소</p>'
+      + '<div class="sub">신청자 — 선택</div>'
+      + '<p>네이버 아이디, 블로그 별칭, 이웃 수, 일 방문자 수, 소속 공동체</p>'
+      + '<div class="sub">활동하면서 생기는 기록</div>'
+      + '<p>원고 작성·제출·검수 이력, 교육 이수 기록, 원고료 정산 내역</p>'
+      + '<div class="sub">보호자 — 필수</div>'
+      + '<p>보호자 성함, 보호자 휴대전화번호, 신청자와의 관계, 동의 일시</p>'
+      + '<div class="sub">받지 않는 것</div>'
+      + '<p>주민등록번호는 받지 않습니다. 신청자 개인의 계좌번호도 받지 않습니다 — '
+      + '원고료는 소속 공동체 대표 계좌로 한꺼번에 보내고, 나누는 것은 공동체가 합니다.</p></div>'
+
+      + '<div class="sec"><h2>어디에 쓰나요</h2><ul>'
+      + '<li>블로거 가입 심사와 본인 확인</li>'
+      + '<li>교육 이수 관리, 원고 배정과 검수</li>'
+      + '<li>원고료 정산</li>'
+      + '<li>배정·마감·검수 결과·정산 안내 (카카오톡 알림톡·문자)</li>'
+      + '</ul><p style="margin-top:8px">이 목적 밖으로는 쓰지 않습니다. 광고를 의뢰한 학원에는 '
+      + '신청자의 이름·연락처·이메일·소속 공동체를 알려 주지 않습니다.</p></div>'
+
+      + '<div class="sec"><h2>얼마나 보관하나요</h2><table class="tbl">'
+      + '<tr><td>신청자 회원 정보</td><td>탈퇴할 때까지</td></tr>'
+      + '<tr><td>보호자 동의 기록</td><td>탈퇴할 때 또는 신청자가 만 14세가 될 때까지</td></tr>'
+      + '<tr><td>원고료 지급 내역</td><td>5년 (국세기본법)</td></tr>'
+      + '</table></div>'
+
+      + '<div class="sec"><h2>동의하지 않으시면</h2>'
+      + '<p>동의하지 않으셔도 됩니다. 다만 동의 전에는 <b>블로거 활동을 시작할 수 없습니다.</b></p>'
+      + '<p style="margin-top:6px">동의하신 뒤에도 언제든 철회하실 수 있고, 신청자의 개인정보를 '
+      + '열람·정정·삭제·처리정지하도록 요구하실 수 있습니다.</p></div>';
+  }
+
+  function formHtml(d) {
+    var rels = ['부', '모', '조부모', '그 밖의 법정대리인'];
+    return '<div class="form"><h2>보호자 정보와 동의</h2>'
+      + '<div class="fl"><label for="gName">보호자 성함</label>'
+      + '<input class="inp" id="gName" autocomplete="name" placeholder="예) 홍길동"></div>'
+      + '<div class="fl"><label for="gPhone">보호자 휴대전화</label>'
+      + '<input class="inp" id="gPhone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="예) 010-1234-5678"></div>'
+      + '<div class="fl"><label>' + esc(d.name) + ' 님과의 관계</label><div class="rel" id="gRel">'
+      + rels.map(function (x) {
+          return '<button type="button" data-rel="' + esc(x) + '"' + (REL === x ? ' class="on"' : '') + '>' + esc(x) + '</button>';
+        }).join('')
+      + '</div></div>'
+      + '<label class="chk"><input type="checkbox" id="gRead"> '
+      + '<span>위의 받는 정보 · 쓰는 곳 · 보관 기간을 모두 읽었습니다.</span></label>'
+      + '<div class="acts">'
+      + '<button class="btn btn-p" type="button" id="btnAgree">동의합니다</button>'
+      + '<button class="btn" type="button" id="btnRefuse">동의하지 않습니다</button>'
+      + '</div><div class="say" id="say"></div></div>';
+  }
+
+  function whoHtml(d) {
+    return '<div class="who">'
+      + '<div><label>신청자</label><span>' + esc(d.name) + '</span></div>'
+      + '<div><label>나이</label><span>' + esc(ageText(d)) + '</span></div>'
+      + '<div><label>소속</label><span>' + esc(d.community || '-') + '</span></div>'
+      + '</div>';
+  }
+
+  function render() {
+    var d = D, h = '';
+    h += '<div class="hero"><h1>' + esc(d.name) + ' 님의 보호자님께</h1>'
+      + '<p>' + esc(d.name) + ' 님이 ESC 학원지원 블로거로 신청했습니다. '
+      + '아래에서 어떤 정보를 받고 어디에 쓰는지 확인하신 뒤 동의 여부를 선택해 주세요.</p></div>';
+    h += whoHtml(d);
+
+    if (d.state === 'agreed' && !SHOW_FORM) {
+      h += '<div class="done"><div class="ic">✅</div><h2>동의해 주셔서 고맙습니다</h2>'
+        + '<p>' + esc(d.name) + ' 님은 이제 블로거 활동을 시작할 수 있습니다.</p>'
+        + '<div class="meta">' + fdate(d.decided_at)
+        + (d.guardian ? ' · ' + esc(d.guardian) + (d.relation ? '(' + esc(d.relation) + ')' : '') : '')
+        + (d.phone_tail ? ' · 휴대전화 끝자리 ' + esc(d.phone_tail) : '') + '</div>'
+        + '<button class="link" type="button" id="btnWithdraw">동의를 철회하려면 여기를 누르세요</button></div>';
+      h += infoHtml(d);
+    } else if (d.state === 'refused' && !SHOW_FORM) {
+      h += '<div class="done"><div class="ic">📄</div><h2>동의하지 않으셨습니다</h2>'
+        + '<p>' + esc(d.name) + ' 님의 블로거 활동은 시작되지 않습니다.<br>'
+        + '마음이 바뀌시면 언제든 다시 동의하실 수 있습니다.</p>'
+        + '<div class="meta">' + fdate(d.decided_at) + '</div>'
+        + '<button class="btn btn-p" type="button" id="btnReopen" style="margin-top:14px">다시 동의하기</button></div>';
+      h += infoHtml(d);
+    } else {
+      if (d.minor === false) {
+        h += '<div class="sec" style="border-color:var(--info);background:var(--info-bg)">'
+          + '<p>등록된 생년월일로 보면 ' + esc(d.name) + ' 님은 만 14세 이상입니다. '
+          + '보호자 동의가 꼭 필요하지는 않지만, 동의해 주셔도 됩니다.</p></div>';
+      }
+      h += infoHtml(d) + formHtml(d);
+    }
+    PG.innerHTML = h + FOOT;
+    wire();
+  }
+
+  function wire() {
+    var rel = document.getElementById('gRel');
+    if (rel) rel.onclick = function (e) {
+      var b = e.target.closest('[data-rel]'); if (!b) return;
+      REL = b.getAttribute('data-rel');
+      [].forEach.call(rel.querySelectorAll('button'), function (x) { x.classList.toggle('on', x === b); });
+    };
+    var a = document.getElementById('btnAgree');
+    if (a) a.onclick = function () { decide(true, a); };
+    var r = document.getElementById('btnRefuse');
+    if (r) r.onclick = function () {
+      if (!confirm('동의하지 않으시겠습니까?\n\n동의 전에는 블로거 활동을 시작할 수 없습니다.')) return;
+      decide(false, r);
+    };
+    var w = document.getElementById('btnWithdraw');
+    if (w) w.onclick = function () {
+      if (!confirm('동의를 철회하시겠습니까?\n\n철회하면 블로거 활동이 멈춥니다.')) return;
+      decide(false, w);
+    };
+    var o = document.getElementById('btnReopen');
+    if (o) o.onclick = function () { SHOW_FORM = true; render(); };
+  }
+
+  async function decide(agree, btn) {
+    var say = document.getElementById('say');
+    var tell = function (t) { if (say) say.textContent = t || ''; };
+    var name = '', phone = '';
+    if (agree) {
+      name = (document.getElementById('gName').value || '').trim();
+      phone = (document.getElementById('gPhone').value || '').replace(/\D/g, '');
+      if (!name) { tell('보호자 성함을 적어 주세요.'); return; }
+      if (!/^01[016789]\d{7,8}$/.test(phone)) { tell('휴대전화 번호를 다시 확인해 주세요.'); return; }
+      if (!REL) { tell('신청자와의 관계를 골라 주세요.'); return; }
+      if (!document.getElementById('gRead').checked) { tell('위 내용을 읽으셨다는 칸에 표시해 주세요.'); return; }
+    }
+    btn.disabled = true; tell('저장하는 중입니다…');
+    try {
+      D = await rpc('consent_decide', {
+        k: key(), p_agree: agree,
+        p_name: agree ? name : null, p_phone: agree ? phone : null, p_relation: agree ? REL : null
+      });
+      SHOW_FORM = false;
+      render();
+      window.scrollTo(0, 0);
+    } catch (e) {
+      btn.disabled = false;
+      tell((e && e.message) || '저장하지 못했습니다. 잠시 뒤 다시 눌러 주세요.');
+    }
+  }
+
+  async function load() {
+    var k = key();
+    if (!k) { fail('주소에 확인 코드가 없습니다'); return; }
+    try {
+      D = await rpc('consent_info', { k: k });
+      if (!D) { fail('이 주소로는 확인할 수 있는 신청이 없습니다'); return; }
+      render();
+    } catch (e) {
+      fail('불러오지 못했습니다', '잠시 뒤 다시 열어 주세요.<br>계속 안 되면 아래로 연락 주세요.');
+    }
+  }
+  load();
+})();
+</script>
+</body>
+</html>
