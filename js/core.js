@@ -759,6 +759,15 @@ window.ESC = (function () {
     if (A.ME.status === 'paused') { A.gate('g-paused'); return; }
     if (A.ME.status !== 'approved') {
       A.$('pendWho').textContent = A.ME.name + ' · ' + A.ME.email;
+      /* 만 14세 미만으로 새로 가입해 보호자 동의를 기다리는 사람 */
+      var pc = A.$('pendConsent');
+      if (pc) {
+        var needC = !!A.ME.consent_required && !A.ME.guardian_consent_at;
+        pc.classList.toggle('hide', !needC);
+        if (needC) pc.innerHTML = '<b>보호자 동의를 기다리고 있습니다.</b> '
+          + '만 14세 미만이라 보호자님이 동의해 주셔야 승인할 수 있습니다. '
+          + '보호자님께 안내가 가면 링크를 눌러 동의해 달라고 말씀드려 주세요.';
+      }
       A.gate('g-pending'); return;
     }
 

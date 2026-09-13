@@ -325,13 +325,58 @@
   }
   A.refreshBulkApply = refreshBulk;
 
+  /* ── 보호자 동의 (2026-09-13~ 새로 가입한 만 14세 미만) ──
+     consent_required 인 사람은 **동의 전에 승인할 수 없습니다** (서버도 막습니다).
+     알림톡 20번이 켜지기 전까지는 여기서 문구를 복사해 보호자께 직접 보냅니다.
+     🔴 본문은 알림톡 20번과 글자까지 같습니다 — 고치지 마세요. 주소는 버튼 자리라 본문 밖에 붙입니다. */
+  var CONSENT_URL = 'https://center.intomarketing.co.kr/consent.html?k=';
+  var CONSENT_TXT = {};
+  function consentMsg(p) {
+    /* 🔴 알림톡 20번 본문과 글자까지 같습니다 (행정 문서 2026-09-13 15:52 판 · 265자).
+       주소는 본문이 아니라 [동의 여부 선택하기] 버튼에 들어갑니다 — 본문에 넣지 마세요.
+       나이 = 만 나이 숫자만 (「만」·「세」는 문구에 고정) · 공동체 없으면 「-」 */
+    var nm = p.name || '', cm = A.commName(p.community_id);
+    if (!p.community_id || !cm || cm === '-') cm = '-';
+    return nm + '님의 보호자님께 안내드립니다.\n\n'
+      + nm + '님이 ESC 학원지원 블로거로 신청하면서\n'
+      + '보호자 연락처로 등록한 번호로 보내드립니다.\n\n'
+      + '· 신청자: ' + nm + '\n'
+      + '· 나이: 만 ' + ageReal(p) + '세\n'
+      + '· 소속: ' + cm + '\n\n'
+      + '개인정보보호법 제22조의2에 따라 만 14세 미만의\n'
+      + '개인정보를 처리하려면 보호자 동의가 필요합니다.\n\n'
+      + '아래 버튼에서 받는 정보와 이용 목적을 확인하신 뒤\n'
+      + '동의 여부를 선택해 주세요.\n\n'
+      + '· 문의: 인투마케팅 010-7318-1790\n\n'
+      + 'ESC 학원지원 이은총 드림';
+  }
+  function consentBlock(p) {
+    if (!p.consent_required) return '';
+    var ok = !!p.guardian_consent_at, no = !ok && !!p.guardian_refused_at;
+    /* 손 발송(카톡·문자)에는 버튼이 없어서, 알림톡 버튼 자리 대신 주소를 본문 뒤에 붙입니다 */
+    CONSENT_TXT[p.id] = consentMsg(p) + '\n\n▶ 동의 여부 선택하기\n' + CONSENT_URL + (p.consent_key || '');
+    return '<div class="note' + (ok ? ' ok' : ' warn') + '" style="margin:10px 0">'
+      + '<b>보호자 동의 ' + (ok ? '받음' : no ? '거부됨' : '기다리는 중') + '</b>'
+      + (ok || no ? ' <span class="mono">' + A.fdate(p.guardian_consent_at || p.guardian_refused_at) + '</span>' : '')
+      + '<div class="mono" style="margin-top:4px">보호자 ' + esc(p.guardian_name || '-')
+      + (p.guardian_relation ? '(' + esc(p.guardian_relation) + ')' : '')
+      + ' · ' + esc(p.guardian_phone || '-') + '</div>'
+      + (ok ? '' : '<div class="row" style="margin-top:8px">'
+        + '<button class="btn btn-s" data-copyconsent="' + p.id + '">📋 보호자께 보낼 문구 복사</button>'
+        + '<a class="btn btn-s" href="' + esc(CONSENT_URL + (p.consent_key || '')) + '" target="_blank" rel="noopener">동의 화면 열기 ↗</a>'
+        + '</div><div class="mono" style="margin-top:6px">동의가 끝나야 승인할 수 있습니다.</div>')
+      + '</div>';
+  }
+
   function applyCard(p) {
     var chip = p.status === 'pending' ? '<span class="chip c-wait">기다리는 중</span>'
       : p.status === 'hold' ? '<span class="chip c-off">보류</span>'
         : '<span class="chip c-bad">거절함</span>';
     var btns = p.status === 'rejected'
       ? '<button class="btn btn-s" data-act="pending" data-id="' + p.id + '">다시 대기로</button>'
-      : '<button class="btn btn-a btn-s" data-act="approved" data-id="' + p.id + '">승인 (1단계로 시작)</button>'
+      : (p.consent_required && !p.guardian_consent_at
+          ? '<button class="btn btn-s" disabled title="보호자 동의가 끝나야 승인할 수 있습니다">승인 — 보호자 동의 대기</button>'
+          : '<button class="btn btn-a btn-s" data-act="approved" data-id="' + p.id + '">승인 (1단계로 시작)</button>')
       + (p.status === 'hold' ? '' : '<button class="btn btn-s" data-act="hold" data-id="' + p.id + '">보류</button>')
       + '<button class="btn btn-s" data-act="rejected" data-id="' + p.id + '">거절</button>'
       + '<button class="btn btn-s" data-act="low" data-id="' + p.id + '">저품질로 표시</button>';
@@ -360,6 +405,7 @@
       + '<dt>이메일</dt><dd class="mono">' + esc(p.email) + '</dd>'
       + (p.reject_reason ? '<dt>거절 사유</dt><dd>' + esc(p.reject_reason) + '</dd>' : '')
       + '</dl>'
+      + consentBlock(p)
       + '<div class="row">' + btns + '</div></div>';
   }
   /* 새 비밀번호를 보여 주는 창 — 저장하지 않으므로 닫으면 다시 못 봅니다.
@@ -5164,6 +5210,14 @@
         A.toast((br.name || '') + ' 님 · ' + iso0 + ' (학년나이 ' + br.grade_age
           + '세 · 만 ' + br.real_age + '세)');
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
+    /* ── 보호자께 보낼 동의 요청 문구 복사 (알림톡 20번과 같은 글자) ── */
+    if ((t = e.target.closest('[data-copyconsent]'))) {
+      var ctxt = CONSENT_TXT[t.dataset.copyconsent] || '';
+      try { await navigator.clipboard.writeText(ctxt); A.toast('복사했습니다. 보호자 휴대전화로 보내 주세요'); }
+      catch (err) { prompt('복사가 막혀 있습니다. 아래를 길게 눌러 복사해 주세요', ctxt); }
       return;
     }
 

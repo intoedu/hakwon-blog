@@ -73,6 +73,21 @@
           <span class="mono">일</span>
         </div></div>
     </div>
+    <!-- 만 14세 미만이면 열립니다 (생년월일을 치는 순간 만 나이로 판단 — gate.js)
+         개인정보보호법 제22조의2 · 보호자 동의 전에는 승인되지 않습니다.
+         ⚠️ 이건 가입 폼입니다. 생년월일 받는 화면(g-birth)과 다릅니다 — 그쪽 글·색은 건드리지 마세요. -->
+    <div id="su_gBox" class="hide" style="border:1px solid var(--line);border-radius:12px;padding:14px 14px 2px;margin:2px 0 12px;background:var(--surface-2)">
+      <div style="font-size:13.5px;font-weight:700;margin-bottom:4px">보호자 정보</div>
+      <div class="mono" style="margin-bottom:10px;line-height:1.6">만 14세 미만은 보호자님이 동의해 주셔야 활동할 수 있습니다.
+        적어 주신 보호자님께 동의 안내를 드립니다.</div>
+      <div class="grid g2" style="gap:0 13px">
+        <div class="fld"><label class="f">보호자 성함</label><input class="inp" id="su_gName" autocomplete="off" placeholder="홍길동"></div>
+        <div class="fld"><label class="f">보호자 휴대전화</label><input class="inp" id="su_gPhone" type="tel" inputmode="numeric" placeholder="010-0000-0000"></div>
+      </div>
+      <div class="fld"><label class="f">나와의 관계</label>
+        <select class="inp" id="su_gRel"><option value="">고르세요</option><option>부</option><option>모</option>
+          <option>조부모</option><option>그 밖의 법정대리인</option></select></div>
+    </div>
     <div class="grid g2" style="gap:0 13px">
       <div class="fld"><label class="f">블로그 네이버 아이디</label>
         <input class="inp" id="su_nid" placeholder="myblogid" autocapitalize="off"
@@ -114,6 +129,7 @@
     <p class="lead">신청해 주셔서 감사합니다. 담당자가 블로그를 확인하고 있습니다.</p>
     <div class="note">보통 <b>2~3일 안에</b> 결과를 알려드립니다.
       승인되면 이 화면 대신 작업 화면이 열리고, 교육 일정을 안내해 드립니다.</div>
+    <div class="note hide" id="pendConsent" style="margin-top:10px"></div>
     <div class="gfoot"><span id="pendWho" class="mono"></span>
       <button class="link" data-out="1" style="margin-left:auto">로그아웃</button></div>
   </div>

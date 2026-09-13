@@ -54,6 +54,28 @@
       : '<b style="color:var(--bad)">영문 소문자·숫자·_·- 만 쓸 수 있습니다 (3~20자)</b>';
   };
 
+  /* ── 만 14세 미만이면 보호자 칸을 엽니다 ──
+     나이는 저장하지 않고 생년월일에서 **만 나이**로 계산합니다(서버 blog_age_real 과 같은 규칙).
+     한국시간 오늘(A.today) 기준 · 생일이 아직 안 지났으면 한 살 뺍니다. */
+  function suRealAge() {
+    var by = parseInt(($('su_by').value || '').trim(), 10),
+        bm = parseInt(($('su_bm').value || '').trim(), 10),
+        bd = parseInt(($('su_bd').value || '').trim(), 10);
+    if (!by || !bm || !bd) return null;
+    if (by < 100) by += (by > 30 ? 1900 : 2000);
+    var t = A.today(), md = ('0' + bm).slice(-2) + '-' + ('0' + bd).slice(-2);
+    var a = Number(t.slice(0, 4)) - by;
+    if (t.slice(5) < md) a -= 1;
+    return a;
+  }
+  function suGuardianToggle() {
+    var a = suRealAge(), box = $('su_gBox');
+    if (box) box.classList.toggle('hide', !(a != null && a < 14));
+  }
+  ['su_by', 'su_bm', 'su_bd'].forEach(function (id) {
+    var el = $(id); if (el) el.addEventListener('input', suGuardianToggle);
+  });
+
   $('btnSignup').onclick = async function () {
     var v = function (id) { return ($(id).value || '').trim(); };
     var comm = v('su_comm'), name = v('su_name');
@@ -76,6 +98,18 @@
       A.msg('suMsg', '날짜를 다시 확인해 주세요.'); return;
     }
     var birth = by + '-' + ('0' + bm).slice(-2) + '-' + ('0' + bd).slice(-2);
+
+    /* ── 만 14세 미만 → 보호자 정보 필수 ──
+       서버(bloggers_guard)가 가입 순간 consent_required 를 켜고, 보호자 동의 전에는 승인이 막힙니다. */
+    var realAge = suRealAge(), minor = realAge != null && realAge < 14;
+    var gName = '', gPhone = '', gRel = '';
+    suGuardianToggle();
+    if (minor) {
+      gName = v('su_gName'); gPhone = v('su_gPhone').replace(/\D/g, ''); gRel = v('su_gRel');
+      if (!gName) { A.msg('suMsg', '보호자 성함을 적어 주세요.'); return; }
+      if (!/^01[016789]\d{7,8}$/.test(gPhone)) { A.msg('suMsg', '보호자 휴대전화 번호를 다시 확인해 주세요.'); return; }
+      if (!gRel) { A.msg('suMsg', '보호자와의 관계를 골라 주세요.'); return; }
+    }
     if (!nid) { A.msg('suMsg', '블로그 네이버 아이디를 입력해 주세요.'); return; }
     /* 주소를 통째로 붙여넣었거나 대문자로 적었으면 여기서 바로잡습니다.
        ⚠️ 네이버 아이디는 소문자만 씁니다 — 대문자로 두면 안 열리는 주소가 됩니다. */
@@ -118,7 +152,10 @@
       name: name, phone: phone, birth_date: birth,
       community_id: comm, naver_id: nid, blog_alias: alias || null,   /* null 이면 ESC 소속 */
       blog_url: 'https://blog.naver.com/' + nid,
-      neighbors_band: band
+      neighbors_band: band,
+      guardian_name: minor ? gName : null,
+      guardian_phone: minor ? gPhone : null,
+      guardian_relation: minor ? gRel : null
     }).select();
 
     this.disabled = false;
