@@ -4,6 +4,7 @@
   var $ = A.$, esc = A.esc, won = A.won;
 
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
+  var KWCHG = [];     /* 검색어 변경 기록 (blog_keyword_changes) — 새것부터 */
   var ALLTOPICS = [], NOTES = [], RVSPECS = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
@@ -72,6 +73,7 @@
     A.ORDERS = await A.sel('blog_orders', { order: 'created_at', asc: false });
     PROG = await A.sel('order_progress');
     POSTS = await A.sel('blog_posts', { order: 'seq' });
+    KWCHG = await A.sel('blog_keyword_changes', { order: 'changed_at', asc: false });
     ALLTOPICS = await A.sel('blog_topics', { order: 'sort' });   /* 주문 카드 「나가는 정보」용 */
     NOTES = await A.sel('order_notes', { order: 'created_at' });
     RVSPECS = await A.sel('review_specs', { order: 'sort' });
@@ -3488,6 +3490,13 @@
   }
   A.subjOfKw = subjOfKw;
 
+  /* 마지막 검색어 변경의 사유 — 「학원 요청 · 유료」 / 「내부 교정」 / 9/13 전 기록은 아무것도 안 붙임 */
+  function kwWhyTag(pid) {
+    var c = KWCHG.filter(function (x) { return x.post_id === pid; })[0];
+    if (!c || !c.reason) return '';
+    return ' · ' + esc(c.reason) + (c.charged ? ' <b>(유료)</b>' : '');
+  }
+
   /* 제목 칸에 붙는 것 — 과목 칩 · 고치기 단추 · 바뀐 기록 · 어긋남 경고 */
   function kwCell(p) {
     var bad = subjBad(p);
@@ -3496,7 +3505,7 @@
           + '" title="이 글의 검색어(제목에 넣을 말)를 고칩니다">✏️</button>')
       + (p.keyword_was
           ? '<div class="mono" style="color:var(--wait)">제목 바꿈 · 예전 「'
-            + esc(p.keyword_was) + '」</div>' : '')
+            + esc(p.keyword_was) + '」' + kwWhyTag(p.id) + '</div>' : '')
       + (bad
           ? '<div class="mono" style="color:var(--bad)">⚠️ 제목은 <b>' + esc(bad.post)
             + '</b>인데 이 글이 다루는 내용은 <b>' + esc(bad.topic) + '</b>입니다</div>' : '')
@@ -3578,6 +3587,18 @@
      블로거가 쓴 내용과 지시가 어긋납니다. 서버도 pending·assigned 일 때만 소재를
      다시 붙입니다. 이 창이 하는 일은 「제목을 내용에 맞추는 것」 하나입니다. */
   var KW_POST = null;
+  function kwReasonPick(r) {
+    var m = $('kwModal'); if (!m) return;
+    m.dataset.reason = r;
+    m.querySelectorAll('[data-kwreason]').forEach(function (b) { b.classList.toggle('on', b.dataset.kwreason === r); });
+    var h = $('kwReasonHint'); if (!h) return;
+    h.innerHTML = r === '내부 교정'
+      ? '우리가 고치는 것이라 <b>무료</b>입니다.'
+      : m.dataset.status === 'pending'
+        ? '아직 블로거에게 배정 전이라 <b>무료 변경</b>으로 기록됩니다.'
+        : '<span style="color:var(--bad)"><b>배정 뒤 학원 요청 — 유료 변경(한 편 3,000원)으로 기록됩니다.</b></span> '
+          + '블로거에게 가는 알림에는 요금 이야기가 나가지 않습니다.';
+  }
   function openKwEdit(pid) {
     var p = POSTS.filter(function (x) { return x.id === pid; })[0];
     if (!p) { A.toast('글을 찾을 수 없습니다'); return; }
@@ -3623,6 +3644,13 @@
         + 'placeholder="이매동 예비중 중등국어논술 학습코칭" autocomplete="off">'
       + '<div class="mono" id="kwNewSub" style="margin-top:6px"></div></div>'
 
+      /* 사유 — 학원 요청이고 배정 뒤면 유료(한 편당 3,000원)로 기록됩니다. 블로거 알림에는 안 나갑니다 */
+      + '<div class="fld"><label class="f">누가 바꾸자고 했나요 — 꼭 고르세요</label>'
+      + '<div class="chips" id="kwReason">'
+      + '<button type="button" data-kwreason="학원 요청">학원 요청</button>'
+      + '<button type="button" data-kwreason="내부 교정">내부 교정 (제목이 원고와 안 맞는 등)</button>'
+      + '</div><div class="mono" id="kwReasonHint" style="margin-top:6px;line-height:1.6"></div></div>'
+
       + '<div class="fld"><label class="f">'
         + '왜 바꾸는지 — 블로거에게 그대로 갑니다 (안 적으셔도 됩니다)</label>'
       + '<input class="inp" id="kwWhy" autocomplete="off" '
@@ -3643,6 +3671,9 @@
       + '<button class="btn" data-kwclose="1">닫기</button></div>'
       + '<div id="kwDone"></div></div>';
     m.classList.remove('hide');
+    m.dataset.reason = '';
+    m.dataset.status = p.status;
+    if (bad) kwReasonPick('내부 교정');     /* 제목·내용이 어긋나서 여는 경우는 우리 교정입니다 */
 
     var inp = $('kwNew');
     function paint() {
@@ -4291,6 +4322,7 @@
 
     renderPgCal(rows);
     lateBox(oid);
+    kwChargeBox(oid);
     pgViewPaint();
   }
 
@@ -4316,6 +4348,51 @@
       + '<div class="row" style="margin-top:10px">'
       + '<button class="btn btn-p btn-s" data-resched="' + (oid || '') + '">📅 밀린 글 다시 깔기</button>'
       + '<span class="mono">통과한 글을 승인할 때는 자동으로 밀립니다</span></div></div>';
+  }
+
+  /* ── 검색어 변경 기록 — 학원별로 유료가 몇 건인지 ──
+     규칙(9/13) : 학원 요청 + 배정 뒤 = 한 편 3,000원 / 배정 전 = 무료 / 내부 교정 = 항상 무료.
+     청구 방법은 아직 안 정했습니다 — 지금은 기록만 보여 줍니다. 학원 화면에는 안 나갑니다. */
+  function kwChargeBox(oid) {
+    var box = $('pgKw'); if (!box) return;
+    var list = KWCHG.filter(function (c) { return !oid || c.order_id === oid; });
+    if (!list.length) { box.innerHTML = ''; return; }
+    var by = {};
+    list.forEach(function (c) {
+      var g = by[c.order_id] = by[c.order_id] || { paid: 0, fee: 0, free: 0, ours: 0, old: 0 };
+      if (!c.reason) g.old++;
+      else if (c.reason === '내부 교정') g.ours++;
+      else if (c.charged) { g.paid++; g.fee += c.fee || 0; }
+      else g.free++;
+    });
+    var ids = Object.keys(by);
+    box.innerHTML = '<details class="note" style="margin:0 0 12px">'
+      + '<summary style="cursor:pointer"><b>검색어 변경 기록</b> · '
+      + ids.map(function (id) {
+          var g = by[id];
+          return esc(orderName(id)) + ' 유료 <b>' + g.paid + '건</b>' + (g.fee ? '(' + A.won(g.fee) + '원)' : '');
+        }).join(' · ')
+      + '</summary>'
+      + '<div class="mono" style="margin:8px 0">학원 요청 + 배정 뒤 = 한 편 3,000원 · 배정 전 = 무료 · 내부 교정 = 무료. '
+      + '청구 방법은 아직 정하지 않았습니다 — 기록만 남깁니다. 9/13 전 변경은 사유가 없습니다.</div>'
+      + '<div class="tblbox tblscroll"><table><thead><tr><th>학원</th><th>학원 요청 · 유료</th>'
+      + '<th>학원 요청 · 무료</th><th>내부 교정</th><th>사유 없음(9/13 전)</th></tr></thead><tbody>'
+      + ids.map(function (id) {
+          var g = by[id];
+          return '<tr><td>' + esc(orderName(id)) + '</td><td><b>' + g.paid + '건</b>'
+            + (g.fee ? ' <span class="mono">' + A.won(g.fee) + '원</span>' : '') + '</td>'
+            + '<td>' + g.free + '건</td><td>' + g.ours + '건</td><td class="mono">' + g.old + '건</td></tr>';
+        }).join('') + '</tbody></table></div>'
+      + '<div class="tblbox tblscroll" style="margin-top:10px"><table><thead><tr><th>언제</th><th>학원</th>'
+      + '<th>예전 → 새로</th><th>바꿀 때</th><th>사유</th></tr></thead><tbody>'
+      + list.slice(0, 200).map(function (c) {
+          return '<tr><td class="mono">' + A.fdate(c.changed_at) + '</td>'
+            + '<td class="mono">' + esc(orderName(c.order_id)) + '</td>'
+            + '<td>' + esc(c.keyword_from || '-') + ' → <b>' + esc(c.keyword_to || '-') + '</b></td>'
+            + '<td class="mono">' + esc((A.ST[c.status_at] || [c.status_at])[0]) + '</td>'
+            + '<td>' + (c.reason ? esc(c.reason) : '<span class="mono">-</span>')
+            + (c.charged ? ' <span class="chip c-wait">유료</span>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table></div></details>';
   }
 
   /* 목록 / 달력 고르기 */
@@ -5099,6 +5176,7 @@
 
     /* ── ✏️ 검색어 고치기 ── */
     if ((t = e.target.closest('[data-kwedit]'))) { openKwEdit(t.dataset.kwedit); return; }
+    if ((t = e.target.closest('[data-kwreason]'))) { kwReasonPick(t.dataset.kwreason); return; }
     if ((t = e.target.closest('[data-kwclose]'))) {
       var km = $('kwModal');
       if (km) { km.classList.add('hide'); km.innerHTML = ''; }
@@ -5119,6 +5197,8 @@
       var kwv = ($('kwNew') || {}).value || '';
       var kwy = (($('kwWhy') || {}).value || '').trim();
       if (!kwv.trim()) { A.toast('새 검색어를 적어 주세요'); return; }
+      var kwRsn = ($('kwModal') || { dataset: {} }).dataset.reason;
+      if (!kwRsn) { A.toast('누가 바꾸자고 했는지(학원 요청 / 내부 교정) 골라 주세요'); return; }
       var kwTop = topicOf(POSTS.filter(function (x) { return x.id === KW_POST; })[0] || {});
       var kwStg = kwTop && kwTop.stage ? stageBad(kwv, kwTop.stage) : null;
       if (kwStg && !confirm('이 제목은 글 내용과 학년이 안 맞습니다.\n\n'
@@ -5131,7 +5211,7 @@
       t.disabled = true; t.textContent = '바꾸는 중…';
       try {
         var kr = await A.rpc('post_set_keyword',
-          { p_post: KW_POST, p_keyword: kwv, p_subject: null, p_note: kwy || null }) || {};
+          { p_post: KW_POST, p_keyword: kwv, p_subject: null, p_note: kwy || null, p_reason: kwRsn }) || {};
         kr.why = kwy;
         var kmod = $('kwModal'); if (kmod) kmod._kwResult = kr;
         await A.loadAdmin();
@@ -5140,6 +5220,8 @@
         if (box) box.innerHTML = '<div class="msg ok" style="margin-top:14px">'
           + '<b>바꿨습니다.</b> ' + esc(kr.was || '') + ' → <b>' + esc(kr.keyword || '') + '</b>'
           + (kr.subject ? ' <span class="chip c-off">' + esc(kr.subject) + '</span>' : '')
+          + '<br>사유 · <b>' + esc(kr.reason || kwRsn) + '</b>'
+          + (kr.charged ? ' <span class="chip c-wait">유료 변경 3,000원으로 기록</span>' : ' <span class="chip c-off">무료</span>')
           + (kr.topic_moved ? '<br>이 글이 다룰 내용(소재)도 새 과목에 맞춰 다시 붙였습니다.' : '')
           + (kr.notified
               ? '<br><b>블로거에게 알림이 만들어졌습니다.</b> 아직 자동으로 보내지지는 않습니다 — '

@@ -260,6 +260,40 @@
       + '<div class="pcal">' + out.join('') + '</div>';
   }
 
+  /* ── 글별 진행 목록 ──
+     관리자 「7 진행 현황」 표에서 학원·공동체·누가·마감 칸을 뺀 것입니다.
+     단계 이름은 서버(order_status)가 묶어서 보냅니다 — 내부 상태(다시 쓰기 등)는 안 나갑니다.
+       배정 전 · 작성 중 · 검수 중 · 발행 대기 · 발행 완료   (리뷰 : 배정 전 · 발행 대기 · 발행 완료)
+     🔴 블로거 지연이 보이지 않게 글별 마감일·날짜는 넣지 않습니다. 발행 완료 글의 발행일만 보입니다.
+     ⚠️ 「검수 중」부터 환불이 안 됩니다(환불정책-가격구조-0913 2장). 이 목록이 그 기준을 학원이 직접 보는 곳입니다. */
+  var STAGE_CHIP = { '배정 전': 'c-off', '작성 중': 'c-wait', '검수 중': 'c-info', '발행 대기': 'c-info', '발행 완료': 'c-ok' };
+  function itemsHtml(items) {
+    if (!items.length) return '';
+    var steps = RV ? ['배정 전', '발행 대기', '발행 완료']
+                   : ['배정 전', '작성 중', '검수 중', '발행 대기', '발행 완료'];
+    var cnt = {};
+    items.forEach(function (x) { cnt[x.stage] = (cnt[x.stage] || 0) + 1; });
+    return '<div class="sec">' + W('글','리뷰') + '별 진행 <small>' + items.length + '편 · 한 줄이 한 편입니다</small></div>'
+      + '<div class="pcal-leg"><span class="mono">'
+      + steps.map(function (s) { return s + ' <b>' + (cnt[s] || 0) + '</b>'; }).join(' → ')
+      + '</span></div>'
+      + '<div class="tblbox tblscroll"><table><thead><tr>'
+      + '<th style="width:36px">#</th><th>' + W('검색어','무엇에 대한 리뷰인지') + '</th>'
+      + '<th style="width:96px">진행 단계</th><th style="width:90px">올린 날</th>'
+      + (RV ? '' : '<th style="width:80px">검색 순위</th>')
+      + '</tr></thead><tbody>'
+      + items.map(function (x, i) {
+          var done = x.stage === '발행 완료';
+          return '<tr><td class="mono">' + (i + 1) + '</td>'
+            + '<td>' + esc(x.keyword || '') + '</td>'
+            + '<td><span class="chip ' + (STAGE_CHIP[x.stage] || 'c-off') + '">' + esc(x.stage) + '</span></td>'
+            + '<td class="mono">' + (done && x.at ? fdate(x.at) : '') + '</td>'
+            + (RV ? '' : '<td>' + (done ? rank(x.rank) : '') + '</td>')
+            + '</tr>';
+        }).join('')
+      + '</tbody></table></div>';
+  }
+
   function render(d) {
     RV = (d.track === 'review');           /* 리뷰 주문이면 말을 바꿉니다 */
     if (RV) {
@@ -304,7 +338,9 @@
     /* 주문 */
     h += '<div class="sec">주문 <small>' + orders.length + '건</small></div>';
     h += orders.map(function (o) {
-      var dd = dday(o.deadline);
+      /* 입금 전 주문은 마감이 흐르지 않습니다(약관 제5조 「입금 확인 후 작업 시작」).
+         서버도 입금 전엔 마감일을 안 보내지만, 여기서도 진행 상태·D-day·마감일 칸을 그리지 않습니다. */
+      var dd = o.paid ? dday(o.deadline) : null;
       var st = o.status === 'done' ? '<span class="chip c-ok">다 끝냈습니다</span>'
         : o.status === 'paused' ? '<span class="chip c-wait">잠시 멈춤</span>'
           : o.status === 'ended' ? '<span class="chip c-off">종료</span>'
@@ -315,13 +351,13 @@
             : dd <= 7 ? '<span class="chip c-wait">' + dd + '일 남음</span>'
               : '<span class="chip c-off">' + dd + '일 남음</span>';
       return '<div class="ocard">'
-        + '<div class="h"><b>' + fdate(o.ordered_at) + ' 주문 · ' + o.qty + '편</b>' + st + ddChip
+        + '<div class="h"><b>' + fdate(o.ordered_at) + ' 주문 · ' + o.qty + '편</b>' + (o.paid ? st + ddChip : '')
         + (o.paid ? '<span class="chip c-ok" style="margin-left:auto">입금 확인됨</span>'
           : '<span class="chip c-wait" style="margin-left:auto">입금 기다리는 중</span>') + '</div>'
         + '<div class="kv">'
         + '<div><label>주문 편수</label><span>' + o.qty + '편</span></div>'
         + '<div><label>올라간 ' + W('글','리뷰') + '</label><span>' + o.published + '편</span></div>'
-        + '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>'
+        + (o.paid ? '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>' : '')
         + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '-') + '</span></div>'
         + '</div></div>';
     }).join('');
@@ -378,6 +414,9 @@
 
     /* 달력 — 며칠에 몇 편이 올라갔는지 */
     h += calHtml(orders, posts);
+
+    /* 글별 진행 — 달력 아래, 한 편이 한 줄 */
+    h += itemsHtml(d.items || []);
 
     /* 올라간 글 */
     h += '<div class="sec">올라간 ' + W('글','리뷰') + ' <small>' + posts.length + '편'
