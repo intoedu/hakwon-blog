@@ -5872,6 +5872,15 @@
 
     if ((t = e.target.closest('[data-paid]'))) {
       var amt = document.querySelector('[data-payamt="' + t.dataset.paid + '"]');
+      /* 약관 부칙② — 시행 전에 성립(= 입금)한 주문에는 새 약관을 적용하지 않습니다.
+         이 주문을 「마감 넘긴 글 원고료 없음」 예외로 둘지는 행정 · 이은총 님이 정합니다 (9/15 행정 I).
+         시행일(9/21 또는 9/25)이 확정되기 전이라 9/25 전까지는 늘 묻습니다. */
+      var po = A.ORDERS.filter(function (x) { return x.id === t.dataset.paid; })[0] || {};
+      if (!po.late_exempt && A.today() < '2026-09-25'
+          && !confirm('약관 시행 전 입금입니다.\n\n'
+            + '약관 부칙②에 따라 이 주문(' + (po.academy_name || '') + ')은 「주문 마감 넘긴 글 원고료 없음」의 '
+            + '예외가 될 수 있습니다. 지금은 예외 아님으로 둡니다.\n\n'
+            + '입금 확인 뒤 [의뢰 시작] 전에 행정 창에 먼저 알려 주세요.\n\n입금 확인을 계속할까요?')) return;
       t.disabled = true;
       try {
         await A.rpc('order_set_paid', {
