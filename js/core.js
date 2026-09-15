@@ -41,6 +41,12 @@ window.ESC = (function () {
   A.kstNow = function () { return new Date(Date.now() + A.KST); };
   A.today = function () { return A.kstNow().toISOString().slice(0, 10); };
   A.thisMonth = function () { return A.kstNow().toISOString().slice(0, 7); };
+  /* 시각(ISO) → 한국 기준 'YYYY-MM'. 정산은 「그 일을 한 날의 달」로 잡습니다 (서버 payout_close 와 같은 규칙) */
+  A.kstMonth = function (ts) {
+    if (!ts) return '';
+    var t = Date.parse(ts); if (isNaN(t)) return '';
+    return new Date(t + 9 * 3600000).toISOString().slice(0, 7);
+  };
   A.dday = function (d) {
     if (!d) return null;
     return Math.round((new Date(d + 'T00:00:00') - new Date(A.today() + 'T00:00:00')) / 86400000);
@@ -663,6 +669,8 @@ window.ESC = (function () {
     var full = (s.data && s.data.value) || null;
     if (full) {
       A.REVIEW_RATE = full.review || { approve: 250, verify: 250 };
+      /* 검색어 변경 요금 — 합계 = 관리자 몫 + 블로거 몫. 서버 post_set_keyword 도 같은 값을 읽습니다 */
+      A.KW_FEE = full.kw_fee || { admin: 2000, blogger: 1000 };
       A.MONTH_CAP = Number(full.month_cap) || 30;   /* posts_auto_assign 이 쓰는 한 사람 월 상한 */
       A.SALE = full.sale || { normal: 6000, premium: 3000 };   /* 학원에게 받는 편당 금액 */
       A.SPLIT = full.split || { esc: 2, blogger: 2, community: 1, reviewer: 1 };
@@ -687,6 +695,7 @@ window.ESC = (function () {
 
     A.LEVELS = []; A.AD_LINES = []; A.FORM = {};
     A.REVIEW_RATE = { approve: 250, verify: 250 };
+    A.KW_FEE = { admin: 2000, blogger: 1000 };
 
     await A.loadCommsPublic();
 

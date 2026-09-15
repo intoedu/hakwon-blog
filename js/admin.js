@@ -11,6 +11,7 @@
   var REQ_DONE = {};    /* 의뢰 id → ESC 관리자에서 '완료'로 표시됐는지 */
   var REWORKS = {};     /* 글 id → 돌려보낸 이력 (사유가 지워져도 여기 남습니다) */
   var RPAY = [];        /* 이번 달 검수 수당 명세 */
+  var PITEMS = [], PSRC = {};   /* 정산 명세(blog_pay_items) — 이 달 것 / 어느 달이든 이미 잡힌 것 */
   function revRate() { return A.REVIEW_RATE || { approve: 250, verify: 250 }; }
   function sale() { return A.SALE || { normal: 6000, premium: 3000 }; }
   function split() { return A.SPLIT || { esc: 2, blogger: 2, community: 1, reviewer: 1 }; }
@@ -860,10 +861,32 @@
       + '<button class="btn btn-p" id="btnSaveReview">검수 수당 저장</button>'
       + '<span class="mono">글 한 편당 합계 <b>'
       + won((Number(revRate().approve) || 0) + (Number(revRate().verify) || 0)) + '원</b>'
-      + ' · 바꿔도 <b>이미 검수한 글의 금액은 안 변합니다</b></span></div></div>';
+      + ' · 바꿔도 <b>이미 검수한 글의 금액은 안 변합니다</b></span></div></div>'
+
+      /* 검색어 변경 요금 — 🔴 금액은 여기 한 곳에서만 정합니다 (settings.blog.kw_fee) */
+      + '<div class="sec" style="margin-top:26px">검색어 변경 요금 '
+      + '<small>학원 요청으로 배정 뒤에 검색어를 바꾸면 한 편마다 받습니다 (약관 제6조의2)</small></div>'
+      + '<div class="card"><div class="grid g2" style="gap:14px">'
+      + '<div><label class="f">바꾸기를 누른 관리자 몫</label>'
+      + '<input class="inp" type="number" id="kwFeeAdmin" style="max-width:130px" value="' + kwFee().admin + '">'
+      + '<div class="mono" style="margin-top:5px">AI로 바꾸게 해도 누른 분 몫입니다</div></div>'
+      + '<div><label class="f">그 글을 맡고 있던 블로거 몫</label>'
+      + '<input class="inp" type="number" id="kwFeeBlogger" style="max-width:130px" value="' + kwFee().blogger + '">'
+      + '<div class="mono" style="margin-top:5px">다시 쓴 글이 올라가 확인이 끝나면 원고료와 함께 나갑니다</div></div>'
+      + '</div>'
+      + '<div class="row" style="margin-top:14px">'
+      + '<button class="btn btn-p" id="btnSaveKw">검색어 변경 요금 저장</button>'
+      + '<span class="mono">학원에 받는 금액 = 두 칸 합계 <b id="kwFeeSum">' + won(kwFeeTotal()) + '원</b>'
+      + ' · 바꿔도 <b>이미 바꾼 글의 금액은 안 변합니다</b></span></div></div>';
 
     $('btnSaveLevels').onclick = saveLevels;
     $('btnSaveReview').onclick = saveReviewRate;
+    $('btnSaveKw').onclick = saveKwFee;
+    ['kwFeeAdmin', 'kwFeeBlogger'].forEach(function (id) {
+      $(id).oninput = function () {
+        $('kwFeeSum').textContent = won((Number($('kwFeeAdmin').value) || 0) + (Number($('kwFeeBlogger').value) || 0)) + '원';
+      };
+    });
 
     var cand = candidates();
     $('tcCand').textContent = cand.length;
@@ -909,6 +932,21 @@
     if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
     A.REVIEW_RATE = v.review;
     A.toast('검수 수당을 저장했습니다 (편당 ' + won(a + v2) + '원)');
+    renderLevels();
+  }
+
+  async function saveKwFee() {
+    var a = Number($('kwFeeAdmin').value), b = Number($('kwFeeBlogger').value);
+    if (!(a >= 0) || !(b >= 0)) { A.toast('숫자를 넣어 주세요'); return; }
+    this.disabled = true;
+    var cur = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+    var v = (cur.data && cur.data.value) || {};
+    v.kw_fee = { admin: a, blogger: b };
+    var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
+    this.disabled = false;
+    if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+    A.KW_FEE = v.kw_fee;
+    A.toast('검색어 변경 요금을 저장했습니다 (한 편 ' + won(a + b) + '원)');
     renderLevels();
   }
 
@@ -3267,7 +3305,7 @@
     var thisM = A.thisMonth() + '-01';
     function gotThisMonth(bid) {
       return POSTS.filter(function (x) {
-        return x.blogger_id === bid && x.cycle_month === thisM && x.status !== 'cancelled';
+        return x.blogger_id === bid && A.kstMonth(x.assigned_at) === thisM.slice(0, 7) && x.status !== 'cancelled';
       }).length;
     }
     /* 자동 배정과 같은 순서로 보여줍니다 — 위에 있는 사람이 먼저 받습니다 */
@@ -3587,6 +3625,8 @@
      블로거가 쓴 내용과 지시가 어긋납니다. 서버도 pending·assigned 일 때만 소재를
      다시 붙입니다. 이 창이 하는 일은 「제목을 내용에 맞추는 것」 하나입니다. */
   var KW_POST = null;
+  function kwFee() { var f = A.KW_FEE || {}; return { admin: Number(f.admin) || 0, blogger: Number(f.blogger) || 0 }; }
+  function kwFeeTotal() { return kwFee().admin + kwFee().blogger; }
   function kwReasonPick(r) {
     var m = $('kwModal'); if (!m) return;
     m.dataset.reason = r;
@@ -3596,8 +3636,13 @@
       ? '우리가 고치는 것이라 <b>무료</b>입니다.'
       : m.dataset.status === 'pending'
         ? '아직 블로거에게 배정 전이라 <b>무료 변경</b>으로 기록됩니다.'
-        : '<span style="color:var(--bad)"><b>배정 뒤 학원 요청 — 유료 변경(한 편 3,000원)으로 기록됩니다.</b></span> '
-          + '블로거에게 가는 알림에는 요금 이야기가 나가지 않습니다.';
+        : '<span style="color:var(--bad)"><b>배정 뒤 학원 요청 — 유료 변경(한 편 ' + won(kwFeeTotal()) + '원)입니다.</b></span> '
+          + '바꾸기를 누른 분 ' + won(kwFee().admin) + '원 · 이 글을 맡은 블로거 ' + won(kwFee().blogger) + '원으로 정산에 잡힙니다. '
+          + '블로거에게 가는 알림에는 요금 이야기가 나가지 않습니다.'
+          /* 약관 개정안 제6조의2② — 금액을 먼저 알리고 확인받은 뒤 변경 */
+          + '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;color:var(--ink)">'
+          + '<input type="checkbox" id="kwOk" style="margin-top:4px"> '
+          + '<span><b>학원에 금액을 먼저 알리고 확인받았습니다.</b> 체크해야 바꿀 수 있습니다.</span></label>';
   }
   function openKwEdit(pid) {
     var p = POSTS.filter(function (x) { return x.id === pid; })[0];
@@ -3794,7 +3839,7 @@
           + '<td class="num">' + up + '편</td>'
           + '<td class="num">' + POSTS.filter(function (p) {
             return commOf(p) === c.id && ['verified', 'paid'].indexOf(p.status) >= 0
-              && p.cycle_month === A.thisMonth() + '-01';
+              && A.kstMonth(p.published_at) === A.thisMonth();
           }).length + '편</td></tr>';
       }).join('')
       + (none ? '<tr><td><b>담당자 미정</b></td><td class="num">-</td>'
@@ -4457,6 +4502,9 @@
     CPAY = await A.sel('community_payouts', { eq: { month: m } });
     BPAY = await A.sel('blog_payouts', { eq: { month: m } });
     RPAY = await A.sel('review_payouts', { eq: { month: m } });
+    PITEMS = await A.sel('blog_pay_items', { eq: { pay_month: m } });
+    PSRC = {};
+    (await A.sel('blog_pay_items', { select: 'src' })).forEach(function (x) { PSRC[x.src] = 1; });
     renderPay();
   }
   function renderPay() {
@@ -4466,31 +4514,41 @@
     if (ptn) ptn.innerHTML = '<b>블로그와 리뷰가 함께 잡힙니다.</b> '
       + '한 사람이 두 가지를 다 했어도 공동체로 한 번만 보내야 하기 때문입니다.';
 
-    var m = $('payMonth').value + '-01';
-    var verified = POSTS.filter(function (p) { return p.status === 'verified' && p.cycle_month === m; });
-    var blogTotal = CPAY.reduce(function (a, c) { return a + c.amount; }, 0);
+    /* 정산 달 = 그 일을 한 날의 달 (블로거 링크 넣은 날 · 검수자 통과/확인한 날 · 검색어 바꾼 날).
+       확인이 늦게 끝나 지난 달에 못 잡힌 것은 다음 마감 때 이 달 명세로 붙습니다. */
+    var mm = $('payMonth').value;
+    var waiting = POSTS.filter(function (p) {
+      return p.status === 'verified' && p.published_at && A.kstMonth(p.published_at) <= mm && !PSRC['post:' + p.id];
+    });
+    CPAY = CPAY.filter(function (c) { return c.amount + (Number(c.review_amount) || 0) + (c.kw_amount || 0) > 0; });
+    var blogTotal = BPAY.reduce(function (a, b) { return a + b.amount; }, 0);
     var revTotal = RPAY.reduce(function (a, r) { return a + r.amount; }, 0);
-    var total = blogTotal + revTotal;
-    var sale = POSTS.filter(function (p) {
-      return ['verified', 'paid'].indexOf(p.status) >= 0 && p.cycle_month === m;
-    }).reduce(function (a, p) { return a + (p.sale_rate || 0); }, 0);
+    var kwTotal = BPAY.reduce(function (a, b) { return a + (b.kw_amount || 0); }, 0)
+      + RPAY.reduce(function (a, r) { return a + (r.kw_amount || 0); }, 0);
+    var total = blogTotal + revTotal + kwTotal;
+    var mine = {};
+    PITEMS.forEach(function (i) { if (i.kind === 'post' && !i.void) mine[i.post_id] = 1; });
+    var sale = POSTS.filter(function (p) { return mine[p.id]; })
+      .reduce(function (a, p) { return a + (p.sale_rate || 0); }, 0);
 
-    $('payStats').innerHTML = st(verified.length, '아직 마감 안 한 글')
-      + st(blogTotal, '블로거 지급 (원)') + st(revTotal, '검수 수당 (원)')
+    $('payStats').innerHTML = st(waiting.length, '아직 마감에 안 잡힌 글')
+      + st(blogTotal, '블로거 원고료 (원)') + st(revTotal, '검수 수당 (원)')
+      + st(kwTotal, '검색어 변경 보상 (원)')
       + st(Math.max(0, sale - total), '남는 돈 (원)');
 
     $('payList').innerHTML = CPAY.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>공동체</th><th>인원</th><th>편수</th><th>블로거 지급</th><th>검수 수당</th>'
-      + '<th>실제 이체액</th><th>계좌</th><th>상태</th><th></th></tr></thead><tbody>'
+      + '<th>검색어 보상</th><th>실제 이체액</th><th>계좌</th><th>상태</th><th></th></tr></thead><tbody>'
       + CPAY.map(function (c) {
         var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
-        var rv = Number(c.review_amount) || 0;
+        var rv = Number(c.review_amount) || 0, kw = c.kw_amount || 0;
         return '<tr class="clickme" data-opencp="' + c.id + '">'
           + '<td><b>' + esc(cm.name || '-') + '</b> <span class="mono">▸ 펼치기</span></td>'
           + '<td class="num">' + c.people_count + '명</td><td class="num">' + c.post_count + '</td>'
           + '<td class="num">' + won(c.amount) + '</td>'
           + '<td class="num">' + (rv ? won(rv) : '<span class="mono">-</span>') + '</td>'
-          + '<td class="num"><b>' + won(c.amount + rv) + '</b></td>'
+          + '<td class="num">' + (kw ? won(kw) : '<span class="mono">-</span>') + '</td>'
+          + '<td class="num"><b>' + won(c.amount + rv + kw) + '</b></td>'
           + '<td class="mono">' + esc([cm.bank_name, cm.bank_no].filter(Boolean).join(' ') || '계좌 미입력') + '</td>'
           + '<td>' + (c.status === 'sent' ? '<span class="chip c-ok">보냈음 ' + A.fdate(c.sent_at) + '</span>'
             : '<span class="chip c-wait">아직 안 보냄</span>') + '</td>'
@@ -4499,19 +4557,35 @@
       : A.empty('아직 마감하지 않았습니다. 위에서 [이 달 마감하기]를 눌러 주세요.');
 
     /* 공동체에 안 속한 검수자 — 개별로 보내야 합니다 */
-    var loose = RPAY.filter(function (r) { return !r.community_payout; });
+    var loose = RPAY.filter(function (r) { return !r.community_payout && r.amount + (r.kw_amount || 0) > 0; });
     $('payLoose').innerHTML = loose.length
       ? '<div class="sec">공동체에 안 속한 검수자 <small>' + loose.length
         + '명 · 개별로 이체하셔야 합니다</small></div>'
         + '<div class="tblbox tblscroll"><table><thead><tr>'
-        + '<th>이름</th><th>원고 통과</th><th>노출 확인</th><th>수당</th></tr></thead><tbody>'
+        + '<th>이름</th><th>원고 통과</th><th>노출 확인</th><th>검색어 변경</th><th>보낼 돈</th></tr></thead><tbody>'
         + loose.map(function (r) {
           return '<tr><td><b>' + esc(staffName(r.staff_id) || '-') + '</b></td>'
             + '<td class="num">' + r.approve_count + '편</td>'
             + '<td class="num">' + r.verify_count + '편</td>'
-            + '<td class="num"><b>' + won(r.amount) + '</b></td></tr>';
+            + '<td class="num">' + (r.kw_count ? r.kw_count + '건 · ' + won(r.kw_amount) + '원' : '-') + '</td>'
+            + '<td class="num"><b>' + won(r.amount + (r.kw_amount || 0)) + '</b></td></tr>';
         }).join('') + '</tbody></table></div>'
       : '';
+    /* 공동체에 안 속한 블로거(ESC 직원 등) — 공동체 이체에 안 들어가서 개별로 보내야 합니다.
+       ⚠️ 예전엔 이 목록이 없어 이분들 원고료가 정산 화면 어디에도 안 보였습니다 */
+    var looseB = BPAY.filter(function (b) { return !b.community_payout && b.amount + (b.kw_amount || 0) > 0; });
+    if (looseB.length) $('payLoose').innerHTML += '<div class="sec" style="margin-top:14px">공동체에 안 속한 블로거 <small>'
+      + looseB.length + '명 · 개별로 이체하셔야 합니다</small></div>'
+      + '<div class="tblbox tblscroll"><table><thead><tr>'
+      + '<th>이름</th><th>편수</th><th>원고료</th><th>검색어 보상</th><th>보낼 돈</th></tr></thead><tbody>'
+      + looseB.map(function (b) {
+        var pp = A.PEOPLE.filter(function (x) { return x.id === b.blogger_id; })[0] || {};
+        return '<tr><td><b>' + esc(pp.name || '-') + '</b></td>'
+          + '<td class="num">' + b.post_count + '편</td>'
+          + '<td class="num">' + won(b.amount) + '</td>'
+          + '<td class="num">' + (b.kw_count ? b.kw_count + '편 · ' + won(b.kw_amount) : '-') + '</td>'
+          + '<td class="num"><b>' + won(b.amount + (b.kw_amount || 0)) + '</b></td></tr>';
+      }).join('') + '</tbody></table></div>';
     $('payDetail').innerHTML = '';
   }
   function openCP(id) {
@@ -4519,41 +4593,46 @@
     var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
     var mine = BPAY.filter(function (b) {
       var p = A.PEOPLE.filter(function (x) { return x.id === b.blogger_id; })[0];
-      return p && p.community_id === c.community_id;
+      return p && p.community_id === c.community_id && b.amount + (b.kw_amount || 0) > 0;
     });
     $('payDetail').innerHTML = '<div class="crumb"><b style="color:var(--ink)">' + esc(cm.name) + '</b>'
       + '<span class="mono">이 명세를 공동체 리더에게 함께 보내시면 됩니다</span></div>'
-      + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>단계</th><th>편수</th><th>편당</th><th>금액</th></tr></thead><tbody>'
+      + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>단계</th><th>편수</th><th>편당</th><th>원고료</th><th>검색어 보상</th><th>금액</th></tr></thead><tbody>'
       + mine.map(function (b) {
         var p = A.PEOPLE.filter(function (x) { return x.id === b.blogger_id; })[0] || {};
         return '<tr><td><b>' + esc(p.name || '-') + '</b></td><td>' + A.lvBadge(p.level || 1) + '</td>'
           + '<td class="num">' + b.post_count + '</td>'
           + '<td class="num">' + won(b.post_count ? Math.round(b.amount / b.post_count) : 0) + '</td>'
-          + '<td class="num"><b>' + won(b.amount) + '</b></td></tr>';
+          + '<td class="num">' + won(b.amount) + '</td>'
+          + '<td class="num">' + (b.kw_count ? b.kw_count + '편 · ' + won(b.kw_amount) : '-') + '</td>'
+          + '<td class="num"><b>' + won(b.amount + (b.kw_amount || 0)) + '</b></td></tr>';
       }).join('')
-      + '<tr><td colspan="4" style="text-align:right"><b>블로거 지급 합계</b></td>'
-      + '<td class="num"><b>' + won(c.amount) + '</b></td></tr>'
+      + '<tr><td colspan="6" style="text-align:right"><b>블로거 지급 합계</b></td>'
+      + '<td class="num"><b>' + won(mine.reduce(function (a, b) { return a + b.amount + (b.kw_amount || 0); }, 0)) + '</b></td></tr>'
       + '</tbody></table></div>'
 
       /* 이 공동체에 속한 검수자들의 수당 */
       + (function () {
-        var rv = RPAY.filter(function (r) { return r.community_payout === c.id; });
+        var rv = RPAY.filter(function (r) { return r.community_payout === c.id && r.amount + (r.kw_amount || 0) > 0; });
         if (!rv.length) return '';
         return '<div class="sec">검수 수당 <small>이 공동체에서 검수를 맡으신 분들</small></div>'
           + '<div class="tblbox tblscroll"><table><thead><tr>'
-          + '<th>이름</th><th>원고 통과</th><th>노출 확인</th><th>수당</th></tr></thead><tbody>'
+          + '<th>이름</th><th>원고 통과</th><th>노출 확인</th><th>수당</th><th>검색어 변경</th></tr></thead><tbody>'
           + rv.map(function (r) {
             return '<tr><td><b>' + esc(staffName(r.staff_id) || '-') + '</b></td>'
               + '<td class="num">' + r.approve_count + '편</td>'
               + '<td class="num">' + r.verify_count + '편</td>'
-              + '<td class="num"><b>' + won(r.amount) + '</b></td></tr>';
+              + '<td class="num"><b>' + won(r.amount) + '</b></td>'
+              + '<td class="num">' + (r.kw_count ? r.kw_count + '건 · ' + won(r.kw_amount) : '-') + '</td></tr>';
           }).join('')
           + '<tr><td colspan="3" style="text-align:right"><b>검수 수당 합계</b></td>'
-          + '<td class="num"><b>' + won(rv.reduce(function (a, r) { return a + r.amount; }, 0)) + '</b></td></tr>'
-          + '</tbody></table></div>'
-          + '<div class="note" style="margin-top:12px">이 공동체로 보낼 <b>실제 이체액</b>은 '
-          + '블로거 지급 ' + won(c.amount) + '원 + 검수 수당 ' + won(c.review_amount || 0) + '원 = '
-          + '<b>' + won(c.amount + (c.review_amount || 0)) + '원</b> 입니다.</div>';
+          + '<td class="num"><b>' + won(rv.reduce(function (a, r) { return a + r.amount; }, 0)) + '</b></td><td></td></tr>'
+          + '</tbody></table></div>';
+      })()
+      + '<div class="note" style="margin-top:12px">이 공동체로 보낼 <b>실제 이체액</b>은 '
+      + '블로거 원고료 ' + won(c.amount) + '원 + 검수 수당 ' + won(c.review_amount || 0) + '원 + 검색어 변경 보상 '
+      + won(c.kw_amount || 0) + '원 = <b>' + won(c.amount + (c.review_amount || 0) + (c.kw_amount || 0)) + '원</b> 입니다.</div>'
+      + (function () {
       })();
   }
   /* ── 정산 내보내기 ──
@@ -4569,34 +4648,37 @@
 
   /* ① 개인별 지급대장 — 이 달. 세무사에게 넘기는 표 */
   $('btnPayPeople').onclick = function () {
-    if (!BPAY.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
+    var pb = BPAY.filter(function (b) { return b.amount + (b.kw_amount || 0) > 0; });
+    if (!pb.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
     var m = $('payMonth').value;
     var head = ['정산월', '공동체', '이름', '전화번호', '이메일(로그인 아이디)',
-      '단계', '단계 이름', '편수', '편당 평균', '지급액',
+      '단계', '단계 이름', '편수', '편당 평균', '원고료', '검색어 변경 보상', '지급액 합계',
       '지급 상태', '보낸 날', '받는 계좌 (공동체)', '예금주'].concat(PAY_TAIL);
-    var body = BPAY.map(function (b) {
+    var body = pb.map(function (b) {
       var r = payRow(b);
       return [m, r.cm.name || '', r.p.name || '', r.p.phone || '', r.p.email || '',
         r.p.level || '', A.levelOf(r.p.level || 1).name,
-        b.post_count, b.post_count ? Math.round(b.amount / b.post_count) : 0, b.amount,
+        b.post_count, b.post_count ? Math.round(b.amount / b.post_count) : 0,
+        b.amount, b.kw_amount || 0, b.amount + (b.kw_amount || 0),
         r.cp.status === 'sent' ? '보냄' : '아직 안 보냄',
         r.cp.sent_at ? A.fdate(r.cp.sent_at) : '',
         [r.cm.bank_name, r.cm.bank_no].filter(Boolean).join(' '), r.cm.bank_holder || '',
         '', '', '', ''];
     });
     saveCsv('ESC 블로그 지급대장 ' + m + '.csv', head, body);
-    A.toast(BPAY.length + '명의 지급대장을 저장했습니다');
+    A.toast(pb.length + '명의 지급대장을 저장했습니다');
   };
 
   /* ② 공동체 이체 목록 — 이 달. 은행에서 보고 이체하는 표 */
   $('btnPayComm').onclick = function () {
     if (!CPAY.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
     var m = $('payMonth').value;
-    var head = ['정산월', '공동체', '인원', '편수', '보낼 금액',
+    var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '검색어 변경 보상', '보낼 금액',
       '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처', '상태', '보낸 날', '메모'];
     var body = CPAY.map(function (c) {
       var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
-      return [m, cm.name || '', c.people_count, c.post_count, c.amount,
+      return [m, cm.name || '', c.people_count, c.post_count, c.amount, c.review_amount || 0, c.kw_amount || 0,
+        c.amount + (c.review_amount || 0) + (c.kw_amount || 0),
         cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
         cm.leader_name || '', cm.leader_phone || '',
         c.status === 'sent' ? '보냄' : '아직 안 보냄',
@@ -4615,16 +4697,19 @@
       var byId = {};
       all.forEach(function (b) {
         var k = b.blogger_id;
+        if (!(b.amount + (b.kw_amount || 0))) return;
         if (!byId[k]) byId[k] = { cnt: 0, amt: 0, months: [] };
-        byId[k].cnt += b.post_count; byId[k].amt += b.amount;
-        byId[k].months.push(b.month.slice(0, 7) + '(' + b.post_count + '편 ' + won(b.amount) + '원)');
+        var amt = b.amount + (b.kw_amount || 0);
+        if (!amt) return;
+        byId[k].cnt += b.post_count; byId[k].amt += amt;
+        byId[k].months.push(b.month.slice(0, 7) + '(' + b.post_count + '편 ' + won(amt) + '원)');
       });
       var head = ['이름', '전화번호', '이메일(로그인 아이디)', '공동체', '현재 단계',
         '첫 정산월', '마지막 정산월', '정산 개월 수', '누적 편수', '누적 지급액', '월별 내역'].concat(PAY_TAIL);
       var body = Object.keys(byId).map(function (k) {
         var v = byId[k];
         var p = A.PEOPLE.filter(function (x) { return x.id === k; })[0] || {};
-        var mine = all.filter(function (b) { return b.blogger_id === k; });
+        var mine = all.filter(function (b) { return b.blogger_id === k && b.amount + (b.kw_amount || 0) > 0; });
         return [p.name || '', p.phone || '', p.email || '', A.commName(p.community_id),
           (p.level || '') + '단계',
           mine[0].month.slice(0, 7), mine[mine.length - 1].month.slice(0, 7), mine.length,
@@ -4872,40 +4957,44 @@
     $('rpA').textContent = won(rr.approve); $('rpV').textContent = won(rr.verify);
     $('rpT').textContent = won((Number(rr.approve) || 0) + (Number(rr.verify) || 0));
 
-    /* 이번 달 내가 손댄 글 */
+    /* 이번 달 내가 한 일 — 통과시킨 날 · 확인한 날 · 검색어 바꾼 날의 달 (약관 개정안 제13조⑦⑧)
+       원고 통과 수당은 그 글이 끝내 안 올라가도 나갑니다 */
+    var mm = A.thisMonth();
     var mineA = POSTS.filter(function (p) {
-      return p.reviewed_by === me && p.cycle_month === m && (p.review_pay || 0) > 0;
+      return p.reviewed_by === me && A.kstMonth(p.reviewed_at) === mm && (p.review_pay || 0) > 0
+        && ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
     });
     var mineV = POSTS.filter(function (p) {
-      return p.verified_by === me && p.cycle_month === m && (p.verify_pay || 0) > 0;
+      return p.verified_by === me && A.kstMonth(p.verified_at) === mm && (p.verify_pay || 0) > 0
+        && ['verified', 'paid'].indexOf(p.status) >= 0;
+    });
+    var mineK = KWCHG.filter(function (c) {
+      return c.changed_by === me && c.charged && (c.fee_admin || 0) > 0 && A.kstMonth(c.changed_at) === mm;
     });
     var sum = mineA.reduce(function (a, p) { return a + (p.review_pay || 0); }, 0)
-      + mineV.reduce(function (a, p) { return a + (p.verify_pay || 0); }, 0);
-    /* 아직 확인 안 끝난 글은 정산에 안 잡힙니다 */
-    var locked = mineA.filter(function (p) {
-      return ['verified', 'paid'].indexOf(p.status) < 0;
-    }).length;
+      + mineV.reduce(function (a, p) { return a + (p.verify_pay || 0); }, 0)
+      + mineK.reduce(function (a, c) { return a + (c.fee_admin || 0); }, 0);
 
     $('rpStats').innerHTML = st(mineA.length, '원고 통과시킨 글')
-      + st(mineV.length, '올라간 글 확인') + st(sum, '이번 달 수당 (원)')
-      + st(locked, '아직 확정 안 된 글', locked > 0);
-
-    $('rpNote').innerHTML = locked
-      ? '<div class="note warn" style="margin-bottom:16px">'
-      + '<b>글이 「확인 끝」이 되어야 수당이 확정됩니다.</b> 원고를 통과시켰어도 '
-      + '블로거가 아직 안 올렸거나 노출 확인이 안 끝난 글이 ' + locked + '편 있습니다.</div>'
-      : '';
+      + st(mineV.length, '올라간 글 확인') + st(mineK.length, '유료 검색어 변경')
+      + st(sum, '이번 달 수당 (원)');
+    $('rpNote').innerHTML = '';
 
     var rows = [];
     mineA.forEach(function (p) { rows.push({ p: p, kind: '원고 통과', pay: p.review_pay, at: p.reviewed_at }); });
     mineV.forEach(function (p) { rows.push({ p: p, kind: '노출 확인', pay: p.verify_pay, at: p.verified_at }); });
+    mineK.forEach(function (c) {
+      var p = POSTS.filter(function (x) { return x.id === c.post_id; })[0] || {};
+      rows.push({ p: { order_id: c.order_id, keyword: c.keyword_to, status: p.status }, kind: '검색어 변경', pay: c.fee_admin, at: c.changed_at });
+    });
     rows.sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
 
     $('rpList').innerHTML = rows.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>한 일</th><th>학원</th><th>검색어</th><th>언제</th><th>상태</th><th>수당</th></tr></thead><tbody>'
       + rows.map(function (r) {
-        return '<tr><td>' + (r.kind === '원고 통과'
-          ? '<span class="chip c-info">원고 통과</span>' : '<span class="chip c-ok">노출 확인</span>') + '</td>'
+        return '<tr><td>' + (r.kind === '원고 통과' ? '<span class="chip c-info">원고 통과</span>'
+          : r.kind === '검색어 변경' ? '<span class="chip c-wait">검색어 변경</span>'
+            : '<span class="chip c-ok">노출 확인</span>') + '</td>'
           + '<td>' + esc(orderName(r.p.order_id)) + '</td>'
           + '<td>' + esc(r.p.keyword || '') + '</td>'
           + '<td class="mono">' + A.fdate(r.at) + '</td>'
@@ -4916,15 +5005,16 @@
 
     /* 지난달 확정분 */
     var past = await A.sel('review_payouts', { order: 'month', asc: false });
-    past = (past || []).filter(function (r) { return r.staff_id === me && r.month !== m; });
+    past = (past || []).filter(function (r) { return r.staff_id === me && r.month !== m && r.amount + (r.kw_amount || 0) > 0; });
     $('rpPast').innerHTML = past.length ? '<div class="sec">지난달</div>'
       + '<div class="tblbox tblscroll"><table><thead><tr>'
-      + '<th>기간</th><th>원고 통과</th><th>노출 확인</th><th>수당</th></tr></thead><tbody>'
+      + '<th>기간</th><th>원고 통과</th><th>노출 확인</th><th>검색어 변경</th><th>수당</th></tr></thead><tbody>'
       + past.map(function (r) {
         return '<tr><td>' + r.month.slice(0, 7).replace('-', '년 ') + '월</td>'
           + '<td class="num">' + r.approve_count + '편</td>'
           + '<td class="num">' + r.verify_count + '편</td>'
-          + '<td class="num"><b>' + won(r.amount) + '</b></td></tr>';
+          + '<td class="num">' + (r.kw_count || 0) + '건</td>'
+          + '<td class="num"><b>' + won(r.amount + (r.kw_amount || 0)) + '</b></td></tr>';
       }).join('') + '</tbody></table></div>' : '';
   }
 
@@ -5199,6 +5289,8 @@
       if (!kwv.trim()) { A.toast('새 검색어를 적어 주세요'); return; }
       var kwRsn = ($('kwModal') || { dataset: {} }).dataset.reason;
       if (!kwRsn) { A.toast('누가 바꾸자고 했는지(학원 요청 / 내부 교정) 골라 주세요'); return; }
+      var kwPaid = kwRsn === '학원 요청' && ($('kwModal') || { dataset: {} }).dataset.status !== 'pending';
+      if (kwPaid && !($('kwOk') || {}).checked) { A.toast('유료 변경입니다. 학원에 금액을 알리고 확인받았다는 칸에 체크해 주세요'); return; }
       var kwTop = topicOf(POSTS.filter(function (x) { return x.id === KW_POST; })[0] || {});
       var kwStg = kwTop && kwTop.stage ? stageBad(kwv, kwTop.stage) : null;
       if (kwStg && !confirm('이 제목은 글 내용과 학년이 안 맞습니다.\n\n'
@@ -5211,7 +5303,8 @@
       t.disabled = true; t.textContent = '바꾸는 중…';
       try {
         var kr = await A.rpc('post_set_keyword',
-          { p_post: KW_POST, p_keyword: kwv, p_subject: null, p_note: kwy || null, p_reason: kwRsn }) || {};
+          { p_post: KW_POST, p_keyword: kwv, p_subject: null, p_note: kwy || null, p_reason: kwRsn,
+            p_confirmed: kwPaid ? true : null }) || {};
         kr.why = kwy;
         var kmod = $('kwModal'); if (kmod) kmod._kwResult = kr;
         await A.loadAdmin();
@@ -5221,7 +5314,9 @@
           + '<b>바꿨습니다.</b> ' + esc(kr.was || '') + ' → <b>' + esc(kr.keyword || '') + '</b>'
           + (kr.subject ? ' <span class="chip c-off">' + esc(kr.subject) + '</span>' : '')
           + '<br>사유 · <b>' + esc(kr.reason || kwRsn) + '</b>'
-          + (kr.charged ? ' <span class="chip c-wait">유료 변경 3,000원으로 기록</span>' : ' <span class="chip c-off">무료</span>')
+          + (kr.charged ? ' <span class="chip c-wait">유료 변경 ' + won(kr.fee) + '원으로 기록</span> '
+              + '<span class="mono">바꾼 분 ' + won(kr.fee_admin) + '원 · 블로거 ' + won(kr.fee_blogger) + '원</span>'
+            : ' <span class="chip c-off">무료</span>')
           + (kr.topic_moved ? '<br>이 글이 다룰 내용(소재)도 새 과목에 맞춰 다시 붙였습니다.' : '')
           + (kr.notified
               ? '<br><b>블로거에게 알림이 만들어졌습니다.</b> 아직 자동으로 보내지지는 않습니다 — '

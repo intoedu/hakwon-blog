@@ -225,8 +225,9 @@
     var todo = MY.filter(function (p) {
       return ['assigned', 'writing', 'rework', 'approved'].indexOf(p.status) >= 0;
     });
+    /* 이번 달 = 링크를 넣은 날의 달 (확인까지 끝난 글) */
     var monthDone = MY.filter(function (p) {
-      return ['verified', 'paid'].indexOf(p.status) >= 0 && p.cycle_month === A.thisMonth() + '-01';
+      return ['verified', 'paid'].indexOf(p.status) >= 0 && A.kstMonth(p.published_at) === A.thisMonth();
     });
 
     var W = A.WORDS(), RV = A.isRv();
@@ -238,7 +239,7 @@
     $('bStats').innerHTML =
       s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 ' + W.what)
       + s(A.ME.level + '단계', '내 단계 (' + rateLabel(lv) + ')')
-      + s(won(monthDone.reduce(function (a, p) { return a + (p.payout_rate || 0); }, 0)), '이번 달 받을 돈 (원)');
+      + s(won(monthDone.reduce(function (a, p) { return a + (p.payout_rate || 0) + (p.kw_bonus || 0); }, 0)), '이번 달 받을 돈 (원)');
 
     /* ⚠️ 임시 비밀번호는 카톡 대화방에 그대로 남아 있습니다. 본인 것으로 바꾸게 띄웁니다.
        막지는 않습니다 — 급한 일은 그대로 하실 수 있어야 합니다. */
@@ -301,7 +302,8 @@
         + (p.keyword_changed_at && p.keyword_was
             ? '<div class="mono" style="color:var(--wait)">📌 제목이 바뀌었습니다 — '
               + '들어가서 확인해 주세요</div>' : '')
-        + '<div class="meta">' + esc(p.academy_name) + ' · ' + won(p.payout_rate) + '원 · '
+        + '<div class="meta">' + esc(p.academy_name) + ' · ' + won(p.payout_rate) + '원'
+          + (p.kw_bonus ? ' + 검색어 변경 ' + won(p.kw_bonus) + '원' : '') + ' · '
         + (p.status === 'rework'
           ? '<b style="color:var(--bad)">다시 쓰기 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
           : A.ST[p.status] ? A.ST[p.status][0] : p.status) + '</div></div>'
@@ -1369,15 +1371,15 @@
   }
 
   function renderPay() {
-    var m = A.thisMonth() + '-01';
+    /* 정산 달 = 링크를 넣은 날의 달. 확인이 다음 달에 끝나도 링크 넣은 달 몫입니다 */
     var thisM = MY.filter(function (p) {
-      return ['verified', 'paid'].indexOf(p.status) >= 0 && p.cycle_month === m;
+      return ['verified', 'paid'].indexOf(p.status) >= 0 && A.kstMonth(p.published_at) === A.thisMonth();
     });
     var lv = A.levelOf(A.ME.level);
     var W = A.WORDS(), RV = A.isRv();
     $('bPayStats').innerHTML = s(thisM.length, '이번 달 확정 편수')
       + s(lv.rate, '내 단계 단가 (원)')
-      + s(thisM.reduce(function (a, p) { return a + (p.payout_rate || 0); }, 0), '이번 달 받을 돈 (원)')
+      + s(thisM.reduce(function (a, p) { return a + (p.payout_rate || 0) + (p.kw_bonus || 0); }, 0), '이번 달 받을 돈 (원)')
       + s(MY.filter(function (p) { return ['verified', 'paid'].indexOf(p.status) >= 0; }).length,
           '지금까지 한 ' + W.what);
 
@@ -1387,7 +1389,11 @@
       + '로 한 번에 보내집니다.</b> 공동체에서 나눠 받으시면 됩니다. 보통 다음 달 10일쯤입니다.<br>'
       + '<b>블로그와 리뷰는 합쳐서 한 번에 나갑니다.</b> 위 표는 지금 고르신 '
       + (RV ? '⭐ 리뷰' : '📝 블로그') + ' 것만 보여드리는 것이고, '
-      + '아래 「지난달」은 둘을 합친 금액입니다.</div>'
+      + '아래 「지난달」은 둘을 합친 금액입니다.<br>'
+      + '<b>링크를 넣은 날의 달</b>로 잡힙니다. 확인이 다음 달에 끝나도 링크 넣은 달 몫입니다.'
+      + (MY.some(function (p) { return p.kw_bonus; })
+        ? '<br>학원 요청으로 <b>검색어가 바뀐 글</b>은 다시 쓰신 수고로 금액이 더 붙습니다.' : '')
+      + '</div>'
       + (rows.length ? '<div class="tblbox tblscroll"><table>'
         + '<thead><tr><th>' + (RV ? '리뷰' : '글') + '</th><th>올린 날</th><th>상태</th>'
         + (RV ? '' : '<th>노출</th>') + '<th>금액</th></tr></thead><tbody>'
@@ -1398,14 +1404,15 @@
             + '<td class="mono">' + (p.published_at ? A.fdate(p.published_at) : '아직') + '</td>'
             + '<td>' + A.stChip(p.status) + '</td>'
             + (RV ? '' : '<td class="num">' + (p.keyword_rank ? A.rankText(p.keyword_rank) : '-') + '</td>')
-            + '<td class="num">' + (pay ? '<b>' + won(p.payout_rate) + '</b>' : '—') + '</td></tr>';
+            + '<td class="num">' + (pay ? '<b>' + won((p.payout_rate || 0) + (p.kw_bonus || 0)) + '</b>'
+              + (p.kw_bonus ? '<div class="mono">검색어 변경 +' + won(p.kw_bonus) + '</div>' : '') : '—') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : A.empty('아직 올린 ' + A.josa(W.what, '이') + ' 없습니다.'))
       + (PAY.length ? '<div class="sec">지난달 <small>블로그·리뷰 합계</small></div>'
         + '<div class="tblbox tblscroll"><table>'
         + '<thead><tr><th>기간</th><th>편수</th><th>금액</th></tr></thead><tbody>'
         + PAY.map(function (b) {
           return '<tr><td>' + b.month.slice(0, 7).replace('-', '년 ') + '월</td>'
-            + '<td class="num">' + b.post_count + '</td><td class="num"><b>' + won(b.amount) + '</b></td></tr>';
+            + '<td class="num">' + b.post_count + '</td><td class="num"><b>' + won(b.amount + (b.kw_amount || 0)) + '</b></td></tr>';
         }).join('') + '</tbody></table></div>' : '');
   }
 
