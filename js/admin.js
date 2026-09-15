@@ -679,6 +679,46 @@
     A.MY_COMMS = A.PREVIEW_STAFF ? (seen ? seen.comms : []) : A.SELF_COMMS;
   }
 
+  /* ── 의뢰 시작 (9/15) ──
+     입금 확인 → 담당자가 카톡으로 자료 요청·확인 → [의뢰 시작] → 그날부터 30일이 주문 마감.
+     시작 전에는 블로거에게 맡길 수 없습니다(서버 posts_assign 이 막음). 운영 매뉴얼 준비판 C 문구와 같은 순간입니다. */
+  function kstDay(ts) { var t = Date.parse(ts); return isNaN(t) ? '' : new Date(t + 9 * 3600000).toISOString().slice(0, 10); }
+  function mdKo(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (+m[2]) + '월 ' + (+m[3]) + '일' : ''; }
+  function plusDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+  function startRow(o) {
+    if (!o.started_at) {
+      return '<div class="note warn" style="margin-top:14px"><b>의뢰 시작 전입니다.</b> '
+        + '담당자가 카톡으로 자료를 받고 확인한 뒤 누르세요. <b>누른 날부터 30일</b>이 주문 마감이고, '
+        + '시작 전에는 블로거에게 맡길 수 없습니다.'
+        + '<div class="row" style="margin-top:10px">'
+        + '<button class="btn btn-p btn-s" data-start="' + o.id + '">▶ 의뢰 시작</button>'
+        + '<span class="mono">오늘 누르면 마감 ' + mdKo(plusDays(A.today(), 30)) + '</span></div></div>';
+    }
+    var sd = kstDay(o.started_at);
+    return '<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">'
+      + '<span class="chip c-info">시작 ' + mdKo(sd) + '</span>'
+      + '<span class="mono">주문 마감 <b>' + mdKo(o.deadline) + '</b>'
+      + (o.started_by ? ' · 누른 분 ' + esc(staffName(o.started_by) || '') : '') + '</span>'
+      + '<button class="btn btn-s" data-startcopy="' + o.id + '">📋 시작 안내 문구 복사</button>'
+      + (sd === A.today() ? '<button class="btn btn-s" data-startundo="' + o.id + '">되돌리기</button>' : '')
+      + '</div>';
+  }
+  /* 담당자가 카톡으로 보내는 시작 안내 — 운영 매뉴얼 준비판 C (고정 문구) */
+  function startMsg(o) {
+    var sd = kstDay(o.started_at), me = staffName(o.started_by) || '○○○';
+    return o.academy_name + ' 담당자님, 보내주신 자료 확인을 마쳤습니다.\n'
+      + (sd === A.today() ? '오늘(' + mdKo(sd) + ')' : mdKo(sd)) + '부터 작업을 시작합니다.\n\n'
+      + '· 주문: ' + o.total_qty + '편\n'
+      + '· 마감: ' + mdKo(o.deadline) + '까지 모두 올라갑니다\n\n'
+      + '글마다 어느 단계인지는 진행 현황 페이지에서 보실 수 있습니다.\n'
+      + 'https://center.intomarketing.co.kr/status.html?k=' + o.share_key + '\n\n'
+      + 'ESC 학원지원 블로그 담당 ' + me + ' 드림';
+  }
+  async function copyText(txt, okMsg) {
+    try { await navigator.clipboard.writeText(txt); A.toast(okMsg); }
+    catch (e) { window.prompt('아래 문구를 복사해 주세요', txt); }
+  }
+
   function staffName(id) {
     if (!id) return null;
     var s = (A.ALLSTAFF || []).filter(function (x) { return x.id === id; })[0];
@@ -1404,8 +1444,9 @@
         + kv('주문 편수', o.total_qty + '편') + kv('편당', won(o.sale_price) + '원')
         + kv('총액', won(o.amount_total) + '원')
         + kv('입금일', o.paid_at || '아직')
-        + kv('마감일', o.deadline || '-')
+        + kv('마감일', o.paid_at && !o.started_at ? '의뢰 시작 뒤 정해짐' : (o.deadline || '-'))
         + '</div>'
+        + (o.paid_at ? startRow(o) : '')
         + (o.paid_at ? '<div class="row" style="margin-top:14px">'
           + '<div class="bar" style="flex:1"><i style="width:' + (o.total_qty ? Math.round((p.done || 0) / o.total_qty * 100) : 0) + '%"></i></div>'
           + '<span class="mono">' + o.total_qty + '편 중 ' + (p.done || 0) + '편 올라감 · 만든 글 ' + (p.made || 0) + '편</span></div>'
@@ -3223,7 +3264,8 @@
     var oid = $('asOrder') && $('asOrder').value;
     var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
     if (!o || !$('schFrom')) return;
-    if (!$('schFrom').value) $('schFrom').value = o.paid_at && o.paid_at > A.today() ? o.paid_at : A.today();
+    var sFrom = o.started_at ? kstDay(o.started_at) : o.paid_at;
+    if (!$('schFrom').value) $('schFrom').value = sFrom && sFrom > A.today() ? sFrom : A.today();
     if (!$('schTo').value) $('schTo').value = o.deadline || '';
 
     var mine = POSTS.filter(function (p) {
@@ -4374,8 +4416,8 @@
   /* ── 올릴 날이 지난 글 ──
      ⚠️ 예전에는 지난 날짜가 그대로 남았습니다. 그러면 밀린 것을 한꺼번에 통과시켰을 때
      여러 편이 같은 날 올라가 「하루 1편」이 깨지고, 같은 학원 글이 한 블로그에 몰립니다.
-     이제 승인할 때 자동으로 다음 빈 날로 밀리고(post_review), 아직 승인 전인 것들은
-     여기서 한 번에 다시 깔 수 있습니다. */
+     → 9/15 날짜 재배치를 없앴습니다(단추 · 통과 때 자동 밀기 둘 다). 올릴 날은 배정 때 정한 날 그대로이고,
+     돈이 걸린 날짜는 주문 마감일 하나입니다. 같은 날 몰림은 post_publish 가 막습니다. */
   function lateBox(oid) {
     var box = $('pgLate'); if (!box) return;
     var today = A.today();
@@ -4388,11 +4430,9 @@
     box.innerHTML = '<div class="msg warn" style="margin:0 0 12px">'
       + '<b>올릴 날이 지난 글이 ' + late.length + '편 있습니다.</b>'
       + (appr ? ' 그중 <b>' + appr + '편은 이미 통과</b>해서 블로거가 지금 올리면 됩니다.' : '')
-      + '<br>이대로 두면 나중에 <b>여러 편이 같은 날 몰려</b> 올라가서 서로 검색어를 잡아먹습니다. '
-      + '아래 단추를 누르면 각자 <b>빈 날로 하루 한 편씩</b> 다시 깝니다.'
-      + '<div class="row" style="margin-top:10px">'
-      + '<button class="btn btn-p btn-s" data-resched="' + (oid || '') + '">📅 밀린 글 다시 깔기</button>'
-      + '<span class="mono">통과한 글을 승인할 때는 자동으로 밀립니다</span></div></div>';
+      + '<br><b>날짜는 옮기지 않습니다.</b> 주문 마감일 안에만 올라가면 됩니다 — 넘기면 학원에 환불하고 그 글 원고료는 없습니다. '
+      + '늦어지는 분께는 직접 연락해 주세요. 알림은 올릴 날 다음 날과 주문 마감 3일 전에 한 번씩만 갑니다. '
+      + '같은 학원 글이 한 블로그에 같은 날 몰리는 것은 링크를 넣을 때 막습니다.</div>';
   }
 
   /* ── 검색어 변경 기록 — 학원별로 유료가 몇 건인지 ──
@@ -5212,22 +5252,6 @@
       A.refreshReview && A.refreshReview(); rvBack(); return;
     }
 
-    /* ── 📅 밀린 글 다시 깔기 ── */
-    if ((t = e.target.closest('[data-resched]'))) {
-      var ro = t.dataset.resched || null;
-      if (!confirm('올릴 날이 지난 글을 오늘 이후의 빈 날로 다시 깔까요?\n\n'
-        + '· 사람마다 하루 한 편이 되도록 벌립니다\n'
-        + '· 이미 올라간 글은 안 건드립니다\n'
-        + '· 원고 마감일도 같이 당겨집니다')) return;
-      t.disabled = true;
-      try {
-        var rr = await A.rpc('posts_reschedule_late', { p_order: ro }) || {};
-        await A.loadAdmin();
-        A.toast((rr.moved || 0) + '편의 날짜를 다시 깔았습니다');
-      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
-      return;
-    }
-
     /* ── 목록 / 달력 ── */
     if ((t = e.target.closest('[data-pgview]'))) {
       PG_VIEW = t.dataset.pgview; pgViewPaint(); return;
@@ -5720,6 +5744,40 @@
       t.disabled = false; return;
     }
 
+    if ((t = e.target.closest('[data-start]'))) {
+      var so = A.ORDERS.filter(function (x) { return x.id === t.dataset.start; })[0];
+      if (!so) { A.toast('주문을 찾을 수 없습니다'); return; }
+      var sdl = plusDays(A.today(), 30);
+      if (!confirm(so.academy_name + ' — 오늘(' + mdKo(A.today()) + ')부터 시작합니다.\n'
+        + '주문 마감은 ' + mdKo(sdl) + '(30일 뒤)로 정해집니다.\n\n'
+        + '· 담당자가 자료 확인을 마쳤을 때만 누르세요\n'
+        + '· 누르면 학원에 「오늘부터 글 작성을 시작합니다」 알림이 만들어집니다\n'
+        + '· 되돌리기는 오늘 안에, 블로거에게 맡기기 전까지만 됩니다')) return;
+      t.disabled = true;
+      try {
+        await A.rpc('order_start', { p_order: so.id });
+        await A.loadAdmin();
+        var so2 = A.ORDERS.filter(function (x) { return x.id === so.id; })[0] || so;
+        await copyText(startMsg(so2), '시작했습니다. 주문 마감 ' + mdKo(so2.deadline)
+          + ' — 학원에 보낼 시작 안내 문구를 복사했습니다');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+    if ((t = e.target.closest('[data-startcopy]'))) {
+      var co = A.ORDERS.filter(function (x) { return x.id === t.dataset.startcopy; })[0];
+      if (co) await copyText(startMsg(co), '시작 안내 문구를 복사했습니다');
+      return;
+    }
+    if ((t = e.target.closest('[data-startundo]'))) {
+      if (!confirm('의뢰 시작을 되돌릴까요?\n\n마감일도 지워집니다. 학원에 이미 시작을 알렸다면 따로 말씀해 주세요.')) return;
+      t.disabled = true;
+      try {
+        await A.rpc('order_start_undo', { p_order: t.dataset.startundo });
+        A.toast('되돌렸습니다'); await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-paid]'))) {
       var amt = document.querySelector('[data-payamt="' + t.dataset.paid + '"]');
       t.disabled = true;
@@ -5727,7 +5785,7 @@
         await A.rpc('order_set_paid', {
           p_order: t.dataset.paid, p_amount: amt ? Number(amt.value) : null, p_when: A.today()
         });
-        A.toast('입금을 확인했습니다. 이제 4번 키워드 만들기로 가시면 됩니다');
+        A.toast('입금을 확인했습니다. 담당자가 자료를 확인한 뒤 [의뢰 시작]을 눌러 주세요');
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); }
       t.disabled = false; return;

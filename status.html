@@ -354,9 +354,9 @@
     /* 주문 */
     h += '<div class="sec">주문 <small>' + orders.length + '건</small></div>';
     h += orders.map(function (o) {
-      /* 입금 전 주문은 마감이 흐르지 않습니다(약관 제5조 「입금 확인 후 작업 시작」).
-         서버도 입금 전엔 마감일을 안 보내지만, 여기서도 진행 상태·D-day·마감일 칸을 그리지 않습니다. */
-      var dd = o.paid ? dday(o.deadline) : null;
+      /* 의뢰 시작 전 주문은 마감이 흐르지 않습니다(약관 제2조·제5조 — 입금과 자료를 확인한 날부터 30일).
+         서버도 시작 전엔 마감일을 안 보내지만, 여기서도 진행 상태·D-day·마감일 칸을 그리지 않습니다. */
+      var dd = o.started ? dday(o.deadline) : null;
       var st = o.status === 'done' ? '<span class="chip c-ok">다 끝냈습니다</span>'
         : o.status === 'paused' ? '<span class="chip c-wait">잠시 멈춤</span>'
           : o.status === 'ended' ? '<span class="chip c-off">종료</span>'
@@ -367,13 +367,15 @@
             : dd <= 7 ? '<span class="chip c-wait">' + dd + '일 남음</span>'
               : '<span class="chip c-off">' + dd + '일 남음</span>';
       return '<div class="ocard">'
-        + '<div class="h"><b>' + fdate(o.ordered_at) + ' 주문 · ' + o.qty + '편</b>' + (o.paid ? st + ddChip : '')
+        + '<div class="h"><b>' + fdate(o.ordered_at) + ' 주문 · ' + o.qty + '편</b>' + (o.started ? st + ddChip : '')
         + (o.paid ? '<span class="chip c-ok" style="margin-left:auto">입금 확인됨</span>'
+          + (o.started ? '' : '<span class="chip c-wait">자료 확인 중 — 담당자가 연락드립니다</span>')
           : '<span class="chip c-wait" style="margin-left:auto">입금 기다리는 중</span>') + '</div>'
         + '<div class="kv">'
         + '<div><label>주문 편수</label><span>' + o.qty + '편</span></div>'
         + '<div><label>올라간 ' + W('글','리뷰') + '</label><span>' + o.published + '편</span></div>'
-        + (o.paid ? '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>' : '')
+        + (o.started ? '<div><label>시작일</label><span>' + fdate(o.started_at) + '</span></div>'
+          + '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>' : '')
         + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '-') + '</span></div>'
         + '</div></div>';
     }).join('');
