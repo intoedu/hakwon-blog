@@ -239,7 +239,7 @@
     $('bStats').innerHTML =
       s(todo.length, '지금 할 일') + s(monthDone.length, '이번 달 끝낸 ' + W.what)
       + s(A.ME.level + '단계', '내 단계 (' + rateLabel(lv) + ')')
-      + s(won(monthDone.reduce(function (a, p) { return a + (p.payout_rate || 0) + (p.kw_bonus || 0); }, 0)), '이번 달 받을 돈 (원)');
+      + s(won(monthDone.reduce(function (a, p) { return a + (p.late_nopay ? 0 : (p.payout_rate || 0)) + (p.kw_bonus || 0); }, 0)), '이번 달 받을 돈 (원)');
 
     /* ⚠️ 임시 비밀번호는 카톡 대화방에 그대로 남아 있습니다. 본인 것으로 바꾸게 띄웁니다.
        막지는 않습니다 — 급한 일은 그대로 하실 수 있어야 합니다. */
@@ -302,7 +302,11 @@
         + (p.keyword_changed_at && p.keyword_was
             ? '<div class="mono" style="color:var(--wait)">📌 제목이 바뀌었습니다 — '
               + '들어가서 확인해 주세요</div>' : '')
-        + '<div class="meta">' + esc(p.academy_name) + ' · ' + won(p.payout_rate) + '원'
+        + '<div class="meta">' + esc(p.academy_name) + ' · '
+          /* 주문 마감을 넘긴 글 — 원고료 없음 (약관 개정안 제13조⑤). 21번 알림톡과 같은 말 */
+          + (p.late_nopay
+            ? '<b style="color:var(--bad)">주문 마감(' + esc(p.order_deadline || '') + ')이 지나 원고료가 없는 글입니다 · 고객과 약속한 글이라 꼭 올려 주세요</b>'
+            : won(p.payout_rate) + '원' + (p.order_deadline ? ' · 주문 마감 ' + esc(p.order_deadline) : ''))
           + (p.kw_bonus ? ' + 검색어 변경 ' + won(p.kw_bonus) + '원' : '') + ' · '
         + (p.status === 'rework'
           ? '<b style="color:var(--bad)">다시 쓰기 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
@@ -1379,7 +1383,7 @@
     var W = A.WORDS(), RV = A.isRv();
     $('bPayStats').innerHTML = s(thisM.length, '이번 달 확정 편수')
       + s(lv.rate, '내 단계 단가 (원)')
-      + s(thisM.reduce(function (a, p) { return a + (p.payout_rate || 0) + (p.kw_bonus || 0); }, 0), '이번 달 받을 돈 (원)')
+      + s(thisM.reduce(function (a, p) { return a + (p.late_nopay ? 0 : (p.payout_rate || 0)) + (p.kw_bonus || 0); }, 0), '이번 달 받을 돈 (원)')
       + s(MY.filter(function (p) { return ['verified', 'paid'].indexOf(p.status) >= 0; }).length,
           '지금까지 한 ' + W.what);
 
@@ -1404,7 +1408,8 @@
             + '<td class="mono">' + (p.published_at ? A.fdate(p.published_at) : '아직') + '</td>'
             + '<td>' + A.stChip(p.status) + '</td>'
             + (RV ? '' : '<td class="num">' + (p.keyword_rank ? A.rankText(p.keyword_rank) : '-') + '</td>')
-            + '<td class="num">' + (pay ? '<b>' + won((p.payout_rate || 0) + (p.kw_bonus || 0)) + '</b>'
+            + '<td class="num">' + (pay ? '<b>' + won((p.late_nopay ? 0 : (p.payout_rate || 0)) + (p.kw_bonus || 0)) + '</b>'
+              + (p.late_nopay ? '<div class="mono" style="color:var(--bad)">주문 마감 넘김 · 원고료 없음</div>' : '')
               + (p.kw_bonus ? '<div class="mono">검색어 변경 +' + won(p.kw_bonus) + '</div>' : '') : '—') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : A.empty('아직 올린 ' + A.josa(W.what, '이') + ' 없습니다.'))
       + (PAY.length ? '<div class="sec">지난달 <small>블로그·리뷰 합계</small></div>'

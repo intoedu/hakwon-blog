@@ -368,6 +368,9 @@
               : '<span class="chip c-off">' + dd + '일 남음</span>';
       return '<div class="ocard">'
         + '<div class="h"><b>' + fdate(o.ordered_at) + ' 주문 · ' + o.qty + '편</b>' + (o.started ? st + ddChip : '')
+        /* 환불 — 돌려준 뒤에만 보입니다 (마감 넘김 · 중도 해지 등) */
+        + (o.refund_amount ? '<span class="chip c-ok">' + (o.refund_qty ? o.refund_qty + '편 ' : '')
+          + '환불 ' + won(o.refund_amount) + '원 · ' + fdate(o.refunded_on) + '</span>' : '')
         + (o.paid ? '<span class="chip c-ok" style="margin-left:auto">입금 확인됨</span>'
           + (o.started ? '' : '<span class="chip c-wait">자료 확인 중 — 담당자가 연락드립니다</span>')
           : '<span class="chip c-wait" style="margin-left:auto">입금 기다리는 중</span>') + '</div>'

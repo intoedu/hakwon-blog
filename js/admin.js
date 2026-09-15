@@ -5,6 +5,7 @@
 
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
   var KWCHG = [];     /* 검색어 변경 기록 (blog_keyword_changes) — 새것부터 */
+  var REFUNDS = [], LATE = [], LATE_BY = {};   /* 환불 기록 · 주문 마감 넘긴 글 (9/15) */
   var ALLTOPICS = [], NOTES = [], RVSPECS = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
@@ -75,6 +76,9 @@
     PROG = await A.sel('order_progress');
     POSTS = await A.sel('blog_posts', { order: 'seq' });
     KWCHG = await A.sel('blog_keyword_changes', { order: 'changed_at', asc: false });
+    REFUNDS = await A.sel('blog_refunds', { order: 'created_at', asc: false });
+    LATE = await A.sel('blog_late_posts');
+    LATE_BY = {}; LATE.forEach(function (l) { LATE_BY[l.post_id] = l; });
     ALLTOPICS = await A.sel('blog_topics', { order: 'sort' });   /* 주문 카드 「나가는 정보」용 */
     NOTES = await A.sel('order_notes', { order: 'created_at' });
     RVSPECS = await A.sel('review_specs', { order: 'sort' });
@@ -1483,6 +1487,7 @@
         + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '">📋 주소 복사</button>'
         + '<a class="btn btn-s" href="' + esc(statusUrl(o)) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
         + '</div>'
+        + refundBox(o)
         + '<div class="row" style="margin-top:12px">'
         + (RV ? '' : '<button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>')
         + '<button class="btn btn-s" data-gokw="' + o.id + '">'
@@ -1501,6 +1506,36 @@
       ? '아직 리뷰 주문이 없습니다. 아래에서 만드시면 됩니다.'
       : '아직 블로그 주문이 없습니다. 위에서 만드시면 됩니다.');
   }
+  /* ── 환불 (9/15) ──
+     · 마감 넘김 : 주문 마감 다음 날 아침 센터가 자동으로 만듭니다(blog_mark_late). 관리자는 돌려준 날만 찍습니다.
+     · 중도 해지 : 담당자 미정 · 작성 중인 글만(약관 제7조①). 원고를 낸 글부터는 서버가 막습니다.
+     · 금액 = 편수 × 고객이 실제로 낸 단가. 계좌번호는 저장하지 않습니다(입금하신 계좌로 돌려드림). */
+  function refundBox(o) {
+    if (!o.paid_at) return '';
+    var mine = REFUNDS.filter(function (r) { return r.order_id === o.id; });
+    var late = LATE.filter(function (l) { return l.order_id === o.id; }).length;
+    var owed = mine.filter(function (r) { return !r.refunded_on; });
+    return '<div class="sec" style="margin-top:16px">환불 <small>'
+      + (mine.length ? mine.length + '건 · 돌려줄 것 ' + owed.length + '건' : '아직 없음')
+      + (o.late_exempt ? ' · 이 주문은 약관 시행 전이라 「마감 넘긴 글 원고료 없음」을 적용하지 않습니다' : '')
+      + (late ? ' · 주문 마감 넘긴 글 ' + late + '편' : '') + '</small></div>'
+      + (mine.length ? '<div class="tblbox tblscroll"><table><thead><tr><th>사유</th><th>편수</th><th>금액</th>'
+        + '<th>확정</th><th>돌려준 날</th><th>메모</th></tr></thead><tbody>'
+        + mine.map(function (r) {
+          return '<tr><td><span class="chip ' + (r.reason === '마감 넘김' ? 'c-bad' : 'c-wait') + '">' + esc(r.reason) + '</span></td>'
+            + '<td class="num">' + r.qty + '편</td>'
+            + '<td class="num"><b>' + won(r.amount) + '원</b><div class="mono">편당 ' + won(r.unit_price) + '</div></td>'
+            + '<td class="mono">' + esc(r.decided_on) + '</td>'
+            + '<td>' + (r.refunded_on ? '<span class="chip c-ok">' + esc(r.refunded_on) + '</span>'
+              : '<button class="btn btn-p btn-s" data-refundsent="' + r.id + '">돌려줌 표시</button>') + '</td>'
+            + '<td class="mono">' + esc(r.memo || '') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '')
+      + '<div class="row" style="margin-top:8px">'
+      + '<button class="btn btn-s" data-refundcancel="' + o.id + '">중도 해지 환불</button>'
+      + '<button class="btn btn-s" data-refundother="' + o.id + '">우리 잘못 · 그 밖 환불</button>'
+      + '<span class="mono">마감을 넘긴 글은 주문 마감 다음 날 아침 자동으로 환불이 만들어집니다</span></div>';
+  }
+
   function kv(k, v) {
     return '<div><label class="f">' + k + '</label><div style="font-size:16px;font-weight:700">' + esc(v) + '</div></div>';
   }
@@ -4399,7 +4434,9 @@
           + '<td class="mono">' + esc(orderName(p.order_id)) + '</td>'
           + '<td class="mono">' + (b ? esc(A.commName(b.community_id)) : '-') + '</td>'
           + '<td>' + (b ? esc(b.name) : '<span style="color:var(--muted)">아직 없음</span>') + '</td>'
-          + '<td>' + A.stChip(p.status) + '</td>'
+          + '<td>' + A.stChip(p.status)
+          + (LATE_BY[p.id] ? ' <span class="chip c-bad" title="주문 마감(' + esc(LATE_BY[p.id].deadline) + ')이 지나 이 글 원고료는 없습니다">마감 넘김</span>' : '')
+          + '</td>'
           + '<td class="mono' + (late ? '" style="color:var(--bad)' : '') + '">' + (p.due_date || '-') + '</td>'
           + '<td><div class="row" style="gap:6px">'
           + postLink(p.published_url, '글 보기 ↗') + takeBackBtn(p) + '</div></td></tr>';
@@ -4575,6 +4612,11 @@
       + st(blogTotal, '블로거 원고료 (원)') + st(revTotal, '검수 수당 (원)')
       + st(kwTotal, '검색어 변경 보상 (원)')
       + st(Math.max(0, sale - total), '남는 돈 (원)');
+    var lateNoPay = POSTS.filter(function (p) {
+      return LATE_BY[p.id] && ['verified', 'paid'].indexOf(p.status) >= 0 && A.kstMonth(p.published_at) === mm;
+    }).length;
+    if (ptn && lateNoPay) ptn.innerHTML += '<br><b>주문 마감을 넘겨 올라온 글 ' + lateNoPay
+      + '편</b>은 원고료를 잡지 않았습니다(약관 개정안 제13조⑤). 검수 수당은 그대로입니다.';
 
     $('payList').innerHTML = CPAY.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>공동체</th><th>인원</th><th>편수</th><th>블로거 지급</th><th>검수 수당</th>'
@@ -4786,7 +4828,8 @@
     edu_no: '교육 요약 다시쓰기', photos_added: '학원이 사진 보냄', published: '올라간 글 확인',
     info_changed: '학원 내용 바뀜', keyword_changed: '검색어 바뀜',
     taken_back: '글 회수됨', taken_back_admin: '관리자가 회수함',
-    review_late: '우리가 늦은 검수', pub_late: '올릴 날 지남'
+    review_late: '우리가 늦은 검수', pub_late: '올릴 날 지남',
+    deadline_passed: '주문 마감 지남', late_refund: '마감 넘김 환불'
   };
   var KIND_OF = {
     blogger: ['assigned', 'due1', 'overdue', 'rework', 'approved_post', 'payout',
@@ -5742,6 +5785,55 @@
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); }
       t.disabled = false; return;
+    }
+
+    if ((t = e.target.closest('[data-refundcancel]'))) {
+      var ro = A.ORDERS.filter(function (x) { return x.id === t.dataset.refundcancel; })[0];
+      if (!ro) return;
+      var can = POSTS.filter(function (p) { return p.order_id === ro.id && ['pending', 'assigned', 'writing'].indexOf(p.status) >= 0; }).length;
+      var qs = window.prompt(ro.academy_name + ' — 중도 해지로 몇 편을 환불할까요?\n\n'
+        + '· 환불되는 글은 담당자 미정 · 작성 중인 글뿐입니다 (지금 ' + can + '편)\n'
+        + '· 담당자 미정 글부터, 순번이 늦은 글부터 취소하고 맡은 분께는 회수 알림이 갑니다\n'
+        + '· 원고를 낸 글부터는 환불되지 않습니다', '');
+      if (qs == null) return;
+      var qn = parseInt(qs, 10);
+      if (!(qn > 0)) { A.toast('편수를 숫자로 넣어 주세요'); return; }
+      t.disabled = true;
+      try {
+        var rr = await A.rpc('order_refund', { p_order: ro.id, p_reason: '중도 해지', p_qty: qn, p_amount: null, p_memo: null }) || {};
+        A.toast(rr.qty + '편 환불 ' + won(rr.amount) + '원을 만들었습니다. 돌려드린 뒤 [돌려줌 표시]를 눌러 주세요');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+    if ((t = e.target.closest('[data-refundother]'))) {
+      var oo = A.ORDERS.filter(function (x) { return x.id === t.dataset.refundother; })[0];
+      if (!oo) return;
+      var kind = window.prompt('환불 사유 번호를 넣어 주세요\n\n1 = 우리 잘못\n2 = 그 밖', '1');
+      if (kind == null) return;
+      var rsn = kind.trim() === '2' ? '그 밖' : kind.trim() === '1' ? '우리 잘못' : null;
+      if (!rsn) { A.toast('1 또는 2를 넣어 주세요'); return; }
+      var am = parseInt((window.prompt('돌려드릴 금액(원)', '') || '').replace(/[^0-9]/g, ''), 10);
+      if (!(am > 0)) { A.toast('금액을 숫자로 넣어 주세요'); return; }
+      var why = (window.prompt('이유를 적어 주세요 (꼭 적어야 합니다)', '') || '').trim();
+      if (!why) { A.toast('이유를 적어 주세요'); return; }
+      t.disabled = true;
+      try {
+        await A.rpc('order_refund', { p_order: oo.id, p_reason: rsn, p_qty: 0, p_amount: am, p_memo: why });
+        A.toast(rsn + ' 환불 ' + won(am) + '원을 기록했습니다'); await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+    if ((t = e.target.closest('[data-refundsent]'))) {
+      var dt = window.prompt('돌려드린 날을 넣어 주세요 (예: ' + A.today() + ')', A.today());
+      if (dt == null) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dt.trim())) { A.toast('날짜를 2026-09-15 꼴로 넣어 주세요'); return; }
+      t.disabled = true;
+      try {
+        await A.rpc('refund_mark_sent', { p_refund: Number(t.dataset.refundsent), p_date: dt.trim() });
+        A.toast('돌려준 날을 찍었습니다. 학원 진행 현황에도 한 줄 보입니다'); await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
     }
 
     if ((t = e.target.closest('[data-start]'))) {
