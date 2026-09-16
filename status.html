@@ -379,7 +379,7 @@
         + '<div><label>올라간 ' + W('글','리뷰') + '</label><span>' + o.published + '편</span></div>'
         + (o.started ? '<div><label>시작일</label><span>' + fdate(o.started_at) + '</span></div>'
           + '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>' : '')
-        + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '-') + '</span></div>'
+        + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '무상 진행') + '</span></div>'
         + '</div></div>';
     }).join('');
 

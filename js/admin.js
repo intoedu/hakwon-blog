@@ -1442,7 +1442,8 @@
         + '<div class="mono" style="margin-top:3px">' + esc(o.region || '지역 미입력')
         + ' · 편당 ' + won(o.sale_price) + '원 받고 <b>' + won(basePay(o)) + '원</b> 지급'
         + '</div></div>'
-        + (o.paid_at ? '<span class="chip c-ok">입금 확인됨</span>' : '<span class="chip c-wait">입금 기다리는 중</span>')
+        + (!o.amount_total ? '<span class="chip c-info">무상 진행</span>'
+          : o.paid_at ? '<span class="chip c-ok">입금 확인됨</span>' : '<span class="chip c-wait">입금 기다리는 중</span>')
         + '</div>'
         + '<div class="grid g5" style="margin-top:15px;gap:10px">'
         + kv('주문 편수', o.total_qty + '편') + kv('편당', won(o.sale_price) + '원')
@@ -1510,15 +1511,40 @@
      · 마감 넘김 : 주문 마감 다음 날 아침 센터가 자동으로 만듭니다(blog_mark_late). 관리자는 돌려준 날만 찍습니다.
      · 중도 해지 : 담당자 미정 · 작성 중인 글만(약관 제7조①). 원고를 낸 글부터는 서버가 막습니다.
      · 금액 = 편수 × 고객이 실제로 낸 단가. 계좌번호는 저장하지 않습니다(입금하신 계좌로 돌려드림). */
+  /* 환불 기한 = 확정한 날부터 7영업일 (약관 제7조⑦ · 9/16 행정 확정). 토·일만 뺍니다 */
+  var REFUND_DAYS = 7;
+  function bizDaysSince(ymd) {
+    if (!ymd) return 0;
+    var d = new Date(ymd + 'T00:00:00Z'), end = new Date(A.today() + 'T00:00:00Z'), n = 0;
+    while (d < end) {
+      d.setUTCDate(d.getUTCDate() + 1);
+      var w = d.getUTCDay();
+      if (w !== 0 && w !== 6) n++;
+    }
+    return n;
+  }
+  function refundLate(r) { return !r.refunded_on && bizDaysSince(r.decided_on) > REFUND_DAYS; }
+
   function refundBox(o) {
     if (!o.paid_at) return '';
     var mine = REFUNDS.filter(function (r) { return r.order_id === o.id; });
     var late = LATE.filter(function (l) { return l.order_id === o.id; }).length;
     var owed = mine.filter(function (r) { return !r.refunded_on; });
+    var owedLate = owed.filter(refundLate).length;
+    /* 주문 편수보다 만든 글이 모자라면 — 마감 넘김 환불과 별개로 그 글도 만들어 올려 드립니다 (9/16 H) */
+    var made = POSTS.filter(function (p) { return p.order_id === o.id && p.status !== 'cancelled'; }).length;
+    var short = Math.max(0, (o.total_qty || 0) - made
+      - REFUNDS.filter(function (r) { return r.order_id === o.id && r.reason === '중도 해지'; })
+        .reduce(function (a, r) { return a + r.qty; }, 0));
     return '<div class="sec" style="margin-top:16px">환불 <small>'
       + (mine.length ? mine.length + '건 · 돌려줄 것 ' + owed.length + '건' : '아직 없음')
       + (o.late_exempt ? ' · 이 주문은 약관 시행 전이라 「마감 넘긴 글 원고료 없음」을 적용하지 않습니다' : '')
       + (late ? ' · 주문 마감 넘긴 글 ' + late + '편' : '') + '</small></div>'
+      + (owedLate ? '<div class="msg err" style="margin:0 0 10px"><b>돌려줄 날이 지난 환불이 ' + owedLate + '건 있습니다.</b> '
+        + '확정한 날부터 <b>7영업일</b> 안에 입금하신 계좌로 돌려드리기로 되어 있습니다(약관 제7조⑦).</div>' : '')
+      + (short && o.started_at ? '<div class="note warn" style="margin:0 0 10px"><b>주문 편수보다 만든 글이 '
+        + short + '편 적습니다.</b> 「4 키워드 만들기」에서 만들어 주세요. 마감을 넘겨 환불한 글도 '
+        + '<b>만들어서 올려 드립니다</b>(9/16 결정).</div>' : '')
       + (mine.length ? '<div class="tblbox tblscroll"><table><thead><tr><th>사유</th><th>편수</th><th>금액</th>'
         + '<th>확정</th><th>돌려준 날</th><th>메모</th></tr></thead><tbody>'
         + mine.map(function (r) {
@@ -1527,7 +1553,8 @@
             + '<td class="num"><b>' + won(r.amount) + '원</b><div class="mono">편당 ' + won(r.unit_price) + '</div></td>'
             + '<td class="mono">' + esc(r.decided_on) + '</td>'
             + '<td>' + (r.refunded_on ? '<span class="chip c-ok">' + esc(r.refunded_on) + '</span>'
-              : '<button class="btn btn-p btn-s" data-refundsent="' + r.id + '">돌려줌 표시</button>') + '</td>'
+              : '<button class="btn btn-p btn-s" data-refundsent="' + r.id + '">돌려줌 표시</button>'
+                + (refundLate(r) ? ' <span class="chip c-bad" title="확정한 날부터 7영업일이 지났습니다 (약관 제7조⑦)">돌려줄 날 지남</span>' : '')) + '</td>'
             + '<td class="mono">' + esc(r.memo || '') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '')
       + '<div class="row" style="margin-top:8px">'
@@ -3711,9 +3738,9 @@
     var h = $('kwReasonHint'); if (!h) return;
     h.innerHTML = r === '내부 교정'
       ? '우리가 고치는 것이라 <b>무료</b>입니다.'
-      : m.dataset.status === 'pending'
-        ? '아직 블로거에게 배정 전이라 <b>무료 변경</b>으로 기록됩니다.'
-        : '<span style="color:var(--bad)"><b>배정 뒤 학원 요청 — 유료 변경(한 편 ' + won(kwFeeTotal()) + '원)입니다.</b></span> '
+      : '<span style="color:var(--bad)"><b>학원 요청 — 유료 변경(한 편 ' + won(kwFeeTotal()) + '원)입니다.</b></span> '
+          + (m.dataset.status === 'pending'
+            ? '<b>아직 배정 전인 글도 셉니다(9/16 결정).</b> 블로거 몫은 나중에 이 글을 맡아 올린 블로거에게 갑니다. ' : '')
           + '바꾸기를 누른 분 ' + won(kwFee().admin) + '원 · 이 글을 맡은 블로거 ' + won(kwFee().blogger) + '원으로 정산에 잡힙니다. '
           + '블로거에게 가는 알림에는 요금 이야기가 나가지 않습니다.'
           /* 약관 개정안 제6조의2② — 금액을 먼저 알리고 확인받은 뒤 변경 */
@@ -5356,7 +5383,7 @@
       if (!kwv.trim()) { A.toast('새 검색어를 적어 주세요'); return; }
       var kwRsn = ($('kwModal') || { dataset: {} }).dataset.reason;
       if (!kwRsn) { A.toast('누가 바꾸자고 했는지(학원 요청 / 내부 교정) 골라 주세요'); return; }
-      var kwPaid = kwRsn === '학원 요청' && ($('kwModal') || { dataset: {} }).dataset.status !== 'pending';
+      var kwPaid = kwRsn === '학원 요청';   /* 9/16 : 배정 전 글도 유료 */
       if (kwPaid && !($('kwOk') || {}).checked) { A.toast('유료 변경입니다. 학원에 금액을 알리고 확인받았다는 칸에 체크해 주세요'); return; }
       var kwTop = topicOf(POSTS.filter(function (x) { return x.id === KW_POST; })[0] || {});
       var kwStg = kwTop && kwTop.stage ? stageBad(kwv, kwTop.stage) : null;
