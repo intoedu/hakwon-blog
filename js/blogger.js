@@ -311,7 +311,7 @@
         + (p.keyword_changed_at && p.keyword_was
             ? '<div class="mono" style="color:var(--wait)">📌 제목이 바뀌었습니다 — '
               + '들어가서 확인해 주세요</div>' : '')
-        + '<div class="meta">' + esc(p.academy_name) + ' · '
+        + '<div class="meta">' + (p.is_practice ? '<span class="chip c-info">연습글</span> ' : '') + esc(p.academy_name) + ' · '
           /* 주문 마감을 넘긴 글 — 원고료 없음 (약관 개정안 제13조⑤). 21번 알림톡과 같은 말 */
           + (p.late_nopay
             ? '<b style="color:var(--bad)">주문 마감(' + esc(p.order_deadline || '') + ')이 지나 원고료가 없는 글입니다 · 고객과 약속한 글이라 꼭 올려 주세요</b>'

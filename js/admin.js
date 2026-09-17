@@ -168,9 +168,12 @@
           return '<option value="' + o.id + '">' + esc(o.academy_name)
             + ' (' + o.total_qty + '편)</option>';
         }).join('');
+    /* ⚠️ 다시 채우면 고른 공동체가 풀립니다 — 쉬게 하기 · 단계 바꾸기 뒤에도 그대로 두려고 기억해 둡니다 (9/17) */
+    var keepComm = $('fComm').value;
     $('fComm').innerHTML = '<option value="">전체 공동체</option>' + A.COMMS.map(function (c) {
       return '<option value="' + c.id + '">' + esc(c.name) + '</option>';
     }).join('');
+    if (keepComm && A.COMMS.some(function (c) { return c.id === keepComm; })) $('fComm').value = keepComm;
   }
 
   /* ═══ 오늘 할 일 ═══ */
@@ -1460,6 +1463,7 @@
       return '<div class="card" style="margin-bottom:12px" data-ordercard="' + o.id + '">'
         + '<div class="row" style="justify-content:space-between"><div>'
         + '<h3 style="font-size:16.5px">' + esc(o.academy_name) + ' ' + memBadge(o)
+        + (o.is_practice ? ' <span class="chip c-info">연습 주문</span>' : '')
         + (!RV && o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '')
         + (RV && o.visit_type === 'material' ? ' <span class="chip">자료형</span>'
            : RV ? ' <span class="chip c-ok">방문형</span>' : '') + '</h3>'
@@ -1512,6 +1516,7 @@
         + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '">📋 주소 복사</button>'
         + '<a class="btn btn-s" href="' + esc(statusUrl(o)) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
         + '</div>'
+        + practiceBox(o)
         + refundBox(o)
         + '<div class="row" style="margin-top:12px">'
         + (RV ? '' : '<button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>')
@@ -1535,6 +1540,24 @@
      · 마감 넘김 : 주문 마감 다음 날 아침 센터가 자동으로 만듭니다(blog_mark_late). 관리자는 돌려준 날만 찍습니다.
      · 중도 해지 : 담당자 미정 · 작성 중인 글만(약관 제7조①). 원고를 낸 글부터는 서버가 막습니다.
      · 금액 = 편수 × 고객이 실제로 낸 단가. 계좌번호는 저장하지 않습니다(입금하신 계좌로 돌려드림). */
+  /* ── 연습 주문 (9/17) ──
+     새 블로거 연습글용 주문. 블로거 원고료는 단계 단가 대신 여기 넣은 금액(편당, 0원도 됨)이 나갑니다.
+     바꾸면 이미 맡긴 글 중 정산에 안 잡힌 글도 새 금액으로 바뀝니다(서버 order_set_practice).
+     원고료를 안 넣은 연습 주문은 서버가 배정을 막습니다. */
+  function practiceBox(o) {
+    return '<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '<label class="row" style="gap:6px;cursor:pointer"><input type="checkbox" data-practiceon="' + o.id + '"'
+      + (o.is_practice ? ' checked' : '') + '> <b>연습 주문</b></label>'
+      + '<span class="mono">블로거 원고료 편당</span>'
+      + '<input class="inp" type="number" min="0" step="100" style="width:110px;padding:5px 8px" data-practicerate="' + o.id + '"'
+      + ' value="' + (o.practice_rate == null ? '' : o.practice_rate) + '" placeholder="원">'
+      + '<button class="btn btn-s" data-practicesave="' + o.id + '">저장</button>'
+      + '<span class="mono">' + (o.is_practice
+        ? (o.practice_rate == null ? '<b style="color:var(--bad)">원고료를 넣어야 블로거에게 맡길 수 있습니다</b>'
+          : '글 나눠주기에서 <b>「연습 필요」</b> 블로거에게 맡기세요')
+        : '체크하면 단계 단가 대신 이 금액이 나갑니다') + '</span></div>';
+  }
+
   /* 환불 기한 = 확정한 날부터 7영업일 (약관 제7조⑦ · 9/16 행정 확정). 토·일만 뺍니다 */
   var REFUND_DAYS = 7;
   function bizDaysSince(ymd) {
@@ -1599,6 +1622,7 @@
   }
   /* 1단계 블로거가 이 주문 글 한 편을 쓰면 받는 돈 (등급이 오르면 그만큼 커집니다) */
   function basePay(o) {
+    if (o && o.is_practice) return o.practice_rate || 0;   /* 연습 주문 — 관리자가 넣은 편당 원고료 */
     var base = (A.LEVELS[0] && A.LEVELS[0].rate) || 1000;
     return Math.round(base * (o && o.is_premium ? 1 : A.payMult()));
   }
@@ -3460,7 +3484,7 @@
           + '<span class="sub" style="color:var(--bad)">' + esc(whyNotReady(p, trackOfOrder(oid))) + '</span></label>';
       }
       return '<label class="pickrow drop" data-drop="' + p.id + '">'
-        + '<input type="checkbox" class="pk-ppl" value="' + p.id + '">'
+        + '<input type="checkbox" class="pk-ppl" value="' + p.id + '"' + (needsPractice(p.id) ? ' data-practice="1"' : '') + '>'
         + '<span><b>' + esc(p.name) + '</b>'
         + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
         + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 아직 올린 글이 없습니다">연습 필요</span>' : '')
@@ -5846,6 +5870,22 @@
     }
 
     /* 줌 회차 숨기기 — 지우면 참석 기록(면제 판단)이 사라지므로 숨기기만 합니다 (9/17) */
+    if ((t = e.target.closest('[data-practicesave]'))) {
+      var pid2 = t.dataset.practicesave;
+      var pon = (document.querySelector('[data-practiceon="' + pid2 + '"]') || {}).checked;
+      var prv = ((document.querySelector('[data-practicerate="' + pid2 + '"]') || {}).value || '').trim();
+      var prate = prv === '' ? null : Number(prv);
+      if (pon && (prate == null || !(prate >= 0))) { A.toast('연습 주문의 편당 원고료를 넣어 주세요 (0원도 됩니다)'); return; }
+      t.disabled = true;
+      try {
+        var pr = await A.rpc('order_set_practice', { p_order: pid2, p_on: !!pon, p_rate: pon ? prate : null }) || {};
+        A.toast(pon ? '연습 주문 · 편당 ' + won(prate) + '원으로 저장했습니다' + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편도 바꿈)' : '')
+          : '연습 주문을 껐습니다' + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편은 단계 단가로 돌림)' : ''));
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-sesshide]'))) {
       t.disabled = true;
       var hr = await A.sb.from('training_sessions').update({ hidden: t.dataset.on === '1' }).eq('id', t.dataset.sesshide).select();
@@ -6444,6 +6484,14 @@
   $('picClose').onclick = function () { $('picModal').classList.remove('on'); };
   $('picModal').onclick = function (e) { if (e.target === this) this.classList.remove('on'); };
 
+  /* 글 나눠주기 — 「연습 필요」 블로거만 한 번에 체크 (다른 사람 체크는 풉니다) */
+  if ($('selPractice')) $('selPractice').onclick = function () {
+    var boxes = document.querySelectorAll('.pk-ppl'), n = 0;
+    [].forEach.call(boxes, function (c) { c.checked = !!c.dataset.practice; if (c.checked) n++; });
+    $('allPeople').checked = false;
+    refreshPick();
+    A.toast(n ? '연습 필요 블로거 ' + n + '명을 체크했습니다' : '지금 맡길 수 있는 사람 중 연습 필요 블로거가 없습니다');
+  };
   $('fName').oninput = renderList;
   $('fComm').onchange = renderList;
   $('fLevel').onchange = renderList;
