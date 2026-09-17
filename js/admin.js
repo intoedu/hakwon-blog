@@ -4360,8 +4360,12 @@
      그동안은 되돌릴 방법이 「취소」뿐이었는데 그건 글 자체를 없애서 주문 편수가 모자라집니다.
      회수는 **글은 그대로 두고 맡은 사람만 떼는 것**입니다. */
   var TAKEBACK_OK = ['assigned', 'writing', 'rework', 'submitted'];
+  /* 약관 제10조③ (9/25 시행) — 원고를 낸 글(검수 중 · 수정 요청 중)은 최고관리자만 회수합니다.
+     그때는 제13조⑨ 에 따라 그 글의 원고료가 정산에 붙습니다 (서버도 같은 규칙으로 막습니다) */
+  var TAKEBACK_WROTE = ['rework', 'submitted'];
   function takeBackBtn(p) {
     if (!p.blogger_id || TAKEBACK_OK.indexOf(p.status) < 0) return '';
+    if (TAKEBACK_WROTE.indexOf(p.status) >= 0 && !A.IS_OWNER) return '';
     return '<button class="btn btn-s" data-takeback="' + p.id
       + '" title="맡은 사람에게서 이 글을 되찾습니다. 글은 그대로 남습니다">↩ 회수</button>';
   }
@@ -4736,8 +4740,12 @@
     var lateNoPay = POSTS.filter(function (p) {
       return LATE_BY[p.id] && ['verified', 'paid'].indexOf(p.status) >= 0 && A.kstMonth(p.published_at) === mm;
     }).length;
+    var recallPay = PITEMS.filter(function (i) { return i.kind === 'recall' && !i.void; });
+    if (ptn && recallPay.length) ptn.innerHTML += '<br><b>원고를 낸 뒤 회수한 글 ' + recallPay.length + '편 · '
+      + won(recallPay.reduce(function (a, i) { return a + i.amount; }, 0)) + '원</b>은 약관 제13조⑨ 에 따라 '
+      + '그 블로거 원고료에 들어가 있습니다.';
     if (ptn && lateNoPay) ptn.innerHTML += '<br><b>주문 마감을 넘겨 올라온 글 ' + lateNoPay
-      + '편</b>은 원고료를 잡지 않았습니다(약관 개정안 제13조⑤). 검수 수당은 그대로입니다.';
+      + '편</b>은 원고료를 잡지 않았습니다(약관 제13조⑤). 검수 수당은 그대로입니다.';
 
     $('payList').innerHTML = CPAY.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>공동체</th><th>인원</th><th>편수</th><th>블로거 지급</th><th>검수 수당</th>'
@@ -5426,19 +5434,23 @@
       var tp = POSTS.filter(function (x) { return x.id === t.dataset.takeback; })[0];
       if (!tp) { A.toast('글을 찾을 수 없습니다'); return; }
       var tb = A.PEOPLE.filter(function (x) { return x.id === tp.blogger_id; })[0] || {};
-      var wrote = tp.status === 'submitted';
+      var wrote = TAKEBACK_WROTE.indexOf(tp.status) >= 0;
       var msg = (tb.name || '이분') + ' 님에게서 이 글을 회수할까요?\n\n'
         + '· ' + (tp.keyword || '') + '\n'
         + '· ' + orderName(tp.order_id) + '\n\n'
         + (wrote
             ? '⚠️ 이분은 이미 원고를 냈습니다.\n'
-              + '회수하면 그 수고가 값을 못 받습니다. 따로 연락해 주셔야 합니다.\n\n'
+              + '약관 제10조③ — 원고를 낸 글은 최고관리자만 회수합니다.\n'
+              + '회수해도 이 글의 원고료' + (tp.payout_rate ? '(' + won(tp.payout_rate) + '원)' : '')
+              + '는 지급됩니다 (제13조⑨ · 회수한 달 정산에 붙습니다).\n'
+              + '따로 연락도 해 주세요.\n\n'
             : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
         + '글은 그대로 남고, 맡은 사람만 떨어집니다 (다시 나눠주실 수 있습니다).';
       if (!confirm(msg)) return;
       var why = prompt('왜 회수하는지 한 줄 적어 주세요.\n(그대로 ' + (tb.name || '본인') + ' 님께 갑니다)',
         '같은 학원 글이 한 분께 몰려서 조정합니다.');
       if (why === null) return;
+      if (!why.trim()) { A.toast('회수 사유를 적어 주세요 — 블로거에게 그대로 갑니다'); return; }
       if (wrote && !confirm('마지막 확인입니다.\n\n'
           + (tb.name || '이분') + ' 님이 낸 원고를 두고 회수합니다. 정말 진행할까요?')) return;
       t.disabled = true;
@@ -5447,6 +5459,7 @@
           { p_post: tp.id, p_reason: why.trim() || null, p_force: wrote }) || {};
         await A.loadAdmin();
         A.toast((tr.blogger || '') + ' 님에게서 회수했습니다'
+          + (tr.paid_anyway ? ' · 원고료 ' + won(tr.pay_amount || 0) + '원은 정산에 붙습니다' : '')
           + (tr.by_owner ? '' : ' · 최고관리자에게 알림이 갑니다'));
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
@@ -6039,15 +6052,13 @@
 
     if ((t = e.target.closest('[data-paid]'))) {
       var amt = document.querySelector('[data-payamt="' + t.dataset.paid + '"]');
-      /* 약관 부칙② — 시행 전에 성립(= 입금)한 주문에는 새 약관을 적용하지 않습니다.
-         이 주문을 「마감 넘긴 글 원고료 없음」 예외로 둘지는 행정 · 이은총 님이 정합니다 (9/15 행정 I).
-         시행일(9/21 또는 9/25)이 확정되기 전이라 9/25 전까지는 늘 묻습니다. */
+      /* 약관 부칙② — 시행(2026-09-25) 전에 성립(= 입금)한 주문에는 새 약관을 적용하지 않습니다.
+         서버(order_set_paid)가 입금일이 9/25 전이면 이 주문을 예외(late_exempt)로 바꿉니다 (9/17 확정본) */
       var po = A.ORDERS.filter(function (x) { return x.id === t.dataset.paid; })[0] || {};
       if (!po.late_exempt && A.today() < '2026-09-25'
-          && !confirm('약관 시행 전 입금입니다.\n\n'
-            + '약관 부칙②에 따라 이 주문(' + (po.academy_name || '') + ')은 「주문 마감 넘긴 글 원고료 없음」의 '
-            + '예외가 될 수 있습니다. 지금은 예외 아님으로 둡니다.\n\n'
-            + '입금 확인 뒤 [의뢰 시작] 전에 행정 창에 먼저 알려 주세요.\n\n입금 확인을 계속할까요?')) return;
+          && !confirm('약관 시행(9/25) 전 입금입니다.\n\n'
+            + '약관 부칙②에 따라 이 주문(' + (po.academy_name || '') + ')은 새 약관 밖이라 '
+            + '예외 주문이 됩니다 — 주문 마감을 넘겨도 환불 · 원고료 제외가 없습니다.\n\n입금 확인을 계속할까요?')) return;
       t.disabled = true;
       try {
         await A.rpc('order_set_paid', {
