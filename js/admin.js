@@ -222,6 +222,12 @@
       '한 번에 맡길 수 있습니다', 'assign', '5 글 나눠주기 →'));
     if (wait) todo.push(job('승인 기다리는 사람 ' + wait + '명',
       '블로그를 열어보고 판단하세요 · 1명당 1분', 'staff', '1 블로거 관리 →'));
+    /* 주문 마감 7일 안 · 안 올라간 글 있음 — 돈이 걸린 일이라 맨 위에 둡니다 */
+    A.ORDERS.forEach(function (o) {
+      var s = soonInfo(o); if (!s) return;
+      todo.unshift(job('주문 마감 ' + (s.d === 0 ? '오늘' : s.d + '일 남음') + ' · ' + o.academy_name + ' ' + s.left + '편 남음',
+        soonText(s), 'orders', '3 주문 · 입금 →', true));
+    });
     var cand = candidates();
     if (cand.length) todo.push(job('승급 후보 ' + cand.length + '명',
       '기준을 넘었습니다. 확인하고 올려주세요', 'staff', '단계 관리 →'));
@@ -1516,12 +1522,14 @@
         + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '">📋 주소 복사</button>'
         + '<a class="btn btn-s" href="' + esc(statusUrl(o)) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
         + '</div>'
+        + soonBox(o)
         + practiceBox(o)
         + refundBox(o)
         + '<div class="row" style="margin-top:12px">'
         + (RV ? '' : '<button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>')
         + '<button class="btn btn-s" data-gokw="' + o.id + '">'
         + (RV ? '4 리뷰 만들기 →' : '4 키워드 만들기 →') + '</button>'
+        + '<button class="btn btn-s" data-copyorder="' + o.id + '" title="이어서 하는 학원 — 편수 · 단가 · 학원 정보 · 사진을 그대로 복사한 새 주문">같은 조건으로 새 주문</button>'
         + '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
         + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-ostatus="' + o.id + '">'
         + ['active', 'paused', 'done', 'ended'].map(function (s) {
@@ -1540,6 +1548,37 @@
      · 마감 넘김 : 주문 마감 다음 날 아침 센터가 자동으로 만듭니다(blog_mark_late). 관리자는 돌려준 날만 찍습니다.
      · 중도 해지 : 담당자 미정 · 작성 중인 글만(약관 제7조①). 원고를 낸 글부터는 서버가 막습니다.
      · 금액 = 편수 × 고객이 실제로 낸 단가. 계좌번호는 저장하지 않습니다(입금하신 계좌로 돌려드림). */
+  /* ── 주문 마감 7일 전 (4단계 · 9/17) ──
+     마감을 넘기면 학원에 환불 + 그 글 원고료 없음(우리가 늦어도 예외 없음) — 넘기기 전에 잡으려는 경고입니다.
+     서버도 매일 아침 관리자 알림(deadline_soon)을 주문 · 마감일마다 한 번 만듭니다. */
+  function soonInfo(o) {
+    if (!o.started_at || !o.deadline || o.status === 'done' || o.status === 'ended') return null;
+    var d = A.dday(o.deadline);
+    if (d == null || d < 0 || d > 7) return null;
+    var ps = POSTS.filter(function (p) { return p.order_id === o.id && p.status !== 'cancelled'; });
+    var c = function (arr) { return ps.filter(function (p) { return arr.indexOf(p.status) >= 0; }).length; };
+    var cut = REFUNDS.filter(function (r) { return r.order_id === o.id && r.reason === '중도 해지'; })
+      .reduce(function (a, r) { return a + r.qty; }, 0);
+    var r = { d: d, unmade: Math.max(0, (o.total_qty || 0) - ps.length - cut),
+      unassigned: c(['pending']), writing: c(['assigned', 'writing', 'rework']),
+      review: c(['submitted']), toPost: c(['approved']) };
+    r.left = r.unmade + r.unassigned + r.writing + r.review + r.toPost;
+    return r.left ? r : null;
+  }
+  function soonText(s) {
+    return [s.unmade ? '안 만든 글 ' + s.unmade : '', s.unassigned ? '안 맡긴 글 ' + s.unassigned : '',
+      s.writing ? '쓰는 중 ' + s.writing : '', s.review ? '검수 안 한 원고 ' + s.review : '',
+      s.toPost ? '통과했는데 안 올린 글 ' + s.toPost : ''].filter(Boolean).join(' · ');
+  }
+  function soonBox(o) {
+    var s = soonInfo(o); if (!s) return '';
+    return '<div class="msg err" style="margin:14px 0 0"><b>주문 마감 ' + (s.d === 0 ? '오늘' : s.d + '일 남음')
+      + ' (' + mdKo(o.deadline) + ') — 아직 안 올라간 글 ' + s.left + '편</b><br>' + soonText(s) + '<br>'
+      + (o.late_exempt ? '이 주문은 예외라 마감을 넘겨도 환불 · 원고료 제외는 없습니다.'
+        : '마감을 넘기면 <b>그 편수만큼 환불</b>하고 <b>그 글 원고료는 없습니다</b>. 안 맡긴 글은 맡기고, 검수 대기는 먼저 보고, 통과했는데 안 올린 분께는 연락해 주세요.')
+      + '</div>';
+  }
+
   /* ── 연습 주문 (9/17) ──
      새 블로거 연습글용 주문. 블로거 원고료는 단계 단가 대신 여기 넣은 금액(편당, 0원도 됨)이 나갑니다.
      바꾸면 이미 맡긴 글 중 정산에 안 잡힌 글도 새 금액으로 바뀝니다(서버 order_set_practice).
@@ -4911,7 +4950,7 @@
     info_changed: '학원 내용 바뀜', keyword_changed: '검색어 바뀜',
     taken_back: '글 회수됨', taken_back_admin: '관리자가 회수함',
     review_late: '우리가 늦은 검수', pub_late: '올릴 날 지남',
-    deadline_passed: '주문 마감 지남', late_refund: '마감 넘김 환불'
+    deadline_passed: '주문 마감 지남', late_refund: '마감 넘김 환불', deadline_soon: '주문 마감 임박'
   };
   var KIND_OF = {
     blogger: ['assigned', 'due1', 'overdue', 'rework', 'approved_post', 'payout',
@@ -5870,6 +5909,26 @@
     }
 
     /* 줌 회차 숨기기 — 지우면 참석 기록(면제 판단)이 사라지므로 숨기기만 합니다 (9/17) */
+    if ((t = e.target.closest('[data-copyorder]'))) {
+      var src = A.ORDERS.filter(function (x) { return x.id === t.dataset.copyorder; })[0];
+      if (!src) return;
+      var qv = window.prompt(src.academy_name + ' — 같은 조건으로 새 주문을 만듭니다.\n\n'
+        + '· 복사하는 것 : 단가 · 학원 정보 · 글감 · 사진' + (src.is_practice ? ' · 연습 주문 원고료' : '') + '\n'
+        + '· 새로 하는 것 : 입금 확인 → 자료 확인 → [의뢰 시작] → 30일\n'
+        + '· 키워드는 복사하지 않습니다 — 같은 검색어로 또 쓰면 글끼리 겹칩니다\n\n'
+        + '몇 편으로 할까요?', String(src.total_qty || ''));
+      if (qv == null) return;
+      var qn2 = parseInt(qv, 10);
+      if (!(qn2 > 0)) { A.toast('편수를 숫자로 넣어 주세요'); return; }
+      t.disabled = true;
+      try {
+        await A.rpc('order_copy', { p_order: src.id, p_qty: qn2 });
+        A.toast('새 주문 ' + qn2 + '편을 만들었습니다 — 입금 확인 뒤 자료를 확인하고 [의뢰 시작]을 눌러 주세요. 키워드는 새로 만들어 주세요');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-practicesave]'))) {
       var pid2 = t.dataset.practicesave;
       var pon = (document.querySelector('[data-practiceon="' + pid2 + '"]') || {}).checked;
