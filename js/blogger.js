@@ -199,8 +199,17 @@
   function progOf(id) {
     return MINE.filter(function (g) { return g.material_id === id; })[0] || null;
   }
+  /* 1차 줌을 들었나 — 숨긴 회차도 셉니다(서버 blogger_ready 와 같은 규칙: 실시간 또는 녹화본 확인됨) */
+  function cameT1() {
+    var t1 = SESS.filter(function (s) { return s.kind === 't1'; }).map(function (s) { return s.id; });
+    return ATT.some(function (a) {
+      return t1.indexOf(a.session_id) >= 0 && (a.mode === 'live' || (a.mode === 'video' && a.confirmed_at));
+    });
+  }
   function ready() {
-    var req = MATS.filter(function (m) { return m.required; });
+    var came = cameT1();
+    /* 「1차 줌 면제」 영상은 줌을 들은 분께는 필수가 아닙니다 (9/17) */
+    var req = MATS.filter(function (m) { return m.required && !(m.skip_if_t1 && came); });
     var done = req.filter(function (m) {
       var g = progOf(m.id); return g && g.status === 'approved';
     }).length;
@@ -440,8 +449,10 @@
       + '</div></div>';
 
     /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
-    $('bEduSessions').innerHTML = SESS.length
-      ? SESS.slice().reverse().map(sessRow).join('')
+    /* 관리자가 「블로거에게 숨기기」 한 회차는 안 보여 줍니다 (9/17 — 지금 1차 줌) */
+    var visS = SESS.filter(function (s) { return !s.hidden; });
+    $('bEduSessions').innerHTML = visS.length
+      ? visS.slice().reverse().map(sessRow).join('')
       : A.empty('아직 잡힌 ' + (RV ? '리뷰어 교육 ' : '') + '일정이 없습니다. 정해지면 알려드립니다.');
 
     $('bEduMats').innerHTML = MATS.length
@@ -563,7 +574,9 @@
         : st === 'rejected' ? '<b style="color:var(--bad)">다시 써 주세요</b>'
           : '<span style="color:var(--wait)">아직 안 보셨습니다</span>';
     return '<div class="mat">' + A.ytThumb(m.url) + '<div style="flex:1;min-width:150px">'
-      + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '') + '</h4>'
+      + '<h4>' + esc(m.title)
+      + (m.required && !(m.skip_if_t1 && cameT1()) ? ' <span class="chip c-bad">필수</span>' : '')
+      + (m.skip_if_t1 && cameT1() ? ' <span class="chip c-ok">1차 줌을 들으셔서 안 보셔도 됩니다</span>' : '') + '</h4>'
       + '<div class="meta">' + (m.minutes ? m.minutes + '분 · ' : '') + tag + '</div></div>'
       + (st === 'approved' ? '<span class="chip c-ok">✓</span>'
         : '<button class="btn btn-a btn-s" data-play="' + m.id + '">'

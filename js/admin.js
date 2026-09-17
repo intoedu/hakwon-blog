@@ -552,9 +552,11 @@
           + '<td>' + A.lvBadge(p.level) + '</td><td class="num">' + won(lv.rate) + '</td>'
           + '<td class="num">' + nbCell(p) + '</td>'
           + '<td class="num">' + pass + '</td>'
-          + '<td class="num">' + (s.avg_rank == null ? '-' : s.avg_rank + '위') + '</td>'
+          + '<td class="num">' + rankAvgCell(s) + '</td>'
           + '<td class="num">' + (s.done_month || 0) + '</td><td class="num">' + (s.done_total || 0) + '</td>'
-          + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>' : '<span class="chip c-wait">미완</span>') + '</td>'
+          + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>'
+              + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 아직 올린 글이 없습니다">연습 필요</span>' : '')
+            : '<span class="chip c-wait">미완</span>') + '</td>'
           + '<td><div class="row">'
           + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-lv="' + p.id + '">' + opts + '</select>'
           + '<button class="btn btn-s" data-openpm="' + p.id + '">검수자·관리자로 ↑</button>'
@@ -844,6 +846,19 @@
     var m = { '0-100': 50, '100-500': 300, '500-1000': 750, '1000+': 1200 };
     return m[p.neighbors_band] != null ? m[p.neighbors_band] : null;  /* 없으면 본인 신고 구간의 중간값 */
   }
+  /* 평균 노출 — 순위를 찾은 글(1~50위)만의 평균. 「50위 밖」은 평균에 넣지 않고 따로 셉니다 (9/17)
+     예전엔 999가 그대로 평균에 들어가 한 번만 50위 밖이 나와도 평균이 수백 위가 됐습니다 */
+  function rankAvgCell(s) {
+    return (s.avg_rank == null ? '-' : s.avg_rank + '위')
+      + (s.out_count ? '<div class="mono" title="50위 밖은 평균에 넣지 않습니다">50위 밖 ' + s.out_count + '편</div>' : '');
+  }
+  /* 연습 필요 — 교육은 끝났는데 아직 올린 글이 한 편도 없는 사람 (9/17) */
+  function needsPractice(pid) {
+    return !POSTS.some(function (x) {
+      return x.blogger_id === pid && ['published', 'verified', 'paid'].indexOf(x.status) >= 0;
+    });
+  }
+
   function candidates() {
     var out = [];
     A.PEOPLE.forEach(function (p) {
@@ -875,7 +890,7 @@
           + '<td class="num"><b>' + won(Math.round(l.rate * payMult())) + '</b>원'
           + '<div class="mono">자동 계산</div></td>'
           + '<td class="mono">' + (r ? '누적 ' + r.done + '편 · 통과율 ' + r.pass + '%'
-            + (r.rank ? ' · 평균 노출 ' + r.rank + '위 안' : '')
+            + (r.rank ? ' · 평균 노출 ' + r.rank + '위 안(50위 밖 글은 평균에서 뺌)' : '')
             + ' · 이웃 ' + won(r.nb) + '명 이상' : '모두 여기서 시작') + '</td>'
           + '<td class="num">' + n + '명</td></tr>';
       }).join('') + '</tbody></table></div>'
@@ -941,7 +956,7 @@
         return '<tr><td><b>' + esc(c.p.name) + '</b></td><td>' + esc(A.commName(c.p.community_id)) + '</td>'
           + '<td>' + A.lvBadge(c.p.level) + '</td><td>' + A.lvBadge(c.next) + '</td>'
           + '<td class="num">' + c.s.done_total + '편</td><td class="num">' + c.pass + '%</td>'
-          + '<td class="num">' + (c.s.avg_rank == null ? '-' : c.s.avg_rank + '위') + '</td>'
+          + '<td class="num">' + rankAvgCell(c.s) + '</td>'
           + '<td class="num">' + (c.p.neighbors == null ? '-' : won(c.p.neighbors)) + '</td>'
           + '<td class="mono">' + won(A.levelOf(c.p.level).rate) + ' → ' + won(A.levelOf(c.next).rate) + '</td>'
           + '<td><button class="btn btn-a btn-s" data-up="' + c.p.id + '" data-tolv="' + c.next + '">'
@@ -1138,7 +1153,8 @@
         var wait = ATT.filter(function (a) {
           return a.session_id === s.id && a.mode === 'video' && !a.confirmed_at;
         }).length;
-        return '<tr><td><b>' + (s.kind === 't1' ? '1차 교육' : '2차 교육') + '</b></td>'
+        return '<tr' + (s.hidden ? ' style="opacity:.6"' : '') + '><td><b>' + (s.kind === 't1' ? '1차 교육' : '2차 교육') + '</b>'
+          + (s.hidden ? '<div class="mono">블로거에게 안 보임 · 참석 기록은 남아 있음</div>' : '') + '</td>'
           + '<td class="mono">' + A.fdt(s.held_at) + '</td>'
           + '<td class="num">' + live + '명</td>'
           + '<td class="num">' + vid + '명'
@@ -1150,15 +1166,18 @@
           + 'value="' + esc(s.replay_url || '') + '">'
           + '<button class="btn btn-s" data-saverp="' + s.id + '" style="padding:4px 8px">저장</button>'
           + '</div></td>'
-          + '<td><button class="btn btn-s' + (wait ? ' btn-a' : '') + '" data-att="' + s.id + '">'
-          + (wait ? '확인할 것 ' + wait + '건' : '참석 체크') + '</button></td></tr>';
+          + '<td><div class="row" style="gap:4px"><button class="btn btn-s' + (wait ? ' btn-a' : '') + '" data-att="' + s.id + '">'
+          + (wait ? '확인할 것 ' + wait + '건' : '참석 체크') + '</button>'
+          + '<button class="btn btn-s" data-sesshide="' + s.id + '" data-on="' + (s.hidden ? 0 : 1) + '">'
+          + (s.hidden ? '블로거에게 보이기' : '블로거에게 숨기기') + '</button></div></td></tr>';
       }).join('') + '</tbody></table></div>' : A.empty('줌 일정이 없습니다. 아래에서 추가하세요.');
 
     $(ID.mats).innerHTML = MATS.length ? '<div class="matlist">' + MATS.map(function (m) {
       var done = TPROG.filter(function (g) { return g.material_id === m.id && g.status === 'approved'; }).length;
       var wait = TPROG.filter(function (g) { return g.material_id === m.id && g.status === 'submitted'; }).length;
       return '<div class="mat">' + A.ytThumb(m.url) + '<div style="flex:1;min-width:140px">'
-        + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '') + '</h4>'
+        + '<h4>' + esc(m.title) + (m.required ? ' <span class="chip c-bad">필수</span>' : '')
+        + (m.skip_if_t1 ? ' <span class="chip c-info">1차 줌 들은 사람은 면제</span>' : '') + '</h4>'
         + '<div class="meta">' + (m.minutes ? m.minutes + '분 · 최소 ' + Math.round(m.minutes * 0.7) + '분 시청 · ' : '')
         + '요약 ' + (m.min_chars || 150) + '자 · ' + done + '명 이수'
         + (wait ? ' · <b style="color:var(--wait)">' + wait + '명 확인 대기</b>' : '')
@@ -1181,7 +1200,12 @@
     }).map(function (p) {
       var a1 = ATT.filter(function (a) { return a.blogger_id === p.id && t1.indexOf(a.session_id) >= 0; })[0];
       var a2 = ATT.filter(function (a) { return a.blogger_id === p.id && t2.indexOf(a.session_id) >= 0; })[0];
-      var mineN = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'approved'; }).length;
+      var came1 = !!(a1 && (a1.mode === 'live' || a1.confirmed_at));
+      var reqP = req.filter(function (m) { return !(m.skip_if_t1 && came1); });
+      var mineN = TPROG.filter(function (g) {
+        return g.blogger_id === p.id && g.status === 'approved'
+          && reqP.some(function (m) { return m.id === g.material_id; });
+      }).length;
       var wt = TPROG.filter(function (g) { return g.blogger_id === p.id && g.status === 'submitted'; }).length;
       /* 줌 녹화본을 냈는데 아직 확인 안 한 것 — 이게 관리자가 할 일입니다 */
       var zw = ATT.filter(function (a) {
@@ -1189,7 +1213,7 @@
           && (t1.indexOf(a.session_id) >= 0 || t2.indexOf(a.session_id) >= 0);
       }).length;
       var okNow = READY[TK] && READY[TK][p.id];
-      return { p: p, a1: a1, a2: a2, mine: mineN, wt: wt, zw: zw, ok: okNow,
+      return { p: p, a1: a1, a2: a2, mine: mineN, reqN: reqP.length, wt: wt, zw: zw, ok: okNow,
                rank: (wt + zw) ? 0 : okNow ? 2 : 1 };
     }).sort(function (a, b) {
       if (a.rank !== b.rank) return a.rank - b.rank;
@@ -1214,9 +1238,9 @@
             : x.a1.confirmed_at ? '<span class="chip c-ok">녹화본</span>'
               : '<span class="chip c-wait">녹화본 확인 대기</span>')
             : '<span class="chip c-bad">아직</span>') + '</td>' : '')
-          + '<td>' + (req.length === 0 ? '<span class="chip c-off">없음</span>'
-            : x.mine >= req.length ? '<span class="chip c-ok">' + x.mine + '/' + req.length + '</span>'
-              : '<span class="chip c-bad">' + x.mine + '/' + req.length + '</span>')
+          + '<td>' + (x.reqN === 0 ? '<span class="chip c-off">없음</span>'
+            : x.mine >= x.reqN ? '<span class="chip c-ok">' + x.mine + '/' + x.reqN + '</span>'
+              : '<span class="chip c-bad">' + x.mine + '/' + x.reqN + '</span>')
           + (x.wt ? ' <span class="chip c-wait">요약 ' + x.wt + '건 대기</span>' : '') + '</td>'
           + '<td>' + (x.a2 ? '<span class="chip c-ok">참석</span>' : '<span class="chip c-off">—</span>') + '</td>'
           + '<td>' + (x.ok ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
@@ -3200,6 +3224,11 @@
         && (a.mode === 'live' || (a.mode === 'video' && a.confirmed_at));
     });
 
+    /* 1차 줌을 들은 사람은 「줌 면제」 영상을 안 봐도 됩니다 (서버 blogger_ready 와 같은 규칙) */
+    need = need.filter(function (m) { return !(m.skip_if_t1 && came); });
+    done = need.filter(function (m) { return gOf(m, 'approved'); }).length;
+    wait = need.filter(function (m) { return gOf(m, 'submitted'); }).length;
+
     /* ⚠️ 1차 줌을 조건에서 빼 두셨으면 여기서도 따지면 안 됩니다 —
        서버는 통과시키는데 화면만 「미참석」이라고 하면 또 헷갈립니다. */
     var needT1 = (A.FORM || {}).require_t1 !== false;
@@ -3434,6 +3463,7 @@
         + '<input type="checkbox" class="pk-ppl" value="' + p.id + '">'
         + '<span><b>' + esc(p.name) + '</b>'
         + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
+        + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 아직 올린 글이 없습니다">연습 필요</span>' : '')
         + ' <span class="mono">' + esc(A.commName(p.community_id))
         + ' · ' + p.level + '단계</span></span>'
         + '<span class="sub">이번 달 <b>' + x.m + '편</b> · 이 학원 ' + here + '편</span></label>';
@@ -4255,7 +4285,8 @@
   }
   var PG_ROWS = [];
   /* 상태 이름이 갈래마다 다릅니다 — 리뷰엔 원고·검수 단계가 없습니다 */
-  var PG_BLOG = [['pending','담당자 미정'],['assigned','배정됨'],['writing','쓰는 중'],
+  /* 9/17 — 「쓰는 중」은 배정됨과 같아서 합쳤습니다 (writing 상태는 배정됨으로 묶어 보여 줍니다) */
+  var PG_BLOG = [['pending','담당자 미정'],['assigned','배정됨'],
     ['submitted','원고 냄'],['rework','다시 쓰기'],['approved','원고 통과'],
     ['published','올림 · 확인 전'],['verified','확인 끝'],['paid','정산 완료']];
   var PG_RV = [['pending','담당자 미정'],['assigned','맡김 · 올리기 전'],
@@ -4306,7 +4337,7 @@
   var DOW = ['일', '월', '화', '수', '목', '금', '토'];
   /* 달력 칸은 좁습니다 — 진행 현황 표보다 짧은 말을 씁니다 */
   var CAL_ST = {
-    pending: '아직 안 맡김', assigned: '쓰는 중', writing: '쓰는 중',
+    pending: '아직 안 맡김', assigned: '배정됨', writing: '배정됨',
     submitted: '검수 대기', rework: '다시 쓰기', approved: '올릴 차례',
     published: '올림 · 확인 전', verified: '확인 끝', paid: '정산 끝'
   };
@@ -4314,7 +4345,7 @@
   /* 글 한 편이 지나가는 길 — 진행 현황 맨 위에 한 번만 설명합니다 */
   var STEPS = [
     ['pending', '아직 안 맡김', '만들어는 뒀는데 맡을 사람이 없습니다'],
-    ['assigned', '쓰는 중', '블로거가 맡아서 원고를 쓰고 있습니다'],
+    ['assigned', '배정됨', '블로거가 맡아서 원고를 쓰고 있습니다'],
     ['submitted', '검수 대기', '원고가 왔습니다. 우리가 볼 차례입니다'],
     ['rework', '다시 쓰기', '고쳐 달라고 돌려보냈습니다'],
     ['approved', '올릴 차례', '원고는 통과. 올릴 날이 되면 블로거가 올립니다'],
@@ -4433,7 +4464,7 @@
       var o = A.ORDERS.filter(function (x) { return x.id === p.order_id; })[0];
       if (!o || ((o.track || 'blog') === 'review') !== RV) return false;
       if (oid && p.order_id !== oid) return false;
-      if (sel.length && sel.indexOf(p.status) < 0) return false;
+      if (sel.length && sel.indexOf(p.status === 'writing' ? 'assigned' : p.status) < 0) return false;
       if (q) {
         var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
         var hay = (p.keyword || '') + ' ' + (p.category || '');
@@ -4444,7 +4475,7 @@
     PG_ROWS = rows;
     var c = function (s) { return POSTS.filter(function (p) { return (!oid || p.order_id === oid) && p.status === s; }).length; };
     $('pgStats').innerHTML = st(c('pending'), '담당자 미정')
-      + st(c('writing') + c('assigned'), '쓰는 중') + st(c('rework'), '돌려보낸 글', c('rework') > 0)
+      + st(c('writing') + c('assigned'), '배정됨') + st(c('rework'), '돌려보낸 글', c('rework') > 0)
       + st(c('submitted') + c('published'), '검수 대기')
       + st(c('verified') + c('paid'), '확인 끝');
 
@@ -5814,6 +5845,16 @@
       t.disabled = false; return;
     }
 
+    /* 줌 회차 숨기기 — 지우면 참석 기록(면제 판단)이 사라지므로 숨기기만 합니다 (9/17) */
+    if ((t = e.target.closest('[data-sesshide]'))) {
+      t.disabled = true;
+      var hr = await A.sb.from('training_sessions').update({ hidden: t.dataset.on === '1' }).eq('id', t.dataset.sesshide).select();
+      t.disabled = false;
+      if (hr.error || !hr.data || !hr.data.length) { A.toast('저장 실패'); return; }
+      A.toast(t.dataset.on === '1' ? '블로거 화면에서 숨겼습니다' : '블로거 화면에 다시 보입니다');
+      await loadEdu(); return;
+    }
+
     if ((t = e.target.closest('[data-refundcancel]'))) {
       var ro = A.ORDERS.filter(function (x) { return x.id === t.dataset.refundcancel; })[0];
       if (!ro) return;
@@ -6301,6 +6342,7 @@
       title: title, url: url, minutes: Number($('nm_min').value) || null,
       min_chars: Number($('nm_chars').value) || 150,
       check_question: $('nm_q').value.trim() || null, required: $('nm_req').checked,
+      skip_if_t1: $('nm_skipt1') ? $('nm_skipt1').checked : false,
       sort: MATS.length
     }).select();
     this.disabled = false;

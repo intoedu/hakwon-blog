@@ -295,7 +295,8 @@ window.ESC = (function () {
   /* 상태 이름 */
   A.ST = {
     pending: ['기다리는 중', 'c-off'], assigned: ['배정됨', 'c-info'],
-    writing: ['쓰는 중', 'c-wait'], submitted: ['원고 냄', 'c-info'],
+    /* 「쓰는 중(writing)」은 바꾸는 화면이 없어 한 번도 안 쓰였습니다 — 9/17 배정됨과 같은 이름으로 합침 */
+    writing: ['배정됨', 'c-info'], submitted: ['원고 냄', 'c-info'],
     rework: ['다시 쓰기', 'c-bad'], approved: ['원고 통과', 'c-info'],
     published: ['올림 · 확인 전', 'c-info'], verified: ['확인 끝', 'c-ok'],
     paid: ['정산 완료', 'c-ok'], cancelled: ['취소', 'c-off']
