@@ -433,13 +433,13 @@
       + '<div class="step ' + (r.videoDone >= r.videoNeed && r.videoNeed ? 'done'
           : (!r.needT1 || r.t1) ? 'now' : '') + '">영상 보기</div>'
       + '<div class="step ' + (r.ok ? 'now' : '') + '">첫 ' + W.what + ' 1건</div>'
-      + '<div class="step">2차 줌</div></div>'
+      + '</div>'   /* 9/18 : 2차 줌 없음 */
       + '<div class="note" style="margin-top:15px">'
       + '<b>지금 보시는 것은 ' + (RV ? '⭐ 리뷰어 교육' : '📝 블로그 교육') + '입니다.</b> '
       + '위 작업함에서 갈래를 바꾸시면 다른 교육이 나옵니다.<br><br>'
       + (r.ok ? '<b>' + A.josa(W.edu, '을') + ' 마치셨습니다.</b> 이제 ' + A.josa(W.what, '이') + ' 배정됩니다.'
         + (RV ? ' 리뷰는 저희가 본문까지 써서 드립니다. 그대로 올리시면 됩니다.'
-              : ' 첫 글을 쓰시면 2차 줌에서 같이 보면서 피드백해 드립니다.')
+              : '')
         : '<b>' + (r.needT1 ? '1차 줌 참석과 필수 영상 요약' : '필수 영상 요약')
         + '</b>을 마치셔야 ' + A.josa(W.what, '이') + ' 배정됩니다. '
         + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
@@ -451,9 +451,10 @@
     /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
     /* 관리자가 「블로거에게 숨기기」 한 회차는 안 보여 줍니다 (9/17 — 지금 1차 줌) */
     var visS = SESS.filter(function (s) { return !s.hidden; });
-    $('bEduSessions').innerHTML = visS.length
-      ? visS.slice().reverse().map(sessRow).join('')
-      : A.empty('아직 잡힌 ' + (RV ? '리뷰어 교육 ' : '') + '일정이 없습니다. 정해지면 알려드립니다.');
+    /* 9/18 — 줌 교육을 안 하므로 보일 회차가 없으면 「다음 일정」 칸을 통째로 숨깁니다
+       (「정해지면 알려드립니다」가 줌을 기다리게 만듭니다) */
+    var ssec = $('bEduSessSec'); if (ssec) ssec.style.display = visS.length ? '' : 'none';
+    $('bEduSessions').innerHTML = visS.length ? visS.slice().reverse().map(sessRow).join('') : '';
 
     $('bEduMats').innerHTML = MATS.length
       ? '<div class="matlist">' + MATS.map(matRow).join('') + '</div>'
