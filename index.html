@@ -1048,7 +1048,7 @@
         <h1>정산하기</h1><p>공동체별로 한 번에 보냅니다. 개인에게 따로 보내지 않습니다.</p>
         <p class="mono" id="payTrackNote"></p></div>
       <div class="row" style="margin-bottom:16px">
-        <input class="inp" id="payMonth" type="month" style="width:auto">
+        <input id="payMonth" type="hidden">
         <button class="btn btn-p" id="btnClose">이 달 마감하기 (확정)</button>
         <span class="mono">블로거는 <b>링크 넣은 날</b>, 검수자는 <b>통과·확인한 날</b>, 검색어 변경은 <b>바꾼 날</b>의 달로 잡힙니다.
           확인이 늦게 끝난 글은 다음 마감 때 붙습니다. 돈을 보낸 공동체가 있는 달은 다시 마감할 수 없습니다</span>
@@ -1151,7 +1151,7 @@
       <div class="head"><h1>내 검수 정산</h1>
         <p>검수도 일이라 수당이 나갑니다. 원고를 통과시키면 <b id="rpA">250</b>원,
           올라간 글을 확인하면 <b id="rpV">250</b>원 — 글 한 편에 합쳐서 <b id="rpT">500</b>원입니다.</p></div>
-      <div class="row" style="margin-bottom:14px"><input class="inp" id="rpMonth" type="month" style="width:auto">
+      <div class="row" style="margin-bottom:14px"><input id="rpMonth" type="hidden">
         <span class="mono">달을 고르면 그 달에 한 일이 나옵니다</span></div>
       <div class="grid g4" id="rpStats" style="margin-bottom:18px"></div>
       <div id="rpNote"></div>

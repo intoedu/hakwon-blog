@@ -4700,9 +4700,37 @@
     A.toast(PG_ROWS.length + '편을 파일로 저장했습니다');
   };
 
+  /* ── 연도 · 달 고르기 ──
+     type="month" 입력칸은 사파리 등에서 글자 칸으로 나와 손으로 쳐야 했습니다 (9/18).
+     숨은 칸(YYYY-MM)은 그대로 두고 옆에 연도 · 달 목록을 붙입니다. 이번 달 뒤는 고를 수 없습니다. */
+  function monthPick(id) {
+    var h = $(id); if (!h) return;
+    var now = A.thisMonth(), ny = +now.slice(0, 4), nm = +now.slice(5, 7);
+    if (!h.value) h.value = now;
+    var ys = h._ys, ms = h._ms;
+    if (!ys) {
+      ys = document.createElement('select'); ms = document.createElement('select');
+      ys.className = ms.className = 'inp'; ys.style.width = ms.style.width = 'auto';
+      h.parentNode.insertBefore(ys, h); h.parentNode.insertBefore(ms, h);
+      h._ys = ys; h._ms = ms;
+      var pick = function () {
+        var y = +ys.value, mo = +ms.value;
+        if (y === ny && mo > nm) mo = nm;
+        h.value = y + '-' + (mo < 10 ? '0' : '') + mo;
+        monthPick(id);
+        h.dispatchEvent(new Event('change'));
+      };
+      ys.onchange = ms.onchange = pick;
+    }
+    var y = +h.value.slice(0, 4), mo = +h.value.slice(5, 7), yo = '', mo2 = '';
+    for (var i = Math.min(2026, ny); i <= ny; i++) yo += '<option value="' + i + '"' + (i === y ? ' selected' : '') + '>' + i + '년</option>';
+    for (var k = 1; k <= (y === ny ? nm : 12); k++) mo2 += '<option value="' + k + '"' + (k === mo ? ' selected' : '') + '>' + k + '월</option>';
+    ys.innerHTML = yo; ms.innerHTML = mo2;
+  }
+
   /* ═══ 8 정산 ═══ */
   async function loadPay() {
-    if (!$('payMonth').value) $('payMonth').value = A.thisMonth();
+    monthPick('payMonth');
     var m = $('payMonth').value + '-01';
     CPAY = await A.sel('community_payouts', { eq: { month: m } });
     BPAY = await A.sel('blog_payouts', { eq: { month: m } });
@@ -5202,7 +5230,7 @@
   async function renderMyReviewPay() {
     var me = A.SESSION && A.SESSION.user ? A.SESSION.user.id : null;
     if (!me) return;
-    if (!$('rpMonth').value) $('rpMonth').value = A.thisMonth();
+    monthPick('rpMonth');
     var mm = $('rpMonth').value, m = mm + '-01';
     var rr = revRate();
     $('rpA').textContent = won(rr.approve); $('rpV').textContent = won(rr.verify);
