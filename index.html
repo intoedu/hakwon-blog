@@ -228,6 +228,7 @@
       <button class="nav" data-tk="review" data-go="r-check"><span class="n">6</span>올라왔는지 확인 <span class="cnt hot hide" id="cRvCheck">0</span></button>
       <button class="nav" data-go="posts"><span class="n">7</span>진행 현황</button>
       <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
+      <button class="nav" data-go="r-pay">💰 내 검수 수당</button>
       <div class="navlbl">챙길 것</div>
       <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
       <button class="nav" data-go="s-edu">📚 직원 교육</button>
@@ -1048,7 +1049,7 @@
         <p class="mono" id="payTrackNote"></p></div>
       <div class="row" style="margin-bottom:16px">
         <input class="inp" id="payMonth" type="month" style="width:auto">
-        <button class="btn btn-p" id="btnClose">이 달 마감하기</button>
+        <button class="btn btn-p" id="btnClose">이 달 마감하기 (확정)</button>
         <span class="mono">블로거는 <b>링크 넣은 날</b>, 검수자는 <b>통과·확인한 날</b>, 검색어 변경은 <b>바꾼 날</b>의 달로 잡힙니다.
           확인이 늦게 끝난 글은 다음 마감 때 붙습니다. 돈을 보낸 공동체가 있는 달은 다시 마감할 수 없습니다</span>
       </div>
@@ -1058,6 +1059,7 @@
         <button class="btn" id="btnPayYear">📚 전체 기간 개인별 누계</button>
         <span class="mono">구글 시트·넘버스·엑셀에서 바로 열립니다</span>
       </div>
+      <div id="payState" style="margin-bottom:12px"></div>
       <div class="grid g5" id="payStats" style="margin-bottom:16px"></div>
       <div class="sec">공동체별로 보낼 돈 <small>이름을 누르면 안에 누가 얼마인지 펼쳐집니다</small></div>
       <div id="payList"></div>
@@ -1149,9 +1151,11 @@
       <div class="head"><h1>내 검수 정산</h1>
         <p>검수도 일이라 수당이 나갑니다. 원고를 통과시키면 <b id="rpA">250</b>원,
           올라간 글을 확인하면 <b id="rpV">250</b>원 — 글 한 편에 합쳐서 <b id="rpT">500</b>원입니다.</p></div>
+      <div class="row" style="margin-bottom:14px"><input class="inp" id="rpMonth" type="month" style="width:auto">
+        <span class="mono">달을 고르면 그 달에 한 일이 나옵니다</span></div>
       <div class="grid g4" id="rpStats" style="margin-bottom:18px"></div>
       <div id="rpNote"></div>
-      <div class="sec">이번 달 내가 검수한 글</div>
+      <div class="sec">이 달 내가 검수한 글</div>
       <div id="rpList"></div>
       <div id="rpPast"></div>
     </section>

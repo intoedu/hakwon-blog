@@ -13,6 +13,7 @@
   var REWORKS = {};     /* 글 id → 돌려보낸 이력 (사유가 지워져도 여기 남습니다) */
   var RPAY = [];        /* 이번 달 검수 수당 명세 */
   var PITEMS = [], PSRC = {};   /* 정산 명세(blog_pay_items) — 이 달 것 / 어느 달이든 이미 잡힌 것 */
+  var PAY_PREVIEW = false;      /* 9/18 — 마감 전 달은 payout_preview 로 지금까지 한 일을 계산해 보여 줍니다 */
   function revRate() { return A.REVIEW_RATE || { approve: 250, verify: 250 }; }
   function sale() { return A.SALE || { normal: 6000, premium: 3000 }; }
   function split() { return A.SPLIT || { esc: 2, blogger: 2, community: 1, reviewer: 1 }; }
@@ -4709,6 +4710,15 @@
     PITEMS = await A.sel('blog_pay_items', { eq: { pay_month: m } });
     PSRC = {};
     (await A.sel('blog_pay_items', { select: 'src' })).forEach(function (x) { PSRC[x.src] = 1; });
+    /* 아직 마감 안 한 달 → 마감을 돌려 본 결과(되돌림)를 그대로 보여 줍니다. 저장되는 것은 없습니다 */
+    PAY_PREVIEW = !CPAY.length && !BPAY.length && !RPAY.length;
+    if (PAY_PREVIEW) {
+      try {
+        var pv = await A.rpc('payout_preview', { p_month: m }) || {};
+        CPAY = pv.cp || []; BPAY = pv.bp || []; RPAY = pv.rp || []; PITEMS = pv.items || [];
+        PITEMS.forEach(function (x) { PSRC[x.src] = 1; });
+      } catch (e) { A.toast('미리보기 실패: ' + e.message); }
+    }
     renderPay();
   }
   function renderPay() {
@@ -4717,6 +4727,24 @@
     var ptn = $('payTrackNote');
     if (ptn) ptn.innerHTML = '<b>블로그와 리뷰가 함께 잡힙니다.</b> '
       + '한 사람이 두 가지를 다 했어도 공동체로 한 번만 보내야 하기 때문입니다.';
+    var mmP = $('payMonth').value, nowM = A.thisMonth();
+    var pst = $('payState');
+    if (pst) {
+      /* 이 달보다 앞 달에 한 일이 섞였는지 — 앞 달을 먼저 마감하면 그 달 몫으로 따로 잡힙니다 */
+      var older = PITEMS.filter(function (i) { return !i.void && i.earned_at && A.kstMonth(i.earned_at) < mmP; });
+      var olderM = {};
+      older.forEach(function (i) { olderM[A.kstMonth(i.earned_at)] = 1; });
+      pst.innerHTML = PAY_PREVIEW
+        ? '<div class="note warn"><b>마감 전 — 지금까지 한 일로 계산한 금액입니다.</b> '
+          + '일이 생길 때마다 늘어나고, 저장된 것은 없습니다. '
+          + '<b>[이 달 마감하기]</b>를 누르면 이 금액으로 확정되고, 그 뒤에 한 일은 다음 달로 넘어갑니다.'
+          + (mmP >= nowM ? '<br>⚠️ <b>' + mmP.replace('-', '년 ') + '월이 아직 안 끝났습니다.</b> 달이 끝난 뒤 마감하세요.' : '')
+          + (older.length ? '<br>⚠️ 이 중 <b>' + older.length + '건은 ' + Object.keys(olderM).sort().map(function (k) { return k.replace('-', '년 ') + '월'; }).join(' · ')
+            + '에 한 일</b>입니다. 그 달을 먼저 마감하면 그 달 몫으로 따로 잡힙니다 (세무 신고 달이 맞게).' : '')
+          + '</div>'
+        : '<div class="note"><b>' + mmP.replace('-', '년 ') + '월은 마감된 달입니다.</b> 아래 금액으로 확정되어 있습니다. '
+          + '돈을 보낸 공동체가 없으면 [이 달 마감하기]로 다시 계산할 수 있습니다.</div>';
+    }
 
     /* 정산 달 = 그 일을 한 날의 달 (블로거 링크 넣은 날 · 검수자 통과/확인한 날 · 검색어 바꾼 날).
        확인이 늦게 끝나 지난 달에 못 잡힌 것은 다음 마감 때 이 달 명세로 붙습니다. */
@@ -4764,10 +4792,11 @@
           + '<td class="num"><b>' + won(c.amount + rv + kw) + '</b></td>'
           + '<td class="mono">' + esc([cm.bank_name, cm.bank_no].filter(Boolean).join(' ') || '계좌 미입력') + '</td>'
           + '<td>' + (c.status === 'sent' ? '<span class="chip c-ok">보냈음 ' + A.fdate(c.sent_at) + '</span>'
-            : '<span class="chip c-wait">아직 안 보냄</span>') + '</td>'
-          + '<td>' + (c.status === 'sent' ? '' : '<button class="btn btn-s" data-send="' + c.id + '">보냄</button>') + '</td></tr>';
+            : PAY_PREVIEW ? '<span class="chip">마감 전</span>' : '<span class="chip c-wait">아직 안 보냄</span>') + '</td>'
+          + '<td>' + (c.status === 'sent' ? '' : PAY_PREVIEW ? '<span class="mono">마감 뒤</span>'
+            : '<button class="btn btn-s" data-send="' + c.id + '">보냄</button>') + '</td></tr>';
       }).join('') + '</tbody></table></div>'
-      : A.empty('아직 마감하지 않았습니다. 위에서 [이 달 마감하기]를 눌러 주세요.');
+      : A.empty(PAY_PREVIEW ? '이 달에 한 일이 아직 없습니다.' : '이 달에 보낼 돈이 없습니다.');
 
     /* 공동체에 안 속한 검수자 — 개별로 보내야 합니다 */
     var loose = RPAY.filter(function (r) { return !r.community_payout && r.amount + (r.kw_amount || 0) > 0; });
@@ -4862,8 +4891,8 @@
   /* ① 개인별 지급대장 — 이 달. 세무사에게 넘기는 표 */
   $('btnPayPeople').onclick = function () {
     var pb = BPAY.filter(function (b) { return b.amount + (b.kw_amount || 0) > 0; });
-    if (!pb.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
-    var m = $('payMonth').value;
+    if (!pb.length) { A.toast('이 달에 보낼 원고료가 없습니다'); return; }
+    var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
     var head = ['정산월', '공동체', '이름', '전화번호', '이메일(로그인 아이디)',
       '단계', '단계 이름', '편수', '편당 평균', '원고료', '검색어 변경 보상', '지급액 합계',
       '지급 상태', '보낸 날', '받는 계좌 (공동체)', '예금주'].concat(PAY_TAIL);
@@ -4884,8 +4913,8 @@
 
   /* ② 공동체 이체 목록 — 이 달. 은행에서 보고 이체하는 표 */
   $('btnPayComm').onclick = function () {
-    if (!CPAY.length) { A.toast('이 달은 아직 마감하지 않았습니다'); return; }
-    var m = $('payMonth').value;
+    if (!CPAY.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
+    var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
     var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '검색어 변경 보상', '보낼 금액',
       '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처', '상태', '보낸 날', '메모'];
     var body = CPAY.map(function (c) {
@@ -4936,6 +4965,11 @@
 
   $('payMonth').onchange = loadPay;
   $('btnClose').onclick = async function () {
+    var cm = $('payMonth').value;
+    if (cm >= A.thisMonth() && !confirm(cm.replace('-', '년 ') + '월이 아직 끝나지 않았습니다.\n\n'
+        + '지금 마감하면 지금까지 한 일로 확정되고, 오늘 이후에 한 일은 다음 달 정산으로 넘어갑니다.\n그래도 마감할까요?')) return;
+    if (!confirm(cm.replace('-', '년 ') + '월을 마감할까요?\n\n화면에 보이는 금액으로 확정됩니다. '
+        + '돈을 보내기 전까지는 다시 마감(다시 계산)할 수 있습니다.')) return;
     this.disabled = true;
     try {
       var n = await A.rpc('payout_close', { p_month: $('payMonth').value + '-01' });
@@ -4944,6 +4978,8 @@
     } catch (e) { A.toast('실패: ' + e.message); }
     this.disabled = false;
   };
+
+  $('rpMonth').onchange = renderMyReviewPay;
 
   /* ═══ 🔔 알림 보내기 ═══ */
   var NOTI = [], NOTI_TAB = 'blogger', NOTI_KIND = '', NOTI_SET = {};
@@ -5166,14 +5202,14 @@
   async function renderMyReviewPay() {
     var me = A.SESSION && A.SESSION.user ? A.SESSION.user.id : null;
     if (!me) return;
-    var m = A.thisMonth() + '-01';
+    if (!$('rpMonth').value) $('rpMonth').value = A.thisMonth();
+    var mm = $('rpMonth').value, m = mm + '-01';
     var rr = revRate();
     $('rpA').textContent = won(rr.approve); $('rpV').textContent = won(rr.verify);
     $('rpT').textContent = won((Number(rr.approve) || 0) + (Number(rr.verify) || 0));
 
-    /* 이번 달 내가 한 일 — 통과시킨 날 · 확인한 날 · 검색어 바꾼 날의 달 (약관 개정안 제13조⑦⑧)
+    /* 고른 달에 내가 한 일 — 통과시킨 날 · 확인한 날 · 검색어 바꾼 날의 달 (약관 제13조⑦⑧)
        원고 통과 수당은 그 글이 끝내 안 올라가도 나갑니다 */
-    var mm = A.thisMonth();
     var mineA = POSTS.filter(function (p) {
       return p.reviewed_by === me && A.kstMonth(p.reviewed_at) === mm && (p.review_pay || 0) > 0
         && ['approved', 'published', 'verified', 'paid'].indexOf(p.status) >= 0;
@@ -5191,8 +5227,14 @@
 
     $('rpStats').innerHTML = st(mineA.length, '원고 통과시킨 글')
       + st(mineV.length, '올라간 글 확인') + st(mineK.length, '유료 검색어 변경')
-      + st(sum, '이번 달 수당 (원)');
-    $('rpNote').innerHTML = '';
+      + st(sum, mm.replace('-', '년 ') + '월 수당 (원)');
+    var mine0 = (await A.sel('review_payouts', { eq: { month: m } }) || []).filter(function (r) { return r.staff_id === me; })[0];
+    $('rpNote').innerHTML = '<div class="note" style="margin-bottom:14px">'
+      + (mine0 ? '<b>이 달은 마감되었습니다</b> — 확정 금액 ' + won(mine0.amount + (mine0.kw_amount || 0)) + '원'
+          + (mine0.community_payout ? ' (소속 공동체로 함께 보내 드립니다)' : ' (공동체에 속하지 않아 개별로 보내 드립니다)') + '.'
+        : '<b>아직 마감 전입니다.</b> 한 일이 생길 때마다 늘어납니다. 관리자가 달을 마감하면 확정됩니다.')
+      + '<br>원고 통과는 <b>통과시킨 날</b>, 노출 확인은 <b>확인한 날</b>의 달로 셉니다. '
+      + '마감 전에 그 앞 달이 마감되지 않았다면 앞 달 몫이 이 달 마감에 함께 붙을 수 있습니다.</div>';
 
     var rows = [];
     mineA.forEach(function (p) { rows.push({ p: p, kind: '원고 통과', pay: p.review_pay, at: p.reviewed_at }); });
@@ -5215,7 +5257,7 @@
           + '<td>' + A.stChip(r.p.status) + '</td>'
           + '<td class="num"><b>' + won(r.pay) + '</b></td></tr>';
       }).join('') + '</tbody></table></div>'
-      : A.empty('이번 달에 검수하신 글이 아직 없습니다.');
+      : A.empty(mm.replace('-', '년 ') + '월에 검수하신 글이 없습니다.');
 
     /* 지난달 확정분 */
     var past = await A.sel('review_payouts', { order: 'month', asc: false });
