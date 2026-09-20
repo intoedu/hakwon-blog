@@ -1491,6 +1491,11 @@
         + '그걸 누르면 지역·과목·대상·목적·정보팩·사진까지 여기로 그대로 넘어옵니다. '
         + '<b>손으로 만드실 일은 거의 없습니다.</b></div>';
 
+    /* 편당 받는 돈 기본값 = 설정의 일반 회원 판매가 (9/20 10,000원) */
+    var np = $('no_price');
+    if (np && !np.dataset.touched) np.value = sale().normal;
+    if (np && !np.onchange) np.onchange = function () { this.dataset.touched = '1'; };
+
     var om = $('ordManual');
     if (om) om.innerHTML = RV
       ? '<b>리뷰 주문은 여기서 만듭니다.</b> 업체 이름·편수·마감일을 넣고 만드시면 '
@@ -6596,7 +6601,7 @@
     this.disabled = true;
     try {
       await A.rpc('order_create', {
-        p_academy: name, p_qty: qty, p_sale: Number($('no_price').value) || 6000,
+        p_academy: name, p_qty: qty, p_sale: Number($('no_price').value) || sale().normal,
         p_deadline: $('no_deadline').value || null, p_region: $('no_region').value.trim() || null
       });
       /* 지금 보고 있는 갈래로 만듭니다 (order_create 는 블로그 기준이라 뒤에서 표시만 바꿉니다) */
