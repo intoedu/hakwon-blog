@@ -4971,6 +4971,13 @@
   /* ── 정산 내보내기 ──
      주민등록번호·개인 계좌는 블로그 센터에 저장하지 않습니다.
      여기서 뽑은 파일에 시트에서 직접 채워 넣어 세무사에게 넘기는 방식입니다. */
+  /* 전화번호는 하이픈을 넣어 내보냅니다 — 숫자만 있으면 넘버스·엑셀이 「수」로 보고 앞의 0을 지웁니다 (9/20) */
+  function fmtPhone(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    if (d.length === 11) return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+    if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    return v || '';
+  }
   var PAY_TAIL = ['주민등록번호 (직접 입력)', '원천징수 (직접 입력)', '실지급액 (직접 입력)', '비고'];
 
   /* ① 개인별 지급대장 — 이 달. 블로거 원고료 + 검수 수당을 한 장에. 세무사에게 넘기는 표 */
@@ -4986,7 +4993,7 @@
     var body = rows.map(function (r) {
       var cm = r.comm ? (A.COMMS.filter(function (x) { return x.name === r.comm; })[0] || {}) : {};
       var cp = r.cpRow || {};
-      return [m, r.who, r.name, r.p.phone || '', r.p.email || '', r.comm || '',
+      return [m, r.who, r.name, fmtPhone(r.p.phone), r.p.email || '', r.comm || '',
         r.p.level || '', r.p.level ? A.levelOf(r.p.level).name : '',
         r.post || 0, r.post ? Math.round(r.amt / r.post) : 0, r.amt,
         r.ap || 0, r.vf || 0, r.rev, r.kw, r.total,
@@ -5011,7 +5018,7 @@
       return [m, cm.name || '', c.people_count, c.post_count, c.amount, c.review_amount || 0, c.kw_amount || 0,
         c.amount + (c.review_amount || 0) + (c.kw_amount || 0),
         cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
-        cm.leader_name || '', cm.leader_phone || '',
+        cm.leader_name || '', fmtPhone(cm.leader_phone),
         c.status === 'sent' ? '보냄' : '아직 안 보냄',
         c.sent_at ? A.fdate(c.sent_at) : '', c.memo || ''];
     });
@@ -5041,7 +5048,7 @@
         var v = byId[k];
         var p = A.PEOPLE.filter(function (x) { return x.id === k; })[0] || {};
         var mine = all.filter(function (b) { return b.blogger_id === k && b.amount + (b.kw_amount || 0) > 0; });
-        return [p.name || '', p.phone || '', p.email || '', A.commName(p.community_id),
+        return [p.name || '', fmtPhone(p.phone), p.email || '', A.commName(p.community_id),
           (p.level || '') + '단계',
           mine[0].month.slice(0, 7), mine[mine.length - 1].month.slice(0, 7), mine.length,
           v.cnt, v.amt, v.months.join(' / '), '', '', '', ''];
