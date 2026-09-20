@@ -4794,7 +4794,7 @@
     $('payStats').innerHTML = st(waiting.length, '아직 마감에 안 잡힌 글')
       + st(blogTotal, '블로거 원고료 (원)') + st(revTotal, '검수 수당 (원)')
       + st(kwTotal, '검색어 변경 보상 (원)')
-      + st(Math.max(0, sale - total), '남는 돈 (원)');
+      + st(Math.max(0, sale - total), '블로그센터 몫 (원)');
     var lateNoPay = POSTS.filter(function (p) {
       return LATE_BY[p.id] && ['verified', 'paid'].indexOf(p.status) >= 0 && A.kstMonth(p.published_at) === mm;
     }).length;
@@ -4825,6 +4825,8 @@
             : '<button class="btn btn-s" data-send="' + c.id + '">보냄</button>') + '</td></tr>';
       }).join('') + '</tbody></table></div>'
       : A.empty(PAY_PREVIEW ? '이 달에 한 일이 아직 없습니다.' : '이 달에 보낼 돈이 없습니다.');
+
+    $('payPeople').innerHTML = peopleTable();
 
     /* 공동체에 안 속한 검수자 — 개별로 보내야 합니다 */
     var loose = RPAY.filter(function (r) { return !r.community_payout && r.amount + (r.kw_amount || 0) > 0; });
@@ -4858,6 +4860,67 @@
       }).join('') + '</tbody></table></div>';
     $('payDetail').innerHTML = '';
   }
+  /* ── 사람별로 얼마 ──
+     공동체별 표는 「은행에서 얼마를 이체하나」이고, 이 표는 「그 돈이 누구 몫인가」입니다.
+     블로거 원고료와 검수 수당을 한 사람 기준으로 합칩니다 (9/20). */
+  function payPeopleRows() {
+    var map = {};
+    function row(id) {
+      if (!map[id]) map[id] = { id: id, post: 0, amt: 0, kwc: 0, kw: 0, ap: 0, vf: 0, rev: 0, cp: null };
+      return map[id];
+    }
+    BPAY.forEach(function (b) {
+      if (!(b.amount + (b.kw_amount || 0))) return;
+      var r = row(b.blogger_id);
+      r.post += b.post_count; r.amt += b.amount; r.kwc += b.kw_count || 0; r.kw += b.kw_amount || 0;
+      r.cp = r.cp || b.community_payout;
+    });
+    RPAY.forEach(function (v) {
+      if (!(v.amount + (v.kw_amount || 0))) return;
+      var r = row(v.staff_id);
+      r.ap += v.approve_count; r.vf += v.verify_count; r.rev += v.amount;
+      r.kwc += v.kw_count || 0; r.kw += v.kw_amount || 0;
+      r.cp = r.cp || v.community_payout;
+    });
+    return Object.keys(map).map(function (k) {
+      var r = map[k];
+      var pp = A.PEOPLE.filter(function (x) { return x.id === k; })[0] || {};
+      var cp = CPAY.filter(function (c) { return c.id === r.cp; })[0];
+      var cm = cp ? (A.COMMS.filter(function (x) { return x.id === cp.community_id; })[0] || {}) : null;
+      r.p = pp;
+      r.name = pp.name || staffName(k) || '-';
+      r.who = [r.post ? '블로거' : '', r.rev ? '검수자' : ''].filter(Boolean).join(' · ');
+      r.comm = cm ? cm.name : null;
+      r.cpRow = cp || null;
+      r.total = r.amt + r.rev + r.kw;
+      return r;
+    }).filter(function (r) { return r.total > 0; })
+      .sort(function (a, b) { return b.total - a.total; });
+  }
+  function peopleTable() {
+    var rows = payPeopleRows();
+    if (!rows.length) return '';
+    return '<div class="sec" style="margin-top:18px">사람별로 얼마 <small>이 돈이 누구 몫인지 · 실제 이체는 위 공동체별로 나갑니다</small></div>'
+      + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>구분</th><th>편수</th><th>원고료</th>'
+      + '<th>원고 통과</th><th>노출 확인</th><th>검수 수당</th><th>검색어 보상</th><th>받을 돈</th><th>받는 곳</th></tr></thead><tbody>'
+      + rows.map(function (r) {
+        return '<tr><td><b>' + esc(r.name) + '</b></td>'
+          + '<td><span class="mono">' + esc(r.who) + '</span></td>'
+          + '<td class="num">' + (r.post || '-') + '</td>'
+          + '<td class="num">' + (r.amt ? won(r.amt) : '-') + '</td>'
+          + '<td class="num">' + (r.ap || '-') + '</td>'
+          + '<td class="num">' + (r.vf || '-') + '</td>'
+          + '<td class="num">' + (r.rev ? won(r.rev) : '-') + '</td>'
+          + '<td class="num">' + (r.kw ? won(r.kw) : '-') + '</td>'
+          + '<td class="num"><b>' + won(r.total) + '</b></td>'
+          + '<td>' + (r.comm ? esc(r.comm) + '<span class="mono"> 로 보냄</span>'
+            : '<span class="chip c-wait">개별로 이체</span>') + '</td></tr>';
+      }).join('')
+      + '<tr><td colspan="8" style="text-align:right"><b>사람에게 나가는 돈 합계</b></td>'
+      + '<td class="num"><b>' + won(rows.reduce(function (a, r) { return a + r.total; }, 0)) + '</b></td><td></td></tr>'
+      + '</tbody></table></div>';
+  }
+
   function openCP(id) {
     var c = CPAY.filter(function (x) { return x.id === id; })[0]; if (!c) return;
     var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
@@ -4908,35 +4971,33 @@
   /* ── 정산 내보내기 ──
      주민등록번호·개인 계좌는 블로그 센터에 저장하지 않습니다.
      여기서 뽑은 파일에 시트에서 직접 채워 넣어 세무사에게 넘기는 방식입니다. */
-  function payRow(b) {                       /* blog_payouts 한 줄 → 사람 정보 붙이기 */
-    var p = A.PEOPLE.filter(function (x) { return x.id === b.blogger_id; })[0] || {};
-    var cm = A.COMMS.filter(function (x) { return x.id === p.community_id; })[0] || {};
-    var cp = CPAY.filter(function (x) { return x.community_id === p.community_id; })[0] || {};
-    return { p: p, cm: cm, cp: cp };
-  }
   var PAY_TAIL = ['주민등록번호 (직접 입력)', '원천징수 (직접 입력)', '실지급액 (직접 입력)', '비고'];
 
-  /* ① 개인별 지급대장 — 이 달. 세무사에게 넘기는 표 */
+  /* ① 개인별 지급대장 — 이 달. 블로거 원고료 + 검수 수당을 한 장에. 세무사에게 넘기는 표 */
   $('btnPayPeople').onclick = function () {
-    var pb = BPAY.filter(function (b) { return b.amount + (b.kw_amount || 0) > 0; });
-    if (!pb.length) { A.toast('이 달에 보낼 원고료가 없습니다'); return; }
+    /* 블로거 원고료와 검수 수당을 한 장에 — 예전엔 블로거만 나와서 검수자 몫이 빠졌습니다 (9/20) */
+    var rows = payPeopleRows();
+    if (!rows.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
     var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
-    var head = ['정산월', '공동체', '이름', '전화번호', '이메일(로그인 아이디)',
-      '단계', '단계 이름', '편수', '편당 평균', '원고료', '검색어 변경 보상', '지급액 합계',
-      '지급 상태', '보낸 날', '받는 계좌 (공동체)', '예금주'].concat(PAY_TAIL);
-    var body = pb.map(function (b) {
-      var r = payRow(b);
-      return [m, r.cm.name || '', r.p.name || '', r.p.phone || '', r.p.email || '',
-        r.p.level || '', A.levelOf(r.p.level || 1).name,
-        b.post_count, b.post_count ? Math.round(b.amount / b.post_count) : 0,
-        b.amount, b.kw_amount || 0, b.amount + (b.kw_amount || 0),
-        r.cp.status === 'sent' ? '보냄' : '아직 안 보냄',
-        r.cp.sent_at ? A.fdate(r.cp.sent_at) : '',
-        [r.cm.bank_name, r.cm.bank_no].filter(Boolean).join(' '), r.cm.bank_holder || '',
+    var head = ['정산월', '구분', '이름', '전화번호', '이메일(로그인 아이디)', '공동체',
+      '단계', '단계 이름', '편수', '편당 평균', '원고료',
+      '원고 통과(편)', '노출 확인(편)', '검수 수당', '검색어 변경 보상', '지급액 합계',
+      '받는 방법', '지급 상태', '보낸 날', '받는 계좌', '예금주'].concat(PAY_TAIL);
+    var body = rows.map(function (r) {
+      var cm = r.comm ? (A.COMMS.filter(function (x) { return x.name === r.comm; })[0] || {}) : {};
+      var cp = r.cpRow || {};
+      return [m, r.who, r.name, r.p.phone || '', r.p.email || '', r.comm || '',
+        r.p.level || '', r.p.level ? A.levelOf(r.p.level).name : '',
+        r.post || 0, r.post ? Math.round(r.amt / r.post) : 0, r.amt,
+        r.ap || 0, r.vf || 0, r.rev, r.kw, r.total,
+        r.comm ? '공동체로' : '개별 이체',
+        r.comm ? (cp.status === 'sent' ? '보냄' : '아직 안 보냄') : '개별 확인',
+        cp.sent_at ? A.fdate(cp.sent_at) : '',
+        [cm.bank_name, cm.bank_no].filter(Boolean).join(' '), cm.bank_holder || '',
         '', '', '', ''];
     });
     saveCsv('ESC 블로그 지급대장 ' + m + '.csv', head, body);
-    A.toast(pb.length + '명의 지급대장을 저장했습니다');
+    A.toast(rows.length + '명의 지급대장을 저장했습니다 (블로거 · 검수자)');
   };
 
   /* ② 공동체 이체 목록 — 이 달. 은행에서 보고 이체하는 표 */
