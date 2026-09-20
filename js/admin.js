@@ -16,50 +16,45 @@
   var PAY_PREVIEW = false;      /* 9/18 — 마감 전 달은 payout_preview 로 지금까지 한 일을 계산해 보여 줍니다 */
   function revRate() { return A.REVIEW_RATE || { approve: 250, verify: 250 }; }
   function sale() { return A.SALE || { normal: 6000, premium: 3000 }; }
-  function split() { return A.SPLIT || { esc: 2, blogger: 2, community: 1, reviewer: 1 }; }
-  function payMult() { return A.payMult(); }
+  function revRateP() { return A.REVIEW_RATE_P || { approve: 250, verify: 250 }; }
+  function premRate() { return Number(A.PREMIUM_RATE) || 1000; }
+  function commRate() { return A.COMM_RATE || { normal: 1000, premium: 0 }; }
 
-  /* 학원이 낸 돈이 어떻게 나뉘는지 —
-     기준은 「블로거가 받는 돈 × 3 = 학원이 내는 돈」입니다. 그래서 어느 단계든 비율이 그대로입니다.
-     ⚠️ 단, 판매가는 주문을 만들 때 정해져 굳습니다. 지금은 주문 화면에 1단계 값만 있어서,
-     2단계 이상 블로거에게 맡기려면 「몇 단계 몇 편」으로 값을 매기는 화면이 먼저 필요합니다. */
-  function splitBox() {
-    var sp = split(), tot = sp.esc + sp.blogger + sp.community + sp.reviewer;
-    var rows = A.LEVELS.map(function (l) {
-      return ['premium', 'normal'].map(function (k) {
-        var pay = Math.round(l.rate * (k === 'premium' ? 1 : payMult()));
-        var price = pay * tot / sp.blogger;             /* 블로거 몫 × 3 = 학원이 내는 돈 */
-        var one = price / tot;
-        return '<tr><td>' + A.lvBadge(l.lv) + ' <span class="mono">' + esc(l.name) + '</span></td>'
-          + '<td>' + (k === 'premium' ? '프리미엄' : '일반') + '</td>'
-          + '<td class="num"><b>' + won(price) + '</b></td>'
-          + '<td class="num">' + won(one * sp.esc) + '</td>'
-          + '<td class="num"><b>' + won(pay) + '</b></td>'
-          + '<td class="num">' + won(one * sp.community) + '</td>'
-          + '<td class="num">' + won(one * sp.reviewer) + '</td></tr>';
-      }).join('');
+  /* 학원이 낸 돈이 어떻게 나뉘는지 (2026-09-20 새 분배)
+     예전에는 「등급 단가 × 판매가 배수」 하나로 원고료와 검수 수당을 같이 정했는데,
+     그 방식으로는 「블로거 4,000 · 검수 2,000 · 공동체 1,000」 같은 금액을 맞출 수 없어 갈래별 표로 바꿨습니다. */
+  function splitRows(k) {
+    var price = k === 'premium' ? sale().premium : sale().normal;
+    var rv = k === 'premium' ? revRateP() : revRate();
+    var rev = (Number(rv.approve) || 0) + (Number(rv.verify) || 0);
+    var cm = k === 'premium' ? (Number(commRate().premium) || 0) : (Number(commRate().normal) || 0);
+    var pays = k === 'premium' ? [{ name: '등급 없이 고정', rate: premRate() }]
+      : A.LEVELS.map(function (l) { return { name: l.name, lv: l.lv, rate: l.rate }; });
+    return pays.map(function (p) {
+      return '<tr><td>' + (k === 'premium' ? '<span class="mem pre">파트너</span>'
+          : '<span class="mem nor">일반</span> ' + A.lvBadge(p.lv))
+        + ' <span class="mono">' + esc(p.name) + '</span></td>'
+        + '<td class="num">' + won(price) + '</td>'
+        + '<td class="num"><b>' + won(p.rate) + '</b></td>'
+        + '<td class="num">' + won(rev) + '</td>'
+        + '<td class="num">' + won(cm) + '</td>'
+        + '<td class="num"><b>' + won(price - p.rate - rev - cm) + '</b></td></tr>';
     }).join('');
-
+  }
+  function splitBox() {
     return '<details class="outbox" style="margin-top:18px"><summary>💰 학원이 낸 돈이 어떻게 나뉘는지'
-      + '<span class="mono">— ESC ' + sp.esc + ' : 블로거 ' + sp.blogger
-      + ' : 공동체 ' + sp.community + ' : 검수자 ' + sp.reviewer + '</span></summary>'
+      + '<span class="mono">— 일반 ' + won(sale().normal) + '원 · 파트너 ' + won(sale().premium) + '원</span></summary>'
       + '<div class="obody">'
-      + '<div class="note"><b>블로거가 받는 돈 × 3 = 학원이 내는 돈.</b> '
-      + '단계가 올라가면 학원 값도 같이 올라가므로 비율은 어느 단계에서나 그대로입니다.</div>'
       + '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>단계</th><th>회원</th><th>학원이 냄</th>'
-      + '<th>ESC</th><th>블로거</th><th>공동체</th><th>검수자</th></tr></thead><tbody>'
-      + rows + '</tbody></table></div>'
-      + '<div class="note warn" style="margin-top:12px">'
-      + '<b>아직 못 하는 것 — 주문에 단계를 섞어 담기.</b> 지금 주문 화면은 편당 값이 하나뿐이라 '
-      + '<b>1단계 값(' + won(sale().premium) + ' / ' + won(sale().normal) + ')으로만 주문이 만들어집니다.</b> '
-      + '「50편 = 1단계 40편 + 2단계 10편」처럼 담으시려면 그 화면을 먼저 만들어야 합니다.<br>'
-      + '그전까지는 <b>2단계 이상 블로거에게 맡기면 학원에게는 1단계 값만 받은 상태</b>가 되니, '
-      + '승급하신 분께 글을 맡기기 전에 말씀해 주세요.</div>'
-      + '<div class="note" style="margin-top:10px"><b>공동체 몫과 검수자 수당은 아직 이 표대로 안 나갑니다.</b> '
-      + '공동체는 지금 돈을 모아 보내주는 창구일 뿐 자기 몫(' + sp.community + '/' + tot + ')을 안 떼고, '
-      + '검수 수당은 단계와 무관하게 ' + won(revRate().approve + revRate().verify) + '원 고정입니다. '
-      + '등급별 값을 만들 때 같이 맞추면 됩니다.</div>'
+      + '<thead><tr><th>주문 갈래 · 단계</th><th>학원이 냄</th><th>블로거</th>'
+      + '<th>검수자</th><th>공동체</th><th>블로그센터</th></tr></thead><tbody>'
+      + splitRows('normal') + splitRows('premium') + '</tbody></table></div>'
+      + '<div class="note" style="margin-top:12px"><b>판매가는 부가세가 포함된 금액입니다.</b> '
+      + '일반 10,000원이면 부가세 909원은 블로그센터 몫에서 나갑니다.<br>'
+      + '<b>금액은 글마다 굳습니다.</b> 원고료는 글을 맡길 때, 검수 수당은 검수할 때 그 글에 적힙니다. '
+      + '여기 값을 바꿔도 이미 맡긴 글 · 검수한 글의 금액은 그대로입니다.<br>'
+      + '<b>공동체 운영비</b>는 글이 올라가 확인까지 끝나면 그 블로거의 공동체에 붙습니다. '
+      + '공동체가 없는 분의 몫은 블로그센터에 남습니다.</div>'
       + '</div></details>';
   }
 
@@ -889,7 +884,7 @@
 
   function renderLevels() {
     $('levelBox').innerHTML = '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>단계</th><th>이름</th><th>프리미엄 회원 글</th><th>일반 회원 글</th>'
+      + '<thead><tr><th>단계</th><th>이름</th><th>일반 회원 글</th><th>파트너 회원 글</th>'
       + '<th>올라가는 기준 (후보 추천용)</th><th>인원</th></tr></thead><tbody>'
       + A.LEVELS.map(function (l) {
         var n = A.PEOPLE.filter(function (p) { return p.level === l.lv && p.status === 'approved'; }).length;
@@ -897,18 +892,17 @@
         return '<tr><td>' + A.lvBadge(l.lv) + '</td>'
           + '<td><input class="inp" style="width:110px;padding:5px 8px" data-lf="name" data-llv="' + l.lv + '" value="' + esc(l.name) + '"></td>'
           + '<td><input class="inp" style="width:95px;padding:5px 8px" type="number" data-lf="rate" data-llv="' + l.lv + '" value="' + l.rate + '"></td>'
-          + '<td class="num"><b>' + won(Math.round(l.rate * payMult())) + '</b>원'
-          + '<div class="mono">자동 계산</div></td>'
+          + '<td class="num"><b>' + won(premRate()) + '</b>원'
+          + '<div class="mono">등급과 무관</div></td>'
           + '<td class="mono">' + (r ? '누적 ' + r.done + '편 · 통과율 ' + r.pass + '%'
             + (r.rank ? ' · 평균 노출 ' + r.rank + '위 안(50위 밖 글은 평균에서 뺌)' : '')
             + ' · 이웃 ' + won(r.nb) + '명 이상' : '모두 여기서 시작') + '</td>'
           + '<td class="num">' + n + '명</td></tr>';
       }).join('') + '</tbody></table></div>'
       + '<div class="note" style="margin-top:12px">'
-      + '<b>적는 값은 프리미엄 회원 글 기준입니다.</b> 일반 회원 학원은 편당 값이 '
-      + payMult() + '배라(' + won(sale().normal) + ' / ' + won(sale().premium) + ') '
-      + '블로거도 그만큼 더 받습니다. 오른쪽 칸은 저희가 곱해서 보여드리는 것이라 '
-      + '따로 적으실 것이 없습니다.</div>'
+      + '<b>적는 값은 일반 회원 글(편당 ' + won(sale().normal) + '원) 기준입니다.</b> '
+      + '파트너 회원 글(편당 ' + won(sale().premium) + '원)은 등급과 상관없이 '
+      + '<b>' + won(premRate()) + '원</b>이며, 아래 「파트너 · 검수 · 공동체 금액」에서 고칩니다.</div>'
       + splitBox()
       + '<div class="row" style="margin-top:12px"><button class="btn btn-p" id="btnSaveLevels">단계 설정 저장</button>'
       + '<span class="mono">기준은 자동 승급이 아니라 후보를 골라내는 용도입니다</span></div>'
@@ -928,9 +922,30 @@
       + '</div>'
       + '<div class="row" style="margin-top:14px">'
       + '<button class="btn btn-p" id="btnSaveReview">검수 수당 저장</button>'
-      + '<span class="mono">글 한 편당 합계 <b>'
+      + '<span class="mono">일반 주문 글 한 편당 합계 <b>'
       + won((Number(revRate().approve) || 0) + (Number(revRate().verify) || 0)) + '원</b>'
       + ' · 바꿔도 <b>이미 검수한 글의 금액은 안 변합니다</b></span></div></div>'
+
+      /* 파트너(프리미엄) 주문과 공동체 운영비 — 9/20 새 분배 */
+      + '<div class="sec" style="margin-top:26px">파트너 주문 · 공동체 운영비 '
+      + '<small>파트너 회원(편당 ' + won(sale().premium) + '원) 주문은 등급 없이 같은 금액입니다</small></div>'
+      + '<div class="card"><div class="grid g3" style="gap:14px">'
+      + '<div><label class="f">파트너 주문 원고료</label>'
+      + '<input class="inp" type="number" id="prRate" style="max-width:130px" value="' + premRate() + '">'
+      + '<div class="mono" style="margin-top:5px">등급과 무관하게 이 금액</div></div>'
+      + '<div><label class="f">파트너 · 원고 통과</label>'
+      + '<input class="inp" type="number" id="prApprove" style="max-width:130px" value="' + (revRateP().approve || 0) + '"></div>'
+      + '<div><label class="f">파트너 · 노출 확인</label>'
+      + '<input class="inp" type="number" id="prVerify" style="max-width:130px" value="' + (revRateP().verify || 0) + '"></div>'
+      + '<div><label class="f">공동체 운영비 — 일반 주문</label>'
+      + '<input class="inp" type="number" id="cmNormal" style="max-width:130px" value="' + (commRate().normal || 0) + '">'
+      + '<div class="mono" style="margin-top:5px">글이 올라가 확인까지 끝나면 그 블로거의 공동체에 붙습니다</div></div>'
+      + '<div><label class="f">공동체 운영비 — 파트너 주문</label>'
+      + '<input class="inp" type="number" id="cmPrem" style="max-width:130px" value="' + (commRate().premium || 0) + '"></div>'
+      + '</div>'
+      + '<div class="row" style="margin-top:14px">'
+      + '<button class="btn btn-p" id="btnSaveTier">파트너 · 공동체 금액 저장</button>'
+      + '<span class="mono">연습 주문은 여기 값과 상관없이 주문 카드에서 정한 원고료만 나갑니다</span></div></div>'
 
       /* 검색어 변경 요금 — 🔴 금액은 여기 한 곳에서만 정합니다 (settings.blog.kw_fee) */
       + '<div class="sec" style="margin-top:26px">검색어 변경 요금 '
@@ -950,6 +965,7 @@
 
     $('btnSaveLevels').onclick = saveLevels;
     $('btnSaveReview').onclick = saveReviewRate;
+    $('btnSaveTier').onclick = saveTierRates;
     $('btnSaveKw').onclick = saveKwFee;
     ['kwFeeAdmin', 'kwFeeBlogger'].forEach(function (id) {
       $(id).oninput = function () {
@@ -1002,6 +1018,24 @@
     A.REVIEW_RATE = v.review;
     A.toast('검수 수당을 저장했습니다 (편당 ' + won(a + v2) + '원)');
     renderLevels();
+  }
+
+  /* 파트너 원고료 · 파트너 검수 수당 · 공동체 운영비 (9/20 새 분배) */
+  async function saveTierRates() {
+    var pr = Number($('prRate').value), pa = Number($('prApprove').value), pv = Number($('prVerify').value);
+    var cn = Number($('cmNormal').value), cp = Number($('cmPrem').value);
+    if ([pr, pa, pv, cn, cp].some(function (x) { return !(x >= 0); })) { A.toast('숫자를 넣어 주세요'); return; }
+    this.disabled = true;
+    var cur = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+    var v = (cur.data && cur.data.value) || {};
+    v.premium_rate = pr;
+    v.review_premium = { approve: pa, verify: pv };
+    v.community = { normal: cn, premium: cp };
+    var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
+    this.disabled = false;
+    if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+    A.PREMIUM_RATE = pr; A.REVIEW_RATE_P = v.review_premium; A.COMM_RATE = v.community;
+    A.toast('저장했습니다'); renderLevels();
   }
 
   async function saveKwFee() {
@@ -1657,15 +1691,11 @@
   /* 이 학원이 일반이냐 프리미엄이냐 — 블로거가 받는 돈이 여기서 갈립니다 */
   function memBadge(o) {
     return o && o.is_premium
-      ? '<span class="mem pre">프리미엄 회원</span>'
-      : '<span class="mem nor">일반 회원 · 지급 ' + A.payMult() + '배</span>';
+      ? '<span class="mem pre">파트너 회원</span>'
+      : '<span class="mem nor">일반 회원</span>';
   }
-  /* 1단계 블로거가 이 주문 글 한 편을 쓰면 받는 돈 (등급이 오르면 그만큼 커집니다) */
-  function basePay(o) {
-    if (o && o.is_practice) return o.practice_rate || 0;   /* 연습 주문 — 관리자가 넣은 편당 원고료 */
-    var base = (A.LEVELS[0] && A.LEVELS[0].rate) || 1000;
-    return Math.round(base * (o && o.is_premium ? 1 : A.payMult()));
-  }
+  /* 1단계 블로거가 이 주문 글 한 편을 쓰면 받는 돈 (일반 주문만 등급이 오르면 커집니다) */
+  function basePay(o) { return A.payFor(o, 1); }
 
   /* ── 리뷰 주문 ──
      블로그와 크게 다른 점: 리뷰는 **우리가 본문까지 다 써 줍니다.**
@@ -3333,9 +3363,9 @@
       if (mb) mb.innerHTML = !o ? '' : '<div class="note" style="margin:0 0 12px">'
         + memBadge(o) + ' <b>' + esc(o.academy_name) + '</b> — 편당 '
         + won(o.sale_price) + '원을 받는 주문입니다. '
-        + '1단계 블로거가 한 편 쓰면 <b>' + won(basePay(o)) + '원</b>, '
-        + '단계가 오르면 그만큼 더 갑니다'
-        + (o.is_premium ? '.' : ' (일반 회원이라 프리미엄 주문의 ' + A.payMult() + '배입니다).')
+        + '1단계 블로거가 한 편 쓰면 <b>' + won(basePay(o)) + '원</b>'
+        + (o.is_premium ? ' — 파트너 주문은 등급과 상관없이 같은 금액입니다.'
+           : ', 단계가 오르면 ' + won(A.payFor(o, 5)) + '원까지 갑니다.')
         + '</div>';
 
       /* ⭐ 지금 이 주문을 맡을 수 있는 사람이 몇 명인지 — 안 그러면 왜 배정이 안 되는지
@@ -4780,21 +4810,24 @@
     var waiting = POSTS.filter(function (p) {
       return p.status === 'verified' && p.published_at && A.kstMonth(p.published_at) <= mm && !PSRC['post:' + p.id];
     });
-    CPAY = CPAY.filter(function (c) { return c.amount + (Number(c.review_amount) || 0) + (c.kw_amount || 0) > 0; });
+    CPAY = CPAY.filter(function (c) { return c.amount + (Number(c.review_amount) || 0) + (c.kw_amount || 0) + (c.ops_amount || 0) > 0; });
     var blogTotal = BPAY.reduce(function (a, b) { return a + b.amount; }, 0);
     var revTotal = RPAY.reduce(function (a, r) { return a + r.amount; }, 0);
     var kwTotal = BPAY.reduce(function (a, b) { return a + (b.kw_amount || 0); }, 0)
       + RPAY.reduce(function (a, r) { return a + (r.kw_amount || 0); }, 0);
-    var total = blogTotal + revTotal + kwTotal;
+    var opsTotal = CPAY.reduce(function (a, c) { return a + (c.ops_amount || 0); }, 0);
+    var total = blogTotal + revTotal + kwTotal + opsTotal;
     var mine = {};
     PITEMS.forEach(function (i) { if (i.kind === 'post' && !i.void) mine[i.post_id] = 1; });
     var sale = POSTS.filter(function (p) { return mine[p.id]; })
       .reduce(function (a, p) { return a + (p.sale_rate || 0); }, 0);
 
-    $('payStats').innerHTML = st(waiting.length, '아직 마감에 안 잡힌 글')
-      + st(blogTotal, '블로거 원고료 (원)') + st(revTotal, '검수 수당 (원)')
+    $('payStats').innerHTML = st(blogTotal, '블로거 원고료 (원)') + st(revTotal, '검수 수당 (원)')
+      + st(opsTotal, '공동체 운영비 (원)')
       + st(kwTotal, '검색어 변경 보상 (원)')
       + st(Math.max(0, sale - total), '블로그센터 몫 (원)');
+    var ws = $('payWait'); if (ws) ws.innerHTML = waiting.length
+      ? '<span class="mono">아직 마감에 안 잡힌 글 <b>' + waiting.length + '편</b></span>' : '';
     var lateNoPay = POSTS.filter(function (p) {
       return LATE_BY[p.id] && ['verified', 'paid'].indexOf(p.status) >= 0 && A.kstMonth(p.published_at) === mm;
     }).length;
@@ -4807,17 +4840,18 @@
 
     $('payList').innerHTML = CPAY.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>공동체</th><th>인원</th><th>편수</th><th>블로거 지급</th><th>검수 수당</th>'
-      + '<th>검색어 보상</th><th>실제 이체액</th><th>계좌</th><th>상태</th><th></th></tr></thead><tbody>'
+      + '<th>공동체 운영비</th><th>검색어 보상</th><th>실제 이체액</th><th>계좌</th><th>상태</th><th></th></tr></thead><tbody>'
       + CPAY.map(function (c) {
         var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
-        var rv = Number(c.review_amount) || 0, kw = c.kw_amount || 0;
+        var rv = Number(c.review_amount) || 0, kw = c.kw_amount || 0, ops = c.ops_amount || 0;
         return '<tr class="clickme" data-opencp="' + c.id + '">'
           + '<td><b>' + esc(cm.name || '-') + '</b> <span class="mono">▸ 펼치기</span></td>'
           + '<td class="num">' + c.people_count + '명</td><td class="num">' + c.post_count + '</td>'
           + '<td class="num">' + won(c.amount) + '</td>'
           + '<td class="num">' + (rv ? won(rv) : '<span class="mono">-</span>') + '</td>'
+          + '<td class="num">' + (ops ? won(ops) : '<span class="mono">-</span>') + '</td>'
           + '<td class="num">' + (kw ? won(kw) : '<span class="mono">-</span>') + '</td>'
-          + '<td class="num"><b>' + won(c.amount + rv + kw) + '</b></td>'
+          + '<td class="num"><b>' + won(c.amount + rv + kw + ops) + '</b></td>'
           + '<td class="mono">' + esc([cm.bank_name, cm.bank_no].filter(Boolean).join(' ') || '계좌 미입력') + '</td>'
           + '<td>' + (c.status === 'sent' ? '<span class="chip c-ok">보냈음 ' + A.fdate(c.sent_at) + '</span>'
             : PAY_PREVIEW ? '<span class="chip">마감 전</span>' : '<span class="chip c-wait">아직 안 보냄</span>') + '</td>'
@@ -4918,7 +4952,9 @@
       }).join('')
       + '<tr><td colspan="8" style="text-align:right"><b>사람에게 나가는 돈 합계</b></td>'
       + '<td class="num"><b>' + won(rows.reduce(function (a, r) { return a + r.total; }, 0)) + '</b></td><td></td></tr>'
-      + '</tbody></table></div>';
+      + '</tbody></table></div>'
+      + '<p class="mono" style="margin-top:6px">공동체 운영비는 사람 몫이 아니라 공동체가 쓰는 돈이라 이 표에 넣지 않았습니다 '
+      + '(위 공동체별 표의 「공동체 운영비」 칸).</p>';
   }
 
   function openCP(id) {
@@ -4963,8 +4999,11 @@
           + '</tbody></table></div>';
       })()
       + '<div class="note" style="margin-top:12px">이 공동체로 보낼 <b>실제 이체액</b>은 '
-      + '블로거 원고료 ' + won(c.amount) + '원 + 검수 수당 ' + won(c.review_amount || 0) + '원 + 검색어 변경 보상 '
-      + won(c.kw_amount || 0) + '원 = <b>' + won(c.amount + (c.review_amount || 0) + (c.kw_amount || 0)) + '원</b> 입니다.</div>'
+      + '블로거 원고료 ' + won(c.amount) + '원 + 검수 수당 ' + won(c.review_amount || 0) + '원 + 공동체 운영비 '
+      + won(c.ops_amount || 0) + '원 + 검색어 변경 보상 ' + won(c.kw_amount || 0) + '원 = <b>'
+      + won(c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0)) + '원</b> 입니다.<br>'
+      + '<b>공동체 운영비</b>는 개인에게 나눠 주는 돈이 아니라 공동체가 쓰시는 몫입니다 '
+      + '(올라가 확인까지 끝난 글 한 편마다 붙습니다).</div>'
       + (function () {
       })();
   }
@@ -5011,12 +5050,13 @@
   $('btnPayComm').onclick = function () {
     if (!CPAY.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
     var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
-    var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '검색어 변경 보상', '보낼 금액',
+    var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '공동체 운영비', '검색어 변경 보상', '보낼 금액',
       '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처', '상태', '보낸 날', '메모'];
     var body = CPAY.map(function (c) {
       var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
-      return [m, cm.name || '', c.people_count, c.post_count, c.amount, c.review_amount || 0, c.kw_amount || 0,
-        c.amount + (c.review_amount || 0) + (c.kw_amount || 0),
+      return [m, cm.name || '', c.people_count, c.post_count, c.amount, c.review_amount || 0,
+        c.ops_amount || 0, c.kw_amount || 0,
+        c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0),
         cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
         cm.leader_name || '', fmtPhone(cm.leader_phone),
         c.status === 'sent' ? '보냄' : '아직 안 보냄',

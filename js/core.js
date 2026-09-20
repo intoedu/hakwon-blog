@@ -673,20 +673,33 @@ window.ESC = (function () {
       /* 검색어 변경 요금 — 합계 = 관리자 몫 + 블로거 몫. 서버 post_set_keyword 도 같은 값을 읽습니다 */
       A.KW_FEE = full.kw_fee || { admin: 2000, blogger: 1000 };
       A.MONTH_CAP = Number(full.month_cap) || 30;   /* posts_auto_assign 이 쓰는 한 사람 월 상한 */
-      A.SALE = full.sale || { normal: 6000, premium: 3000 };   /* 학원에게 받는 편당 금액 */
-      A.SPLIT = full.split || { esc: 2, blogger: 2, community: 1, reviewer: 1 };
+      A.SALE = full.sale || { normal: 10000, premium: 3000 };   /* 학원에게 받는 편당 금액 */
+      /* 9/20 — 「등급 단가 × 판매가 배수」를 버리고 갈래별로 따로 둡니다.
+         일반 10,000 = 블로거(등급 4,000~6,000) + 검수 2,000 + 공동체 1,000 + 센터
+         파트너 3,000 = 블로거 1,000(등급 없음) + 검수 500 + 공동체 0 + 센터 1,500 */
+      A.PREMIUM_RATE = Number(full.premium_rate) || 1000;
+      A.REVIEW_RATE_P = full.review_premium || { approve: 250, verify: 250 };
+      A.COMM_RATE = full.community || { normal: 1000, premium: 0 };
       /* 리뷰를 만들 때 AI 에게 주는 규칙 — 비어 있으면 admin.js 의 기본 규칙을 씁니다 */
       A.RV_RULES = full.rv_rules || '';
       A.SIGN = full.sign || 'ESC 이은총 드림';   /* 알림·문자 문구 끝에 붙는 서명 */
     }
   };
 
-  /* 일반 회원 학원은 편당 판매가가 프리미엄의 몇 배인가 — 지급액도 그만큼 커집니다.
-     서버의 blog_pay_mult() 와 같은 계산입니다 (화면에 미리 보여주려고 여기도 둡니다). */
-  A.payMult = function () {
-    var s = A.SALE || {};
-    var p = Number(s.premium) || 0, n = Number(s.normal) || 0;
-    return p > 0 && n > 0 ? n / p : 2;
+  /* 이 주문 한 편에 블로거가 받는 돈 — 서버 blogger_rate_for() 와 같은 규칙 (9/20).
+     파트너(프리미엄) 주문은 등급과 무관하게 고정, 일반 주문은 등급 표. */
+  A.payFor = function (order, level) {
+    if (order && order.is_practice) return Number(order.practice_rate) || 0;
+    if (order && order.is_premium) return Number(A.PREMIUM_RATE) || 1000;
+    return A.levelOf(level || 1).rate || 0;
+  };
+  A.reviewFor = function (order) {
+    return (order && order.is_premium ? A.REVIEW_RATE_P : A.REVIEW_RATE) || { approve: 0, verify: 0 };
+  };
+  A.commFor = function (order) {
+    var c = A.COMM_RATE || {};
+    if (order && order.is_practice) return 0;
+    return Number(order && order.is_premium ? c.premium : c.normal) || 0;
   };
 
   /* ── 시작 ── */
