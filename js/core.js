@@ -310,7 +310,7 @@ window.ESC = (function () {
   A.gate = function (id) {
     A.$('app').classList.add('hide');
     A.$('gate').classList.remove('hide');
-    ['g-loading', 'g-login', 'g-signup', 'g-pending', 'g-rejected', 'g-paused', 'g-nostaff', 'g-birth']
+    ['g-loading', 'g-login', 'g-signup', 'g-pending', 'g-rejected', 'g-paused', 'g-nostaff', 'g-birth', 'g-agree']
       .forEach(function (g) { A.$(g).classList.toggle('hide', g !== id); });
   };
   /* 어느 얼굴로 들어갈지 — 'admin' 이면 전체, 'reviewer' 면 검수만.
