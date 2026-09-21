@@ -803,6 +803,13 @@ window.ESC = (function () {
       return;
     }
 
+    /* 동의 기록이 없는 분 — 한 번만 받습니다 (2026-09-21 · 생년월일 다음 순서) */
+    if (!A.ME.terms_agreed_at) {
+      A.$('agWho').textContent = A.ME.name + ' · ' + A.ME.email;
+      A.gate('g-agree');
+      return;
+    }
+
     A.$('navBlogger').classList.remove('hide');
     A.$('navAdmin').classList.add('hide');
     /* ⚠️ 여기서 VIEW_AS 를 반드시 'blogger' 로 둬야 합니다.

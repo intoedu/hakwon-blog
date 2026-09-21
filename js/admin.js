@@ -362,6 +362,13 @@
       + '· 문의: 인투마케팅 010-7318-1790\n\n'
       + 'ESC 학원지원 이은총 드림';
   }
+  /* 약관 · 개인정보 · 알림 동의 (2026-09-21) — 가입할 때 받고, 옛 분들은 로그인할 때 한 번 받습니다 */
+  function agreeCell(p) {
+    if (!p.terms_agreed_at) return '<span class="chip c-wait">아직 — 다음 로그인 때 받습니다</span>';
+    return '<span class="chip c-ok">약관 · 개인정보 · 알림 동의</span> '
+      + '<span class="mono">' + A.fdate(p.terms_agreed_at)
+      + (p.agreed_terms_version ? ' · 약관 ' + esc(p.agreed_terms_version) + ' 판' : '') + '</span>';
+  }
   function consentBlock(p) {
     if (!p.consent_required) return '';
     var ok = !!p.guardian_consent_at, no = !ok && !!p.guardian_refused_at;
@@ -416,6 +423,7 @@
       + '</div></dd>'
       + '<dt>이메일</dt><dd class="mono">' + esc(p.email) + '</dd>'
       + (p.reject_reason ? '<dt>거절 사유</dt><dd>' + esc(p.reject_reason) + '</dd>' : '')
+      + '<dt>동의</dt><dd>' + agreeCell(p) + '</dd>'
       + '</dl>'
       + consentBlock(p)
       + '<div class="row">' + btns + '</div></div>';

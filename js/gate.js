@@ -134,6 +134,10 @@
     }
     if (!band) { A.msg('suMsg', '블로그 이웃 수 구간을 골라 주세요.'); return; }
     if (!phone) { A.msg('suMsg', '전화번호를 입력해 주세요.'); return; }
+    /* 동의 세 칸 — 약관 · 개인정보 · 알림 (2026-09-21). 시각은 서버가 찍습니다 */
+    if (!$('su_Terms').checked || !$('su_Privacy').checked || !$('su_Noti').checked) {
+      A.msg('suMsg', '맨 아래 동의 세 칸을 모두 체크해 주세요.'); return;
+    }
 
     this.disabled = true; A.msg('suMsg', '');
     var uid = null, alreadyIn = $('su_email').disabled;
@@ -172,8 +176,26 @@
 
     this.disabled = false;
     if (ins.error) { A.msg('suMsg', '신청 저장에 실패했습니다: ' + ins.error.message); return; }
+    try { await A.rpc('blogger_agree', {}); } catch (e) { /* 동의 기록만 실패해도 신청은 살립니다 */ }
     A.toast('신청이 접수되었습니다');
     location.hash = '';
     A.boot();
+  };
+
+  /* 이미 가입한 분 — 한 번만 받는 동의 화면 */
+  var ba = $('btnAgree');
+  if (ba) ba.onclick = async function () {
+    if (!$('ag_Terms').checked || !$('ag_Privacy').checked || !$('ag_Noti').checked) {
+      A.msg('agMsg', '세 칸을 모두 체크해 주세요.'); return;
+    }
+    this.disabled = true; A.msg('agMsg', '');
+    try {
+      await A.rpc('blogger_agree', {});
+      A.toast('고맙습니다');
+      await A.boot();
+    } catch (e) {
+      A.msg('agMsg', '저장에 실패했습니다. 다시 눌러 주세요. (' + e.message + ')');
+      this.disabled = false;
+    }
   };
 })(window.ESC);
