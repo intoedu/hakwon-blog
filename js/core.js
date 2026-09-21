@@ -742,6 +742,15 @@ window.ESC = (function () {
       return;
     }
 
+    /* 직원 겸 블로거도 동의를 받습니다 (9/21) — 이분들도 글을 맡고 알림톡을 받습니다.
+       블로거 계정이 없는 직원(A.ME 없음)은 해당 없습니다. */
+    if (A.ME && !A.ME.terms_agreed_at && (A.IS_ADMIN || A.IS_REVIEWER)) {
+      /* 블로거는 아래에서 생년월일 → 동의 순서로 받습니다 (행정 9/21) */
+      A.$('agWho').textContent = (A.ME.name || '') + ' · ' + (A.ME.email || '');
+      A.gate('g-agree');
+      return;
+    }
+
     if (A.IS_ADMIN) {
       A.$('meName').textContent = A.SESSION.user.email;
       A.applyView('admin');
