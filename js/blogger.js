@@ -558,6 +558,7 @@
     PLAYER = null;
   }
   var ytId = A.ytId;      /* 주소에서 영상 id 뽑기 — 썸네일과 같은 것을 씁니다 (core.js) */
+  var dmId = A.dmId;      /* 다음모션 — 유튜브가 아니면 여기로 봅니다 */
   function mmss(s) {
     s = Math.max(0, Math.round(s));
     return Math.floor(s / 60) + '분 ' + ('0' + (s % 60)).slice(-2) + '초';
@@ -574,7 +575,7 @@
       : st === 'submitted' ? '<span style="color:var(--wait)">요약 냄 · 확인 기다리는 중</span>'
         : st === 'rejected' ? '<b style="color:var(--bad)">다시 써 주세요</b>'
           : '<span style="color:var(--wait)">아직 안 보셨습니다</span>';
-    return '<div class="mat">' + A.ytThumb(m.url) + '<div style="flex:1;min-width:150px">'
+    return '<div class="mat">' + A.vidThumb(m.url) + '<div style="flex:1;min-width:150px">'
       + '<h4>' + esc(m.title)
       + (m.required && !(m.skip_if_t1 && cameT1()) ? ' <span class="chip c-bad">필수</span>' : '')
       + (m.skip_if_t1 && cameT1() ? ' <span class="chip c-ok">1차 줌을 들으셔서 안 보셔도 됩니다</span>' : '') + '</h4>'
@@ -591,7 +592,7 @@
     var m = matOf(id); if (!m) return;
     if (OPEN && OPEN !== id) { var old = $('mo-' + OPEN); if (old) old.innerHTML = ''; }
     OPEN = id;
-    var g = progOf(id), vid = ytId(m.url), box = $('mo-' + id);
+    var g = progOf(id), vid = ytId(m.url), dm = vid ? '' : dmId(m.url), box = $('mo-' + id);
     if (!box) return;
 
     box.innerHTML =
@@ -600,7 +601,17 @@
         + '<div class="mono" style="margin-top:6px">여기서 바로 보시면 됩니다. '
         + '<b>재생하는 동안만 시간이 올라갑니다</b> — 틀어놓고 자리를 비우거나 '
         + '막대를 끝으로 끌면 올라가지 않습니다.</div>'
-        : '<div class="note warn" id="mp-' + id + '">유튜브 영상이 아니라 여기서 바로 못 틉니다. '
+        /* ⚠️ 다음모션은 재생 위치를 읽을 수가 없습니다(그러려면 유료 Player ID 가 필요합니다).
+              그래서 유튜브가 막혔을 때와 같은 「느슨하게」 방식으로 —
+              이 화면을 열어둔 동안만 1초씩 셉니다. */
+        : dm
+        ? '<div class="ytwrap" id="mp-' + id + '"><iframe src="https://geo.dailymotion.com/player.html?video='
+        + encodeURIComponent(dm) + '" allowfullscreen'
+        + ' allow="autoplay; fullscreen; picture-in-picture; web-share"'
+        + ' referrerpolicy="strict-origin"></iframe></div>'
+        + '<div class="mono" style="margin-top:6px">여기서 바로 보시면 됩니다. '
+        + '<b>이 화면을 열어둔 동안 시간이 올라갑니다</b> — 다른 탭으로 넘어가면 멈춥니다.</div>'
+        : '<div class="note warn" id="mp-' + id + '">여기서 바로 못 트는 영상입니다. '
         + '<a href="' + esc(m.url) + '" target="_blank" rel="noopener">자료 열기 ↗</a></div>')
       + '<div id="wt-' + id + '" class="wbar"></div>'
       + (g && g.status === 'rejected' && g.review_note

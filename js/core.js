@@ -268,13 +268,24 @@ window.ESC = (function () {
       .match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{6,})/);
     return m ? m[1] : '';
   };
-  /* 자료 목록의 썸네일 — 유튜브가 주는 그림을 그대로 씁니다.
-     못 불러오면(주소가 유튜브가 아니거나 그림이 막히면) 원래 ▶ 네모로 돌아갑니다. */
-  A.ytThumb = function (url) {
-    var id = A.ytId(url);
-    if (!id) return '<div class="thumb">▶</div>';
-    return '<div class="thumb"><img src="https://i.ytimg.com/vi/' + A.esc(id) + '/mqdefault.jpg"'
+  /* 다음모션 주소에서 영상 id 뽑기 — 짧은 주소(dai.ly/…) · /video/… · 플레이어 주소를 다 받습니다.
+     ⚠️ 유튜브를 먼저 보고 아니면 여기로 옵니다 — 유튜브는 ?v=, 다음모션은 ?video= 라 안 겹칩니다. */
+  A.dmId = function (url) {
+    var m = String(url || '')
+      .match(/(?:dai\.ly\/|dailymotion\.com\/video\/|[?&]video=)([A-Za-z0-9]{5,})/);
+    return m ? m[1] : '';
+  };
+
+  /* 자료 목록의 썸네일 — 유튜브·다음모션이 주는 그림을 그대로 씁니다.
+     못 불러오면(주소가 둘 다 아니거나 그림이 막히면) 원래 ▶ 네모로 돌아갑니다. */
+  A.vidThumb = function (url) {
+    var yt = A.ytId(url);
+    if (yt) return '<div class="thumb"><img src="https://i.ytimg.com/vi/' + A.esc(yt) + '/mqdefault.jpg"'
       + ' alt="" referrerpolicy="no-referrer" onerror="this.remove()"><span class="pl">▶</span></div>';
+    var dm = A.dmId(url);
+    if (dm) return '<div class="thumb"><img src="https://www.dailymotion.com/thumbnail/video/' + A.esc(dm) + '"'
+      + ' alt="" referrerpolicy="no-referrer" onerror="this.remove()"><span class="pl">▶</span></div>';
+    return '<div class="thumb">▶</div>';
   };
 
   /* 서버가 막으면 예외가 올라옵니다 */
