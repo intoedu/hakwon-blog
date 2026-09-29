@@ -5553,7 +5553,8 @@
     if (name === 'links') renderLinks();
     if (name === 'r-pay') renderMyReviewPay();
     if (name === 'noti') loadNoti(true);
-    if (name === 'edu' || name === 'r-edu') loadEdu();
+    /* 📚 직원 교육(s-edu)도 같은 자료를 읽습니다 — 빠져 있어서 블로거 교육을 먼저 안 열면 빈 화면이었습니다 (9/29) */
+    if (name === 'edu' || name === 'r-edu' || name === 's-edu') loadEdu();
     if (name === 'r-make') { rvFill('rmOrder'); rmPaint(); rvPaintSeen(); }
     if (name === 'r-assign') renderRvAssign();
     if (name === 'r-check') renderRvCheck();
