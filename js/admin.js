@@ -487,7 +487,7 @@
       + esc((p.blog_url || '').replace(/^https?:\/\//, '')) + ' ↗</a>'
       + (p.blog_alias ? ' <span class="mono">' + esc(p.blog_alias) + '</span>' : '')
       + ' <button class="btn btn-s" data-nidedit="' + p.id + '" '
-      + 'title="눌러 보고 안 열리면 여기서 고치세요">✏️ 고치기</button></span>';
+      + 'title="신청 때 잘못 적었으면 승인 전에도 여기서 고칩니다">✏️ 아이디 고치기</button></span>';
   }
 
   /* ── 블로거 목록의 이웃 수 칸 ──
@@ -1140,6 +1140,39 @@
   function myStaffId() {
     return A.SESSION && A.SESSION.user ? A.SESSION.user.id : null;
   }
+  /* ── 영상 순서 바꾸기 (2026-09-30) ──
+     블로거는 이 순서대로 봅니다. 「1강 → 2강」처럼 이어지는 강의라 순서가 중요합니다.
+     sort 를 0,1,2… 로 다시 매겨 저장합니다(같은 값이 섞여 있어도 한 번에 정리됩니다). */
+  function matMoveBtns(m, list) {
+    var i = matIndex(m.id, list);
+    return '<div class="row" style="gap:3px;flex-direction:column">'
+      + '<button class="btn btn-s" data-matmove="' + m.id + '" data-dir="-1" style="padding:2px 8px"'
+      + (i <= 0 ? ' disabled' : '') + ' title="위로">↑</button>'
+      + '<button class="btn btn-s" data-matmove="' + m.id + '" data-dir="1" style="padding:2px 8px"'
+      + (i < 0 || i >= list.length - 1 ? ' disabled' : '') + ' title="아래로">↓</button></div>';
+  }
+  function matIndex(id, list) {
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return i;
+    return -1;
+  }
+  async function matMove(id, dir) {
+    var m0 = ALLMATS.filter(function (x) { return x.id === id; })[0];
+    if (!m0) return;
+    var tk = m0.track || 'blog';
+    var list = ALLMATS.filter(function (x) { return (x.track || 'blog') === tk; })
+      .slice().sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+    var i = matIndex(id, list), j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    var tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+    for (var k = 0; k < list.length; k++) {
+      if (list[k].sort === k) continue;
+      var r = await A.sb.from('training_materials').update({ sort: k }).eq('id', list[k].id).select('id');
+      if (r.error || !r.data || !r.data.length) { A.toast('순서 저장 실패' + (r.error ? ': ' + r.error.message : ' (권한 확인)')); return; }
+    }
+    await loadEdu();
+    A.toast('순서를 바꿨습니다');
+  }
+
   function paintStaffEdu() {
     var box = $('sfEduMats'); if (!box) return;
     var MS = ALLMATS.filter(function (x) { return x.track === 'staff'; });
@@ -1158,6 +1191,7 @@
         + (m.minutes ? ' <span class="mono">' + m.minutes + '분</span>' : '')
         + '<div style="margin-top:8px" class="row">'
         + '<a class="btn btn-s" href="' + esc(m.url) + '" target="_blank" rel="noopener">영상 열기 ↗</a>'
+        + (A.IS_ADMIN ? matMoveBtns(m, MS) : '')
         + (A.IS_ADMIN ? '<button class="btn btn-s" data-delsfmat="' + m.id + '">지우기</button>' : '')
         + '</div></div>'
         + '<div style="min-width:150px;text-align:right">'
@@ -1234,6 +1268,7 @@
         + '요약 ' + (m.min_chars || 150) + '자 · ' + done + '명 이수'
         + (wait ? ' · <b style="color:var(--wait)">' + wait + '명 확인 대기</b>' : '')
         + (m.check_question ? '<br>확인 질문 · ' + esc(m.check_question) : '') + '</div></div>'
+        + matMoveBtns(m, MATS)
         + '<a class="btn btn-s" href="' + esc(m.url) + '" target="_blank" rel="noopener">열기 ↗</a>'
         + '<button class="btn btn-s" data-delmat="' + m.id + '">삭제</button></div>';
     }).join('') + '</div>' : A.empty('영상 자료가 없습니다.');
@@ -6468,6 +6503,11 @@
     if ((t = e.target.closest('[data-att]'))) { await openAttend(t.dataset.att); return; }
     if ((t = e.target.closest('[data-attclose]'))) {
       var was = ATT_OPEN; ATT_OPEN = null; if (was) attBox(was); return;
+    }
+    if ((t = e.target.closest('[data-matmove]'))) {
+      t.disabled = true;
+      await matMove(t.dataset.matmove, Number(t.dataset.dir));
+      return;
     }
     if ((t = e.target.closest('[data-delmat]'))) {
       if (!confirm('이 자료를 지울까요?')) return;
