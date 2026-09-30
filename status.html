@@ -281,20 +281,20 @@
     /* 예전 「올라간 글」 표를 여기에 합쳤습니다(9/13) — 발행 완료 줄에 글 보기 · 검색 단추가 붙습니다 */
     if (!items.length) {
       return '<div class="sec">' + W('글','리뷰') + '별 진행</div>'
-        + '<div class="tblbox"><div class="empty">아직 ' + W('글','리뷰') + '이 없습니다. '
-        + '입금이 확인되면 ' + W('글','리뷰') + '이 만들어지고, 한 편씩 어디까지 왔는지 여기에 보입니다.</div></div>';
+        + '<div class="tblbox"><div class="empty">아직 ' + W('게시물','리뷰') + '이 없습니다. '
+        + '입금 확인 후 ' + W('게시물','리뷰') + '이 생성되며, 편별 진행 단계가 여기에 표시됩니다.</div></div>';
     }
     var steps = RV ? ['배정 전', '발행 대기', '발행 완료']
                    : ['배정 전', '작성 중', '검수 중', '발행 대기', '발행 완료'];
     var cnt = {};
     items.forEach(function (x) { cnt[x.stage] = (cnt[x.stage] || 0) + 1; });
-    return '<div class="sec">' + W('글','리뷰') + '별 진행 <small>' + items.length + '편 · 한 줄이 한 편입니다</small></div>'
+    return '<div class="sec">' + W('게시물','리뷰') + '별 진행 <small>' + items.length + '편 · 1행 1편</small></div>'
       + '<div class="pcal-leg"><span class="mono">'
       + steps.map(function (s) { return s + ' <b>' + (cnt[s] || 0) + '</b>'; }).join(' → ')
       + '</span></div>'
       + '<div class="tblbox tblscroll"><table><thead><tr>'
-      + '<th style="width:36px">#</th><th>' + W('검색어','무엇에 대한 리뷰인지') + '</th>'
-      + '<th style="width:96px">진행 단계</th><th style="width:90px">올린 날</th>'
+      + '<th style="width:36px">#</th><th>' + W('키워드','리뷰 대상') + '</th>'
+      + '<th style="width:96px">진행 단계</th><th style="width:90px">발행일</th>'
       + (RV ? '' : '<th style="width:80px">검색 순위</th><th style="width:150px"></th>')
       + '</tr></thead><tbody>'
       + items.map(function (x, i) {
@@ -331,24 +331,24 @@
     var h = '';
 
     h += '<div class="hero"><h1>' + esc(d.academy) + '</h1>'
-      + '<p>' + W('지금까지 올라간 글과 네이버 검색 순위입니다.',
-                          '지금까지 올라간 리뷰입니다.')
-      + ' 새로 올라갈 때마다 이 화면이 바뀝니다.</p></div>';
+      + '<p>' + W('발행 완료된 게시물과 네이버 검색 노출 순위입니다.',
+                          '발행 완료된 리뷰입니다.')
+      + ' 신규 발행 시 갱신됩니다.</p></div>';
 
     h += '<div class="big">'
-      + '<div class="n"><b>' + T.published + '</b><em>/ ' + T.qty + '편 올라갔습니다</em>'
+      + '<div class="n"><b>' + T.published + '</b><em>/ ' + T.qty + '편 발행</em>'
       + '<span class="chip ' + (pct >= 100 ? 'c-ok' : 'c-info') + '" style="margin-left:auto">'
       + pct + '%</span></div>'
       + '<div class="bar' + (pct >= 100 ? '' : ' mid') + '"><i style="width:' + Math.min(100, pct) + '%"></i></div>'
       + '<div class="legend">'
-      + '<span><i style="background:var(--ok)"></i>올라간 ' + W('글','리뷰') + ' ' + T.published + '편</span>'
-      + '<span><i style="background:var(--info)"></i>' + W('쓰는 중','올릴 차례') + ' ' + working + '편</span>'
+      + '<span><i style="background:var(--ok)"></i>발행 완료 ' + T.published + '편</span>'
+      + '<span><i style="background:var(--info)"></i>' + W('작성 중','발행 대기') + ' ' + working + '편</span>'
       + '<span><i style="background:var(--line)"></i>준비 중 ' + waiting + '편</span>'
       + '</div></div>';
 
     if (unpaid) {
-      h += '<div class="msg ok" style="margin-top:12px">입금이 확인되면 ' + W('글 작성이','리뷰가') + ' 시작됩니다. '
-        + '입금 확인이 안 된 주문이 ' + unpaid + '건 있습니다.</div>';
+      h += '<div class="msg ok" style="margin-top:12px">입금 확인 후 ' + W('원고 작성이','리뷰 작성이') + ' 시작됩니다. '
+        + '입금 미확인 주문 ' + unpaid + '건입니다.</div>';
     }
 
     /* 주문 */
@@ -357,13 +357,13 @@
       /* 의뢰 시작 전 주문은 마감이 흐르지 않습니다(약관 제2조·제5조 — 입금과 자료를 확인한 날부터 30일).
          서버도 시작 전엔 마감일을 안 보내지만, 여기서도 진행 상태·D-day·마감일 칸을 그리지 않습니다. */
       var dd = o.started ? dday(o.deadline) : null;
-      var st = o.status === 'done' ? '<span class="chip c-ok">다 끝냈습니다</span>'
-        : o.status === 'paused' ? '<span class="chip c-wait">잠시 멈춤</span>'
+      var st = o.status === 'done' ? '<span class="chip c-ok">완료</span>'
+        : o.status === 'paused' ? '<span class="chip c-wait">일시 중지</span>'
           : o.status === 'ended' ? '<span class="chip c-off">종료</span>'
             : '<span class="chip c-info">진행 중</span>';
       var ddChip = dd == null ? ''
-        : dd < 0 ? '<span class="chip c-bad">마감일 지남</span>'
-          : dd === 0 ? '<span class="chip c-bad">오늘이 마감일</span>'
+        : dd < 0 ? '<span class="chip c-bad">마감 경과</span>'
+          : dd === 0 ? '<span class="chip c-bad">마감일 당일</span>'
             : dd <= 7 ? '<span class="chip c-wait">' + dd + '일 남음</span>'
               : '<span class="chip c-off">' + dd + '일 남음</span>';
       return '<div class="ocard">'
@@ -371,12 +371,12 @@
         /* 환불 — 돌려준 뒤에만 보입니다 (마감 넘김 · 중도 해지 등) */
         + (o.refund_amount ? '<span class="chip c-ok">' + (o.refund_qty ? o.refund_qty + '편 ' : '')
           + '환불 ' + won(o.refund_amount) + '원 · ' + fdate(o.refunded_on) + '</span>' : '')
-        + (o.paid ? '<span class="chip c-ok" style="margin-left:auto">입금 확인됨</span>'
-          + (o.started ? '' : '<span class="chip c-wait">자료 확인 중 — 담당자가 연락드립니다</span>')
-          : '<span class="chip c-wait" style="margin-left:auto">입금 기다리는 중</span>') + '</div>'
+        + (o.paid ? '<span class="chip c-ok" style="margin-left:auto">입금 확인</span>'
+          + (o.started ? '' : '<span class="chip c-wait">자료 확인 중 · 담당자 연락 예정</span>')
+          : '<span class="chip c-wait" style="margin-left:auto">입금 대기</span>') + '</div>'
         + '<div class="kv">'
         + '<div><label>주문 편수</label><span>' + o.qty + '편</span></div>'
-        + '<div><label>올라간 ' + W('글','리뷰') + '</label><span>' + o.published + '편</span></div>'
+        + '<div><label>발행 완료</label><span>' + o.published + '편</span></div>'
         + (o.started ? '<div><label>시작일</label><span>' + fdate(o.started_at) + '</span></div>'
           + '<div><label>마감일</label><span>' + (o.deadline ? fdate(o.deadline) : '-') + '</span></div>' : '')
         + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '무상 진행') + '</span></div>'
@@ -384,51 +384,51 @@
     }).join('');
 
     /* 사진 보내기 */
-    h += '<div class="sec">사진 보내기 <small>지금까지 ' + (d.photos || 0) + '장 받았습니다</small></div>'
+    h += '<div class="sec">사진 전달 <small>' + (d.photos || 0) + '장 수신</small></div>'
       + '<div class="ocard">'
       + '<p style="font-size:13.5px;color:var(--ink-2);line-height:1.7;margin-bottom:12px">'
-      + '<b>신청하실 때 못 보내셨어도 괜찮습니다. 언제든 여기서 올리시면 됩니다.</b><br>'
-      + '사진이 많을수록 좋습니다. ' + W('글','리뷰') + '마다 다른 사진을 써야 하기 때문입니다 — '
-      + '<b>30장 이상을 권합니다.</b><br>'
+      + '<b>신청 시 보내지 못한 원본도 상시 업로드하실 수 있습니다.</b><br>'
+      + W('게시물','리뷰') + '마다 다른 사진을 사용하므로 '
+      + '<b>30장 이상 권장합니다.</b><br>'
       /* ⚠️ 리뷰 갈래에도 「강의실·교재·시간표·수업 자료·학생」이 그대로 나가고 있었습니다 —
          식당·미용실 사장님이 보시는 화면이라 말이 안 맞습니다. */
       + (RV
         ? '간판·건물 바깥, 내부, 자리, 메뉴·상품, 안내문 등 '
-          + '<b>손님 얼굴이 나오지 않는 사진</b>이면 무엇이든 좋습니다.'
+          + '<b>손님 얼굴이 나오지 않는 사진</b>이면 모두 사용 가능합니다.'
         : '간판·건물 바깥, 강의실, 교재, 시간표, 안내문, 수업 자료 등 '
-          + '<b>학생 얼굴이 나오지 않는 사진</b>이면 무엇이든 좋습니다.')
+          + '<b>학생 얼굴이 나오지 않는 사진</b>이면 모두 사용 가능합니다.')
       + '</p>'
       + '<input type="file" id="upFiles" accept="image/*" multiple '
       + 'style="width:100%;font-size:13px;margin-bottom:10px">'
-      + '<input class="inp" id="upNote" placeholder="같이 알려주실 내용이 있으면 적어주세요 (안 쓰셔도 됩니다)" '
+      + '<input class="inp" id="upNote" placeholder="함께 전달할 내용 (선택)" '
       + 'style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;'
       + 'background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px">'
       + '<div class="row" style="margin-top:12px">'
-      + '<button class="btn btn-p" id="upGo">사진 올리기</button>'
-      + '<span class="mono" id="upMsg">한 번에 60장까지 · <b>크기는 알아서 줄여 올립니다</b></span></div>'
+      + '<button class="btn btn-p" id="upGo">사진 업로드</button>'
+      + '<span class="mono" id="upMsg">1회 60장까지 · <b>업로드 시 용량 자동 축소</b></span></div>'
       + (d.photos ? '<div class="msg ok" style="margin:14px 0 0">'
-        + '✓ <b>' + d.photos + '장</b>이 잘 도착했습니다. ' + W('글 쓰는','리뷰 올리는') + ' 분들에게 나눠서 전달됩니다. '
-        + '<button class="btn btn-s" id="seeMyPics" style="margin-left:6px">🖼 보낸 사진 보기</button></div>'
+        + '✓ <b>' + d.photos + '장</b> 수신 완료. ' + W('담당 블로거','리뷰 작성자') + '에게 분배됩니다. '
+        + '<button class="btn btn-s" id="seeMyPics" style="margin-left:6px">🖼 전달한 사진 보기</button></div>'
         + '<div id="myPics" class="picgrid hide"></div>' : '')
       + '</div>';
 
     /* 전달사항 */
     var notes = d.notes || [];
     h += '<div class="sec">전달사항 <small>' + (notes.length ? notes.length + '건 · ' : '')
-      + '더 알려주실 내용을 적어 주세요</small></div>'
+      + '추가 전달 내용</small></div>'
       + '<div class="ocard">'
       + '<textarea id="noteBody" rows="4" placeholder="예) 이번 주에 새 강의실을 열었습니다. 사진도 곧 보내드릴게요.&#10;예) 원장 이름은 ○○○ 입니다. 글에 넣어 주세요."'
       + ' style="width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;'
       + 'background:var(--surface);color:var(--ink);font:inherit;font-size:13.5px;line-height:1.6;resize:vertical"></textarea>'
       + '<div class="row" style="margin-top:10px">'
       + '<button class="btn btn-p" id="noteGo">보내기</button>'
-      + '<span class="mono" id="noteMsg">담당자에게 바로 알림이 갑니다</span></div>'
+      + '<span class="mono" id="noteMsg">담당자에게 즉시 알림이 발송됩니다</span></div>'
       + (notes.length ? '<div style="margin-top:16px">' + notes.map(function (n) {
         return '<div class="noteitem">'
           + '<div class="row" style="gap:8px;margin-bottom:5px">'
           + '<span class="mono">' + fdt(n.at) + '</span>'
-          + (n.seen ? '<span class="chip c-ok">담당자 확인함</span>'
-            : '<span class="chip c-wait">확인 전</span>') + '</div>'
+          + (n.seen ? '<span class="chip c-ok">담당자 확인</span>'
+            : '<span class="chip c-wait">미확인</span>') + '</div>'
           + '<div class="notebody">' + esc(n.body) + '</div></div>';
       }).join('') + '</div>' : '')
       + '</div>';
@@ -440,29 +440,29 @@
     h += itemsHtml(d.items || []);
 
     h += RV
-      ? '<div class="note"><b>리뷰는 어디에서 보나요?</b><br>'
-        + '네이버 지도에서 업체를 검색하시면 <b>방문자 리뷰</b>에 하나씩 쌓입니다. '
-        + '리뷰는 글과 달리 개별 주소가 없어서 여기에 링크를 걸어 드리지 못합니다. '
-        + '대신 저희가 올라온 것을 하나하나 눈으로 확인하고 표시해 드립니다.<br><br>'
-        + '<b>리뷰는 누가 쓰나요?</b><br>'
-        + '저희가 업체에서 주신 내용으로 리뷰를 만들고, 함께하는 분들이 각자의 계정으로 올립니다. '
-        + '한꺼번에 올리지 않고 <b>날짜와 시간을 나눠서</b> 올립니다. '
-        + '올라간 리뷰는 최소 12개월 동안 지우지 않습니다.</div>'
-      : '<div class="note"><b>검색 순위는 어떻게 나온 건가요?</b><br>'
-        + '왼쪽에 적힌 검색어를 네이버에 그대로 넣었을 때, 그 글이 블로그 영역에서 몇 번째로 나왔는지를 '
-        + '저희가 직접 확인해 적은 숫자입니다. 옆의 <b>검색 ↗</b> 버튼을 누르시면 직접 확인해 보실 수 있습니다.<br>'
-        + '검색 순위는 시간이 지나면서 오르내립니다. 글이 쌓일수록 학원 이름이 걸리는 검색어가 늘어납니다.<br>'
-        + '<b>「50위 밖」</b>은 그 검색어로 한참 내려도 아직 글이 안 보인다는 뜻입니다. '
-        + '올린 지 얼마 안 된 글은 자리를 잡는 데 시간이 걸립니다.<br><br>'
-        + '<b>글은 누가 쓰나요?</b><br>'
-        + '저희와 함께하는 블로거들이 각자의 블로그에 학원을 소개하는 글을 올립니다. '
-        + '올라간 글은 최소 12개월 동안 지우지 않습니다.</div>';
+      ? '<div class="note"><b>리뷰 확인 위치</b><br>'
+        + '네이버 지도에서 업체를 검색하시면 <b>방문자 리뷰</b>에 순차 누적됩니다. '
+        + '리뷰는 게시물과 달리 개별 URL이 없어 링크를 제공하지 못합니다. '
+        + '발행 건은 당사가 개별 확인해 표시합니다.<br><br>'
+        + '<b>작성 주체</b><br>'
+        + '업체에서 제공하신 내용으로 리뷰를 작성하고, 실 운영 계정으로 발행합니다. '
+        + '<b>발행 일시를 분산</b>합니다. '
+        + '발행 후 최소 12개월 게시를 유지합니다.</div>'
+      : '<div class="note"><b>검색 노출 순위 산정 기준</b><br>'
+        + '왼쪽 키워드를 네이버에 검색했을 때 해당 게시물이 블로그 영역에서 몇 번째로 노출되는지를 '
+        + '당사가 직접 확인해 기록한 수치입니다. 옆의 <b>검색 ↗</b> 버튼으로 직접 확인하실 수 있습니다.<br>'
+        + '검색 노출 순위는 변동합니다. 게시물이 누적되면 노출되는 키워드가 늘어납니다.<br>'
+        + '<b>「50위 밖」</b>은 해당 키워드 50위 내 미노출을 뜻합니다. '
+        + '발행 직후에는 노출 순위가 잡히는 데 시간이 걸립니다.<br><br>'
+        + '<b>작성 주체</b><br>'
+        + '실 운영 블로거가 본인 계정에 직접 작성합니다. '
+        + '발행 후 최소 12개월 게시를 유지합니다.</div>';
 
     /* 사업자 정보 — 블로그·리뷰 홍보를 파는 주체는 인투마케팅입니다(전자상거래법 표시 의무).
        ⚠️ 이 페이지는 바깥 파일을 안 쓰기로 했으므로 값을 여기에 직접 적습니다.
        사업자 정보가 바뀌면 여기도 같이 고쳐야 합니다. */
     h += '<div class="pgfoot">ESC 학원지원센터 · 010-7318-1790 · info@intomarketing.co.kr<br>'
-      + '이 주소는 ' + W('학원','업체') + '별로 다릅니다. 다른 곳의 내용은 보이지 않습니다.<br>'
+      + '이 주소는 ' + W('학원','업체') + '별로 발급됩니다. 타 고객의 내용은 표시되지 않습니다.<br>'
       + '<span class="mono">' + fdate(d.now) + ' 기준</span>'
       + '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);opacity:.85">'
       + '인투마케팅 · 대표 양회광 · 사업자등록번호 306-24-53380<br>'
@@ -510,7 +510,7 @@
       if (!box.classList.contains('hide')) {
         box.classList.add('hide');
         var mp = document.getElementById('morePics'); if (mp) mp.parentNode.removeChild(mp);
-        btn.textContent = '🖼 보낸 사진 보기'; return;
+        btn.textContent = '🖼 전달한 사진 보기'; return;
       }
       btn.disabled = true; btn.textContent = '불러오는 중…';
       try {
@@ -527,7 +527,7 @@
         morePics();
         btn.textContent = '사진 접기';
       } catch (e) {
-        btn.textContent = '🖼 보낸 사진 보기';
+        btn.textContent = '🖼 전달한 사진 보기';
         alert('사진을 불러오지 못했습니다. 잠시 뒤 다시 눌러 주세요.');
       }
       btn.disabled = false;
