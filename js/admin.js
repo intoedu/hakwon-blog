@@ -369,22 +369,104 @@
       + '<span class="mono">' + A.fdate(p.terms_agreed_at)
       + (p.agreed_terms_version ? ' · 약관 ' + esc(p.agreed_terms_version) + ' 판' : '') + '</span>';
   }
+  /* 받은 방법 — 동의를 어떻게 받았는지 남깁니다. 구글 폼으로 받아 둔 5건도 여기로 적어 넣습니다. */
+  var CONSENT_WAYS = ['구글 폼', '리더 확인', '보호자 카톡 · 문자', '전화 통화', '센터 동의 화면', '그 밖'];
+  /* ── 보호자 동의 상자 ──
+     승인 대기 카드와 블로거 상세에서 같은 것을 씁니다.
+     🔴 consent_required 는 가입할 때 한 번만 계산되던 값이라, 생년월일을 나중에 받은
+        옛 블로거 9명은 계속 꺼져 있었습니다(2026-09-30 서버에서 고침). 화면에서는
+        **생년월일로도** 판단해서, 값이 어긋나도 상자가 사라지지 않게 합니다.
+     🔴 가입 화면에 보호자 칸이 생긴 것은 2026-09-13 입니다. 그 전에 들어온 분들은
+        보호자 번호가 비어 있어 동의 화면이 열리지 않습니다 → [보호자 정보 넣기]로 채웁니다.
+     🔴 관리자가 넣은 번호로는 **알림톡 20번을 자동 발송하지 않습니다** — 20번 본문이
+        「신청하면서 보호자 연락처로 등록한 번호로 보내드립니다」이기 때문입니다. 문구 복사로 손 발송합니다. */
   function consentBlock(p) {
-    if (!p.consent_required) return '';
+    if (!p.consent_required && !needGuardian(p)) return '';
     var ok = !!p.guardian_consent_at, no = !ok && !!p.guardian_refused_at;
+    var has = !!(p.guardian_phone || '');
     /* 손 발송(카톡·문자)에는 버튼이 없어서, 알림톡 버튼 자리 대신 주소를 본문 뒤에 붙입니다 */
     CONSENT_TXT[p.id] = consentMsg(p) + '\n\n▶ 동의 여부 선택하기\n' + CONSENT_URL + (p.consent_key || '');
-    return '<div class="note' + (ok ? ' ok' : ' warn') + '" style="margin:10px 0">'
+    return '<div class="note' + (ok ? ' ok' : ' warn') + '" style="margin:10px 0" data-gbox="' + p.id + '">'
       + '<b>보호자 동의 ' + (ok ? '받음' : no ? '거부됨' : '기다리는 중') + '</b>'
       + (ok || no ? ' <span class="mono">' + A.fdate(p.guardian_consent_at || p.guardian_refused_at) + '</span>' : '')
-      + '<div class="mono" style="margin-top:4px">보호자 ' + esc(p.guardian_name || '-')
-      + (p.guardian_relation ? '(' + esc(p.guardian_relation) + ')' : '')
-      + ' · ' + esc(p.guardian_phone || '-') + '</div>'
-      + (ok ? '' : '<div class="row" style="margin-top:8px">'
-        + '<button class="btn btn-s" data-copyconsent="' + p.id + '">📋 보호자께 보낼 문구 복사</button>'
-        + '<a class="btn btn-s" href="' + esc(CONSENT_URL + (p.consent_key || '')) + '" target="_blank" rel="noopener">동의 화면 열기 ↗</a>'
-        + '</div><div class="mono" style="margin-top:6px">동의가 끝나야 승인할 수 있습니다.</div>')
+      + (ok && p.consent_method ? ' <span class="chip c-ok">' + esc(p.consent_method) + '</span>' : '')
+      + '<div class="mono" style="margin-top:4px">'
+      + (has
+        ? '보호자 ' + esc(p.guardian_name || '-')
+          + (p.guardian_relation ? '(' + esc(p.guardian_relation) + ')' : '')
+          + ' · ' + esc(fmtPhone(p.guardian_phone))
+        : '<b>보호자 정보가 아직 없습니다</b> — 먼저 넣어 주셔야 동의 화면이 열립니다')
+      + '</div>'
+      + (has && p.guardian_src === 'admin'
+        ? '<div class="mono" style="margin-top:4px">관리자가 넣은 번호입니다 — '
+          + '<b>알림톡은 자동으로 가지 않습니다.</b> 아래 문구를 복사해 보내 주세요.</div>' : '')
+      + '<div class="row" style="margin-top:8px">'
+      + '<button class="btn btn-s" data-gset="' + p.id + '">'
+      + (has ? '✏️ 보호자 정보 고치기' : '보호자 정보 넣기') + '</button>'
+      + (has
+        ? '<button class="btn btn-s" data-copyconsent="' + p.id + '">📋 보호자께 보낼 문구 복사</button>'
+          + '<a class="btn btn-s" href="' + esc(CONSENT_URL + (p.consent_key || ''))
+          + '" target="_blank" rel="noopener">동의 화면 열기 ↗</a>'
+        : '')
+      + '</div>'
+      + (ok
+        ? '<div class="row" style="margin-top:8px">'
+          + '<button class="btn btn-s" data-guardian="' + p.id + '" data-on="0">동의 표시 지우기</button></div>'
+          + (p.guardian_note ? '<div class="mono" style="margin-top:6px">' + esc(p.guardian_note) + '</div>' : '')
+        : '<div class="row" style="margin-top:8px;align-items:flex-end">'
+          + '<div class="fld" style="margin:0;min-width:150px"><label class="f">받은 방법</label>'
+          + '<select class="inp gway">'
+          + CONSENT_WAYS.map(function (w) { return '<option>' + w + '</option>'; }).join('')
+          + '</select></div>'
+          + '<div class="fld" style="margin:0;flex:1;min-width:180px"><label class="f">메모</label>'
+          + '<input class="inp gnote" placeholder="예: 어머니 카톡으로 확인 2026-09-21"></div>'
+          + '<button class="btn btn-s" data-guardian="' + p.id + '" data-on="1">동의 받았음으로 표시</button>'
+          + '</div>'
+          + '<div class="mono" style="margin-top:6px">만 14세 미만은 법정대리인 동의가 있어야 '
+          + '개인정보를 처리할 수 있습니다 (개인정보보호법 제22조의2). 동의가 끝나야 승인할 수 있습니다.</div>')
       + '</div>';
+  }
+
+  /* 보호자 성함 · 휴대전화 · 관계를 넣는 창. 🔴 블로거 쪽 입력 경로는 늘리지 않습니다 —
+     9/13 에 정한 「보호자 정보는 가입 화면에서만」은 그 뜻이었고, 이것은 관리자 전용입니다. */
+  function showGuardian(p) {
+    var m = $('gModal');
+    if (!m) {
+      /* ⚠️ .modal/.mbox 라는 CSS 는 없습니다 — 실제로 있는 것은 .ovl/.ovlcard 입니다 */
+      m = document.createElement('div'); m.id = 'gModal'; m.className = 'ovl hide';
+      document.body.appendChild(m);
+    }
+    /* 관계는 가입 화면과 같습니다 — 부 · 모 · 기타(직접 적기, 예: 후견인) */
+    var rel = p.guardian_relation || '';
+    var etc = rel && rel !== '부' && rel !== '모';
+    m.innerHTML = '<div class="ovlcard" style="max-width:460px">'
+      + '<h3>' + esc(p.name) + ' 님의 보호자 정보</h3>'
+      + '<div class="mono" style="margin-top:6px">만 ' + (ageReal(p) == null ? '?' : ageReal(p))
+      + '세 · ' + esc(A.commName(p.community_id)) + '</div>'
+      + '<div class="note warn" style="margin:12px 0">여기서 넣은 번호로는 '
+      + '<b>알림톡이 자동으로 가지 않습니다.</b> 넣으신 뒤 [문구 복사]로 보호자께 직접 보내 주세요.</div>'
+      + '<div class="fld"><label class="f">보호자 성함</label>'
+      + '<input class="inp" id="gName" autocomplete="off" placeholder="홍길동" value="'
+      + esc(p.guardian_name || '') + '"></div>'
+      + '<div class="fld"><label class="f">보호자 휴대전화</label>'
+      + '<input class="inp" id="gPhone" type="tel" inputmode="numeric" placeholder="010-0000-0000" value="'
+      + esc(fmtPhone(p.guardian_phone)) + '"></div>'
+      + '<div class="fld"><label class="f">아동과의 관계</label>'
+      + '<select class="inp" id="gRel"><option value="">고르세요</option>'
+      + '<option' + (rel === '부' ? ' selected' : '') + '>부</option>'
+      + '<option' + (rel === '모' ? ' selected' : '') + '>모</option>'
+      + '<option value="기타"' + (etc ? ' selected' : '') + '>기타</option></select></div>'
+      + '<div class="fld' + (etc ? '' : ' hide') + '" id="gRelEtcBox"><label class="f">관계 직접 적기</label>'
+      + '<input class="inp" id="gRelEtc" autocomplete="off" maxlength="20" placeholder="예) 후견인" value="'
+      + (etc ? esc(rel) : '') + '"></div>'
+      + '<div class="row" style="margin-top:16px">'
+      + '<button class="btn btn-p" data-gsave="' + p.id + '">저장</button>'
+      + '<button class="btn" data-gclose="1">닫기</button></div></div>';
+    m.classList.remove('hide');
+    $('gRel').onchange = function () {
+      $('gRelEtcBox').classList.toggle('hide', this.value !== '기타');
+      if (this.value === '기타') $('gRelEtc').focus();
+    };
   }
 
   function applyCard(p) {
@@ -598,22 +680,9 @@
       + kvrow('공동체', esc(A.commName(p.community_id)))
       + kvrow('이름', esc(p.name))
       + kvrow('나이', ageCell(p))
-      + (needGuardian(p)
-        ? kvrow('보호자 동의',
-            (p.guardian_consent_at
-              ? '<span class="chip c-ok">받음</span> <span class="mono">'
-                + esc(A.fdate(p.guardian_consent_at)) + '</span>'
-              : '<span class="chip c-wait">아직</span>')
-            + (p.guardian_note ? '<div class="mono" style="margin-top:4px">'
-                + esc(p.guardian_note) + '</div>' : '')
-            + '<div class="row" style="margin-top:6px">'
-            + '<button class="btn btn-s" data-guardian="' + p.id + '" '
-            + 'data-on="' + (p.guardian_consent_at ? '0' : '1') + '">'
-            + (p.guardian_consent_at ? '동의 표시 지우기' : '보호자 동의 받았음으로 표시') + '</button>'
-            + '</div>'
-            + '<div class="mono" style="margin-top:5px">만 14세 미만은 법정대리인 동의가 있어야 '
-            + '개인정보를 처리할 수 있습니다 (개인정보보호법 제22조의2)</div>')
-        : '')
+      /* 승인 대기 카드와 똑같은 상자입니다 — 보호자 정보 넣기 · 문구 복사 · 동의 화면 · 동의 기록이
+         승인 뒤에도 다 있어야 합니다(옛 블로거 9명이 여기밖에 안 보입니다) */
+      + (needGuardian(p) || p.consent_required ? kvrow('보호자 동의', consentBlock(p)) : '')
       + kvrow('네이버 아이디', p.naver_id ? '<span class="mono">' + esc(p.naver_id) + '</span>' : '')
       + kvrow('블로그 별명', esc(p.blog_alias || ''))
       + kvrow('블로그 주소', nidCell(p))
@@ -5765,6 +5834,34 @@
       return;
     }
 
+    /* ── 보호자 성함 · 휴대전화 · 관계 넣기 (관리자 전용) ── */
+    if ((t = e.target.closest('[data-gset]'))) {
+      var gp = A.PEOPLE.filter(function (x) { return x.id === t.dataset.gset; })[0];
+      if (!gp) { A.toast('이 사람을 찾을 수 없습니다'); return; }
+      showGuardian(gp);
+      return;
+    }
+    if ((t = e.target.closest('[data-gclose]'))) {
+      var gm0 = $('gModal'); if (gm0) { gm0.classList.add('hide'); gm0.innerHTML = ''; }
+      return;
+    }
+    if ((t = e.target.closest('[data-gsave]'))) {
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_guardian_set', {
+          p_id: t.dataset.gsave,
+          p_name: ($('gName') || {}).value || '',
+          p_phone: ($('gPhone') || {}).value || '',
+          p_relation: (($('gRel') || {}).value === '기타'
+            ? ($('gRelEtc') || {}).value : ($('gRel') || {}).value) || ''
+        });
+        var gm1 = $('gModal'); if (gm1) { gm1.classList.add('hide'); gm1.innerHTML = ''; }
+        await A.loadAdmin();
+        A.toast('보호자 정보를 저장했습니다. 문구를 복사해 보호자께 보내 주세요');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     if ((t = e.target.closest('[data-pwclose]'))) {
       $('pwModal').classList.add('hide'); $('pwModal').innerHTML = ''; return;
     }
@@ -5832,16 +5929,23 @@
     if ((t = e.target.closest('[data-guardian]'))) {
       var gw = A.PEOPLE.filter(function (x) { return x.id === t.dataset.guardian; })[0] || {};
       var gon = t.dataset.on === '1';
-      var gnote = null;
+      /* 받은 방법·메모는 같은 상자 안에 있습니다. 상자가 없으면(옛 화면) 물어봅니다. */
+      var gbox = t.closest('[data-gbox]');
+      var gway = gbox && gbox.querySelector('.gway');
+      var gnin = gbox && gbox.querySelector('.gnote');
+      var gnote = null, gmethod = null;
       if (gon) {
-        gnote = prompt(gw.name + ' 님의 보호자 동의를 어떻게 받으셨나요?\n'
+        gmethod = gway ? gway.value : null;
+        gnote = gnin ? gnin.value.trim() : prompt(gw.name + ' 님의 보호자 동의를 어떻게 받으셨나요?\n'
           + '(예: 공동체장 통해 부모님 카톡 확인 · 2026-09-12)', '');
         if (gnote === null) return;                 /* 취소 */
+        if (!confirm(gw.name + ' 님의 보호자 동의를 「' + (gmethod || '관리자 확인')
+          + '」으로 받았다고 기록할까요?')) return;
       } else if (!confirm(gw.name + ' 님의 「보호자 동의 받음」 표시를 지울까요?')) return;
       t.disabled = true;
       try {
         await A.rpc('blogger_guardian_consent',
-          { p_id: gw.id, p_ok: gon, p_note: gnote || null });
+          { p_id: gw.id, p_ok: gon, p_note: gnote || null, p_method: gmethod });
         await A.loadAdmin();
         A.toast(gon ? '보호자 동의를 표시했습니다' : '표시를 지웠습니다');
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
