@@ -793,8 +793,12 @@
       + '<div class="grid g2" style="margin-top:14px">'
       + '<div class="card"><label class="f">분량</label><div style="font-size:20px;font-weight:750">1,200~1,500자</div></div>'
       + '<div class="card"><label class="f">사진</label><div style="font-size:20px;font-weight:750">5~8장</div></div></div>'
-      + '<div class="note warn" style="margin-top:14px"><b>가보지 않은 걸 가본 것처럼 쓰면 안 됩니다.</b> '
-      + '"상담받고 왔어요"가 아니라 <b>"찾는 분들을 위해 정리해봤습니다"</b> 로 써 주세요.</div>';
+      /* 🔴 블로거는 학원에 가지 않고 받은 자료로 씁니다. 검수 반려 사유 칩(index.html .rj)과
+         같은 말이어야 합니다 — 한쪽만 고치면 블로거가 반려 이유를 못 알아봅니다. */
+      + '<div class="note warn" style="margin-top:14px"><b>직접 다녀온 것처럼 쓰면 안 됩니다.</b> '
+      + '"상담받고 왔어요"가 아니라 <b>"찾는 분들을 위해 정리해봤습니다"</b> 로 써 주세요.'
+      + '<br><b>주신 자료에 없는 내용은 지어내지 마세요.</b> '
+      + '모르는 것은 비워 두고 담당자에게 알려 주세요.</div>';
 
     /* ── 세 단계를 늘 같이 보여줍니다 ──
        예전엔 「원고 내기」와 「주소 넣기」가 상태에 따라 하나씩만 떴습니다. 그래서
