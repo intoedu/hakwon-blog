@@ -5389,6 +5389,11 @@
         + '<div class="row" style="justify-content:space-between;align-items:flex-start">'
         + '<div><b style="font-size:14.5px">' + esc(w.name) + '</b> '
         + '<span class="chip c-info">' + esc(n.title) + '</span>'
+        /* 🔴 승인된 알림톡 템플릿에 없는 문장이면 알림톡으로 보내면 안 됩니다 (카카오 심사 위반).
+           센터 안 알림만 남기고, 담당자가 따로 연락합니다 (행정 2026-10-01 결정) */
+        + (n.alimtalk_ok === false
+            ? ' <span class="chip c-bad" title="' + esc(n.alimtalk_why || '')
+              + '">알림톡 안 보냄 · 따로 연락</span>' : '')
         + (n.sent_at ? ' <span class="chip c-ok">보냄 ' + A.fdate(n.sent_at) + '</span>' : '')
         + '<div class="mono" style="margin-top:3px">' + esc(w.sub || '') + '</div></div>'
         + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
