@@ -1880,13 +1880,22 @@
       + '<div class="row">'
       + '<select class="inp" style="width:auto" data-visit="' + o.id + '">'
       + '<option value="visit"' + (o.visit_type !== 'material' ? ' selected' : '') + '>방문형 — 직접 가서 결제하고 씁니다</option>'
-      + '<option value="material"' + (o.visit_type === 'material' ? ' selected' : '') + '>자료형 — 업체가 사진·내용을 주고 방문 안 합니다</option>'
+      /* 🔴 자료형은 지금 고를 수 없습니다 — 아래 VISIT_MATERIAL_OK 참고.
+         이미 자료형으로 저장된 주문이 있으면 그 주문에서만 보입니다(값이 조용히 바뀌면 안 됩니다) */
+      + (VISIT_MATERIAL_OK || o.visit_type === 'material'
+        ? '<option value="material"' + (o.visit_type === 'material' ? ' selected' : '')
+          + '>자료형 — 업체가 사진·내용을 주고 방문 안 합니다'
+          + (VISIT_MATERIAL_OK ? '' : ' (지금은 쓰지 않습니다)') + '</option>'
+        : '')
       + '</select>'
       + '<button class="btn btn-s" data-savevisit="' + o.id + '">저장</button></div>'
       + '<div class="mono" style="margin-top:6px">'
       + (o.visit_type === 'material'
         ? '업체가 준 사진과 내용으로 씁니다.'
         : '방문·결제 후 영수증으로 인증합니다. 방문비·식대 정산이 따로 필요하면 메모에 적어 두세요.')
+      + (VISIT_MATERIAL_OK ? ''
+        : '<br><b>자료형은 지금 쓰지 않습니다.</b> 네이버 방문자 리뷰는 '
+          + '직접 가서 결제하신 분만 쓸 수 있습니다.')
       + '</div>'
 
       + '<div class="osec">3 · 어떤 리뷰를 몇 편 <small>합계 ' + want + '편'
@@ -2075,6 +2084,15 @@
   var PT_KIND = ['간판·외부', '강의실', '수업 장면', '교재·자료', '판서·화이트보드',
                  '상담실·로비', '학생 결과물', '기타'];
   var PT_SUBJ = ['공통', '영어', '수학', '국어', '학습코칭'];
+
+  /* ── 🔴 리뷰 「자료형」은 쓰지 않습니다 (2026-10-01 이은총 님 결정) ──
+     네이버 플레이스 「방문자 리뷰」는 글 형식 자체가 "내가 가서 써 봤다"라,
+     가지 않고 쓰면 빠져나갈 문장이 없습니다. 공정위 추천·보증 심사지침상
+     경험하지 않은 것을 경험한 것처럼 쓰면 거짓 추천·보증입니다.
+     블로그 원고처럼 「찾는 분들을 위해 정리해봤습니다」로 바꿔 쓸 수가 없습니다.
+     🔴 칸(blog_orders.visit_type)도 자료형 코드도 **지우지 않았습니다.**
+        화면에서만 잠급니다 — 다시 열려면 아래 한 줄을 true 로 바꾸면 됩니다. */
+  var VISIT_MATERIAL_OK = false;
 
   /* ⭐ 리뷰는 크게 둘로만 나눕니다 — 나누는 규칙이 블로그와 다르기 때문입니다.
      **영수증은 한 사람당 한 장**(같은 가게에서는 늘 같은 것),
