@@ -6,6 +6,7 @@
   var STATS = [], PROG = [], POSTS = [], SESSIONS = [], MATS = [], ATT = [], TPROG = [];
   var KWCHG = [];     /* 검색어 변경 기록 (blog_keyword_changes) — 새것부터 */
   var REFUNDS = [], LATE = [], LATE_BY = {};   /* 환불 기록 · 주문 마감 넘긴 글 (9/15) */
+  var ERASED = {};    /* 개인정보를 지운 분 — blogger_id → 기록 (9/30) */
   var ALLTOPICS = [], NOTES = [], RVSPECS = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
@@ -78,6 +79,10 @@
     ALLTOPICS = await A.sel('blog_topics', { order: 'sort' });   /* 주문 카드 「나가는 정보」용 */
     NOTES = await A.sel('order_notes', { order: 'created_at' });
     RVSPECS = await A.sel('review_specs', { order: 'sort' });
+    /* 개인정보를 지운 분 — 누가·언제·왜 (최고관리자만 보입니다. RLS 가 막으면 빈 배열입니다) */
+    ERASED = {};
+    (await A.sel('blogger_erasures', { order: 'erased_at', asc: false }))
+      .forEach(function (x) { if (!ERASED[x.blogger_id]) ERASED[x.blogger_id] = x; });
 
     await loadBlogStaff();
     await A.loadTraining();     /* 배정 화면이 「왜 못 받는지」를 적으려면 이게 있어야 합니다 */
@@ -718,7 +723,37 @@
           + '📝 블로그 열어보기 ↗</a>' : '')
       + '<button class="btn btn-s" data-seeblog="' + p.id + '">👤 이 사람 화면으로 가기</button>'
       + '<span class="mono">이 사람이 보는 화면 그대로 열립니다 (보기 전용)</span>'
-      + '</div></div></td></tr>';
+      + '</div>'
+      + eraseBox(p)
+      + '</div></td></tr>';
+  }
+
+  /* ── 개인정보 지우기 (개인정보보호법 제21조 · 개인정보처리방침 제8조) ──
+     쉼(paused)은 화면만 막고 정보는 그대로 남습니다. 앞으로 쓰지 않기로 한 분은 지워야 합니다.
+     🔴 로그인 계정은 **지우지 않고 영구 차단**합니다 — 계정을 지우면 bloggers 행이 딸려 가고,
+        그러면 blog_payouts(원고료 지급 내역)까지 같이 사라집니다. 방침 제4조는 그 내역을
+        국세기본법에 따라 5년 보관하도록 정하고 있습니다. 그래서 사람을 알아볼 수 있는 값만 지웁니다. */
+  function eraseBox(p) {
+    var done = ERASED[p.id];
+    if (done) {
+      return '<div class="note" style="margin-top:14px">'
+        + '<b>개인정보를 지웠습니다</b> <span class="mono">' + A.fdate(done.erased_at) + '</span>'
+        + (done.auth_blocked ? ' <span class="chip c-ok">로그인 막음</span>'
+           : ' <span class="chip c-bad">로그인이 안 막혔습니다 — 다시 눌러 주세요</span>')
+        + '<div class="mono" style="margin-top:4px">· 사유: ' + esc(done.reason) + '</div>'
+        + '<div class="mono">· 지운 알림 ' + (done.notes_deleted || 0) + '건 · '
+        + '이름을 가린 기록 ' + ((done.logs_hidden || 0) + (done.notes_hidden || 0)) + '건</div>'
+        + '<div class="mono" style="margin-top:4px">원고료 지급 내역은 남아 있습니다 '
+        + '(방침 제4조 · 국세기본법 5년).</div></div>';
+    }
+    if (!A.IS_OWNER) return '';
+    return '<div class="note warn" style="margin-top:14px">'
+      + '<b>개인정보 지우기</b> — 앞으로 쓰지 않기로 한 분의 이름 · 생년월일 · 연락처 · '
+      + '블로그 주소 · 보호자 정보를 되돌릴 수 없게 지우고, 로그인을 영구히 막습니다.'
+      + '<div class="mono" style="margin-top:4px">글과 원고료 지급 내역은 남습니다. '
+      + '먼저 <b>쉬게 하기</b>와 <b>맡은 글 회수</b>를 끝내 주세요.</div>'
+      + '<div class="row" style="margin-top:8px">'
+      + '<button class="btn btn-s" data-erase="' + p.id + '">🗑 개인정보 지우기</button></div></div>';
   }
 
   /* ── 검수자 / 관리자 ── */
@@ -4509,10 +4544,20 @@
      다른 관리자가 한 사람에게 같은 학원 글을 여러 편 줘 버리는 일이 있었습니다.
      그동안은 되돌릴 방법이 「취소」뿐이었는데 그건 글 자체를 없애서 주문 편수가 모자라집니다.
      회수는 **글은 그대로 두고 맡은 사람만 떼는 것**입니다. */
-  var TAKEBACK_OK = ['assigned', 'writing', 'rework', 'submitted'];
-  /* 약관 제10조③ (9/25 시행) — 원고를 낸 글(검수 중 · 수정 요청 중)은 최고관리자만 회수합니다.
-     그때는 제13조⑨ 에 따라 그 글의 원고료가 정산에 붙습니다 (서버도 같은 규칙으로 막습니다) */
-  var TAKEBACK_WROTE = ['rework', 'submitted'];
+  var TAKEBACK_OK = ['assigned', 'writing', 'rework', 'submitted', 'approved'];
+  /* 약관 제10조③ (9/25 시행) — 「원고가 제출된 게시물」은 최고관리자만 회수합니다.
+     🔴 검수까지 통과한 글(approved)도 원고가 제출된 글입니다. 9/30 까지는 센터가 이걸 막고 있어서
+        약관보다 엄격했습니다 — 최고관리자도 못 했습니다.
+     원고료는 **주문이 언제 성립했는지**로 갈립니다 (부칙② · 서버도 같은 규칙입니다) :
+       9/25 전에 성립한 주문 → 당시 견적·합의에 따름 → 원고료 없음
+       9/25 뒤에 성립한 주문 → 제13조⑨ → 회수해도 원고료 지급 */
+  var TAKEBACK_WROTE = ['rework', 'submitted', 'approved'];
+  /* 주문 성립 시점 = 입금 확인일. 없으면 의뢰 시작일 · 주문일 순으로 봅니다 */
+  function newTerms(orderId) {
+    var o = A.ORDERS.filter(function (x) { return x.id === orderId; })[0] || {};
+    var d = o.paid_at || (o.started_at || '').slice(0, 10) || o.ordered_at || '';
+    return d >= '2026-09-25';
+  }
   function takeBackBtn(p) {
     if (!p.blogger_id || TAKEBACK_OK.indexOf(p.status) < 0) return '';
     if (TAKEBACK_WROTE.indexOf(p.status) >= 0 && !A.IS_OWNER) return '';
@@ -5733,14 +5778,20 @@
       if (!tp) { A.toast('글을 찾을 수 없습니다'); return; }
       var tb = A.PEOPLE.filter(function (x) { return x.id === tp.blogger_id; })[0] || {};
       var wrote = TAKEBACK_WROTE.indexOf(tp.status) >= 0;
+      var payIt = wrote && newTerms(tp.order_id);
       var msg = (tb.name || '이분') + ' 님에게서 이 글을 회수할까요?\n\n'
         + '· ' + (tp.keyword || '') + '\n'
         + '· ' + orderName(tp.order_id) + '\n\n'
         + (wrote
-            ? '⚠️ 이분은 이미 원고를 냈습니다.\n'
+            ? (tp.status === 'approved'
+                ? '⚠️ 이분은 원고를 다 써서 검수까지 통과했습니다.\n'
+                : '⚠️ 이분은 이미 원고를 냈습니다.\n')
               + '약관 제10조③ — 원고를 낸 글은 최고관리자만 회수합니다.\n'
-              + '회수해도 이 글의 원고료' + (tp.payout_rate ? '(' + won(tp.payout_rate) + '원)' : '')
-              + '는 지급됩니다 (제13조⑨ · 회수한 달 정산에 붙습니다).\n'
+              + (payIt
+                  ? '회수해도 이 글의 원고료' + (tp.payout_rate ? '(' + won(tp.payout_rate) + '원)' : '')
+                    + '는 지급됩니다 (제13조⑨ · 회수한 달 정산에 붙습니다).\n'
+                  : '이 주문은 9월 25일 약관 시행 전에 성립해 (부칙②)\n'
+                    + '이 글의 원고료는 지급되지 않습니다.\n')
               + '따로 연락도 해 주세요.\n\n'
             : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
         + '글은 그대로 남고, 맡은 사람만 떨어집니다 (다시 나눠주실 수 있습니다).';
@@ -5757,7 +5808,8 @@
           { p_post: tp.id, p_reason: why.trim() || null, p_force: wrote }) || {};
         await A.loadAdmin();
         A.toast((tr.blogger || '') + ' 님에게서 회수했습니다'
-          + (tr.paid_anyway ? ' · 원고료 ' + won(tr.pay_amount || 0) + '원은 정산에 붙습니다' : '')
+          + (tr.paid_anyway ? ' · 원고료 ' + won(tr.pay_amount || 0) + '원은 정산에 붙습니다'
+             : tr.wrote ? ' · 이 주문은 약관 시행 전이라 원고료는 없습니다' : '')
           + (tr.by_owner ? '' : ' · 최고관리자에게 알림이 갑니다'));
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
@@ -5831,6 +5883,35 @@
         A.toast('실패: ' + err.message);
         t.disabled = false; t.textContent = '바꾸고 알리기';
       }
+      return;
+    }
+
+    /* ── 🗑 개인정보 지우기 (최고관리자 전용) ── */
+    if ((t = e.target.closest('[data-erase]'))) {
+      var ep = A.PEOPLE.filter(function (x) { return x.id === t.dataset.erase; })[0];
+      if (!ep) { A.toast('이 사람을 찾을 수 없습니다'); return; }
+      if (!confirm(ep.name + ' 님의 개인정보를 지울까요?\n\n'
+        + '지우는 것 : 이름 · 생년월일 · 휴대전화 · 이메일 · 블로그 주소 ·\n'
+        + '          네이버 아이디 · 보호자 성함·번호·관계 · 보호자 동의 기록 ·\n'
+        + '          이 분께 갔던 알림 · 기록에 남은 이름 · 교육 요약글\n'
+        + '남기는 것 : 이 분이 쓴 글(고객 자산) · 원고료 지급 내역(국세기본법 5년)\n\n'
+        + '로그인은 영구히 막힙니다. 되돌릴 수 없습니다.')) return;
+      var ewhy = prompt('왜 지우는지 적어 주세요.\n(우리 기록에만 남습니다)',
+        '앞으로 활동하지 않기로 하여 개인정보를 파기합니다.');
+      if (ewhy === null) return;
+      if (!ewhy.trim()) { A.toast('지우는 사유를 적어 주세요'); return; }
+      if (!confirm('마지막 확인입니다.\n\n'
+        + ep.name + ' 님의 개인정보를 지웁니다. 되돌릴 수 없습니다.')) return;
+      t.disabled = true; t.textContent = '지우는 중…';
+      try {
+        var er = await A.sb.functions.invoke('erase-blogger',
+          { body: { blogger_id: ep.id, reason: ewhy.trim() } });
+        var ed = er.data || {};
+        if (er.error || ed.error) throw new Error(ed.error || er.error.message);
+        await A.loadAdmin();
+        A.toast('지웠습니다 — ' + (ed.tag || '') + ' · 알림 ' + (ed.notes_deleted || 0) + '건 지움');
+      } catch (err) { A.toast('실패: ' + err.message); }
+      t.disabled = false; t.textContent = '🗑 개인정보 지우기';
       return;
     }
 
