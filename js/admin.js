@@ -423,6 +423,10 @@
           + '<select class="inp gway">'
           + CONSENT_WAYS.map(function (w) { return '<option>' + w + '</option>'; }).join('')
           + '</select></div>'
+          /* 🔑 동의를 **언제 받았는지**는 법적으로 중요한 기록입니다 (개인정보보호법 제22조의2).
+             구글 폼으로 먼저 받아 둔 것을 나중에 옮겨 적을 때, 오늘 날짜로 찍히면 안 됩니다. */
+          + '<div class="fld" style="margin:0;min-width:145px"><label class="f">받은 날</label>'
+          + '<input class="inp gat" type="date" max="' + A.today() + '" value="' + A.today() + '"></div>'
           + '<div class="fld" style="margin:0;flex:1;min-width:180px"><label class="f">메모</label>'
           + '<input class="inp gnote" placeholder="예: 어머니 카톡으로 확인 2026-09-21"></div>'
           + '<button class="btn btn-s" data-guardian="' + p.id + '" data-on="1">동의 받았음으로 표시</button>'
@@ -6019,19 +6023,22 @@
       var gbox = t.closest('[data-gbox]');
       var gway = gbox && gbox.querySelector('.gway');
       var gnin = gbox && gbox.querySelector('.gnote');
-      var gnote = null, gmethod = null;
+      var gatin = gbox && gbox.querySelector('.gat');
+      var gnote = null, gmethod = null, gat = null;
       if (gon) {
         gmethod = gway ? gway.value : null;
+        gat = gatin && gatin.value ? gatin.value : null;
         gnote = gnin ? gnin.value.trim() : prompt(gw.name + ' 님의 보호자 동의를 어떻게 받으셨나요?\n'
           + '(예: 공동체장 통해 부모님 카톡 확인 · 2026-09-12)', '');
         if (gnote === null) return;                 /* 취소 */
-        if (!confirm(gw.name + ' 님의 보호자 동의를 「' + (gmethod || '관리자 확인')
-          + '」으로 받았다고 기록할까요?')) return;
+        if (!confirm(gw.name + ' 님의 보호자 동의를\n'
+          + '「' + (gmethod || '관리자 확인') + '」으로 '
+          + (gat || A.today()) + ' 에 받았다고 기록할까요?')) return;
       } else if (!confirm(gw.name + ' 님의 「보호자 동의 받음」 표시를 지울까요?')) return;
       t.disabled = true;
       try {
         await A.rpc('blogger_guardian_consent',
-          { p_id: gw.id, p_ok: gon, p_note: gnote || null, p_method: gmethod });
+          { p_id: gw.id, p_ok: gon, p_note: gnote || null, p_method: gmethod, p_at: gat });
         await A.loadAdmin();
         A.toast(gon ? '보호자 동의를 표시했습니다' : '표시를 지웠습니다');
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
