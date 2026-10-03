@@ -1171,13 +1171,19 @@
 
   function renderComms() {
     $('commBox').innerHTML = A.COMMS.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>이름</th><th>리더</th><th>연락처</th><th>은행</th><th>계좌번호</th><th>예금주</th><th>인원</th><th></th></tr></thead><tbody>'
+      /* 🔴 대표(리더)와 담당자는 다를 수 있습니다 — 대표는 바빠서 못 하는 곳이 있고,
+         블로거를 실제로 챙기며 센터와 이야기하는 사람은 따로인 경우가 많습니다.
+         그래서 [저장] 뒤에서 한 번 끊고, 담당자는 오른쪽에 따로 둡니다. */
+      + '<thead><tr><th>이름</th><th>리더</th><th>연락처</th><th>은행</th><th>계좌번호</th><th>예금주</th>'
+      + '<th>인원</th><th></th>'
+      + '<th style="border-left:2px solid var(--line)">담당자</th><th>담당자 연락처</th></tr></thead><tbody>'
       + A.COMMS.map(function (c) {
         var n = A.PEOPLE.filter(function (p) {
           return p.community_id === c.id && (p.status === 'approved' || p.status === 'paused');
         }).length;
-        function cell(f, ph) {
-          return '<td><input class="inp" style="padding:5px 8px;font-size:13px;min-width:100px" '
+        function cell(f, ph, tdStyle) {
+          return '<td' + (tdStyle ? ' style="' + tdStyle + '"' : '') + '>'
+            + '<input class="inp" style="padding:5px 8px;font-size:13px;min-width:100px" '
             + 'data-cf="' + f + '" data-cid="' + c.id + '" value="' + esc(c[f] || '') + '" placeholder="' + ph + '"></td>';
         }
         var mem = A.PEOPLE.filter(function (p) {
@@ -1187,8 +1193,13 @@
           + cell('bank_name', '국민') + cell('bank_no', '000-00-0000') + cell('bank_holder', '예금주')
           + '<td class="num">' + n + '명</td>'
           + '<td><div class="row"><button class="btn btn-s" data-savec="' + c.id + '">저장</button>'
-          + (mem.length ? '<button class="btn btn-s" data-mem="' + c.id + '">멤버 보기</button>' : '') + '</div></td></tr>'
-          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="8"><div class="memlist">'
+          + (mem.length ? '<button class="btn btn-s" data-mem="' + c.id + '">멤버 보기</button>' : '') + '</div></td>'
+          /* 담당자 — [저장] 뒤에서 끊고 따로 둡니다. 저장은 위 [저장] 단추가 같이 합니다
+             (data-cid 가 붙은 칸을 전부 모아 보냅니다) */
+          + cell('manager_name', '대표와 같으면 비워 두세요', 'border-left:2px solid var(--line)')
+          + cell('manager_phone', '010-0000-0000')
+          + '</tr>'
+          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="10"><div class="memlist">'
             + mem.map(function (p) {
               var s2 = stat(p.id);
               return '<span class="m">' + A.lvBadge(p.level) + ' <b>' + esc(p.name) + '</b>'
@@ -5235,7 +5246,8 @@
     if (!CPAY.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
     var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
     var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '공동체 운영비', '검색어 변경 보상', '보낼 금액',
-      '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처', '상태', '보낸 날', '메모'];
+      '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처',
+      '담당자', '담당자 연락처', '상태', '보낸 날', '메모'];
     var body = CPAY.map(function (c) {
       var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
       return [m, cm.name || '', c.people_count, c.post_count, c.amount, c.review_amount || 0,
@@ -5243,6 +5255,7 @@
         c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0),
         cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
         cm.leader_name || '', fmtPhone(cm.leader_phone),
+        cm.manager_name || '', fmtPhone(cm.manager_phone),
         c.status === 'sent' ? '보냄' : '아직 안 보냄',
         c.sent_at ? A.fdate(c.sent_at) : '', c.memo || ''];
     });
