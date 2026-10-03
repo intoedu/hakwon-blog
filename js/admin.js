@@ -5375,6 +5375,17 @@
     return { name: '우리 팀', sub: '보낼 곳 없음 — 확인만 하시면 됩니다' };
   }
 
+  /* ── 손으로 보낼 때 붙는 주소 ──
+     🔴 고객용 16~19번은 본문에 주소가 없습니다. 주소는 알림톡 **웹링크 버튼**으로 나가기 때문입니다
+        (20번이 그렇게 해서 당일 통과했습니다). 본문에 주소를 넣으면 템플릿과 글자가 어긋나 발송이 막힙니다.
+        카톡·문자로 손수 보낼 때는 버튼이 없으니, 복사할 때만 뒤에 붙여 드립니다. */
+  function notiBtnUrl(n) {
+    if (n.audience !== 'academy' || !n.order_id) return '';
+    var o = A.ORDERS.filter(function (x) { return x.id === n.order_id; })[0];
+    if (!o || !o.share_key) return '';
+    return '\n\n▶ 진행 현황 보기\nhttps://center.intomarketing.co.kr/status.html?k=' + o.share_key;
+  }
+
   function notiRows() {
     var showSent = $('notiShowSent').checked;
     return NOTI.filter(function (n) {
@@ -5490,6 +5501,7 @@
   function renderNotiSet() {
     if (!A.IS_ADMIN) return;
     $('notiSign').value = NOTI_SET.sign || '';
+    $('notiSignCustomer').value = NOTI_SET.sign_customer || '';
     var on = NOTI_SET.noti || {};
     $('notiToggles').innerHTML = Object.keys(KIND_OF).map(function (aud) {
       var label = aud === 'blogger' ? '블로거에게' : aud === 'academy' ? '학원에게' : '우리끼리';
@@ -5507,7 +5519,11 @@
     document.querySelectorAll('[data-notikindset]').forEach(function (c) {
       on[c.dataset.notikindset] = c.checked;
     });
-    var v = Object.assign({}, NOTI_SET, { sign: $('notiSign').value.trim(), noti: on });
+    var v = Object.assign({}, NOTI_SET, {
+      sign: $('notiSign').value.trim(),
+      sign_customer: $('notiSignCustomer').value.trim(),
+      noti: on
+    });
     var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
     this.disabled = false;
     if (r.error || !r.data || !r.data.length) { A.toast('저장 실패'); return; }
@@ -5519,7 +5535,7 @@
     if (!rows.length) { A.toast('복사할 것이 없습니다'); return; }
     var text = rows.map(function (n) {
       var w = notiWho(n);
-      return '── ' + w.name + (w.sub ? ' (' + w.sub + ')' : '') + ' ──\n' + n.body;
+      return '── ' + w.name + (w.sub ? ' (' + w.sub + ')' : '') + ' ──\n' + n.body + notiBtnUrl(n);
     }).join('\n\n');
     try { await navigator.clipboard.writeText(text); A.toast(rows.length + '건을 복사했습니다'); }
     catch (e) { A.toast('복사에 실패했습니다'); }
@@ -6608,8 +6624,9 @@
     if ((t = e.target.closest('[data-noticopy]'))) {
       var nn = NOTI.filter(function (x) { return x.id === t.dataset.noticopy; })[0];
       if (!nn) return;
-      try { await navigator.clipboard.writeText(nn.body); A.toast('문구를 복사했습니다'); }
-      catch (err) { window.prompt('아래 내용을 복사해 보내주세요', nn.body); }
+      var ntxt = nn.body + notiBtnUrl(nn);
+      try { await navigator.clipboard.writeText(ntxt); A.toast('문구를 복사했습니다'); }
+      catch (err) { window.prompt('아래 내용을 복사해 보내주세요', ntxt); }
       return;
     }
 

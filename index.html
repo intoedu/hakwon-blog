@@ -1197,8 +1197,16 @@
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
           ⚙️ 어떤 알림을 만들지 · 문구 끝 서명 고치기</summary>
         <div class="card" style="margin-top:10px">
-          <div><label class="f">문구 끝에 붙는 서명</label>
-            <input class="inp" id="notiSign" placeholder="ESC 이은총 드림" style="max-width:320px"></div>
+          <!-- 🔴 채널이 둘입니다 (2026-10-03) — 블로거용 17종은 ESC 학원지원 채널,
+               고객용 16~19는 인투마케팅 채널. 서명이 다르고, 바꾸면 그 채널 템플릿이 전부 재심사입니다 -->
+          <div class="grid g2" style="gap:0 13px">
+            <div class="fld"><label class="f">블로거에게 가는 서명</label>
+              <input class="inp" id="notiSign" placeholder="ESC 학원지원 이은총 드림">
+              <div class="mono" style="margin-top:4px">승인된 알림톡 17종과 글자가 같아야 합니다</div></div>
+            <div class="fld"><label class="f">학원 · 업체에게 가는 서명</label>
+              <input class="inp" id="notiSignCustomer" placeholder="인투마케팅 이은총 드림">
+              <div class="mono" style="margin-top:4px">고객용 16~19번은 인투마케팅 채널로 나갑니다</div></div>
+          </div>
           <div class="sec">만들 알림 고르기 <small>끄면 그 종류는 아예 안 생깁니다</small></div>
           <div id="notiToggles" class="grid g3" style="gap:8px"></div>
           <div class="row" style="margin-top:14px">
