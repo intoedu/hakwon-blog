@@ -405,6 +405,21 @@
         <div id="levelBox"></div>
         <div class="sec">승급 후보 <small>기준을 넘은 사람입니다</small></div>
         <div id="candBox"></div>
+        <!-- 영업일 = 월~금에서 법정공휴일을 뺀 날 (2026-10-04 결정 · 회사 휴무일은 두지 않음).
+             지금은 환불 기한 7영업일(약관 제7조⑦)을 셀 때 씁니다 -->
+        <div class="sec" style="margin-top:18px">쉬는 날
+          <small>법정공휴일 — 환불 기한(7영업일)을 셀 때 뺍니다</small></div>
+        <div class="card">
+          <textarea class="inp" id="holidays" rows="5"
+            placeholder="2026-01-01&#10;2026-03-01&#10;2026-05-05"
+            style="width:100%;font-family:var(--mono);line-height:1.7"></textarea>
+          <div class="mono" style="margin-top:6px">한 줄에 하나씩 <b>2026-01-01</b> 꼴로 적어 주세요.
+            토 · 일은 적지 않으셔도 늘 빠집니다. 회사 휴무일은 넣지 않기로 했습니다.</div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-p btn-s" id="holiSave">저장</button>
+            <span class="mono" id="holiMsg"></span>
+          </div>
+        </div>
       </div>
       <div class="pane hide" data-pane="t-comm">
         <div class="note" style="margin-bottom:16px">

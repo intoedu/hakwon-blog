@@ -706,6 +706,9 @@ window.ESC = (function () {
       /* 리뷰를 만들 때 AI 에게 주는 규칙 — 비어 있으면 admin.js 의 기본 규칙을 씁니다 */
       A.RV_RULES = full.rv_rules || '';
       A.SIGN = full.sign || 'ESC 이은총 드림';   /* 알림·문자 문구 끝에 붙는 서명 */
+      /* 쉬는 날(법정공휴일) — 환불 기한 7영업일을 셀 때 뺍니다 (2026-10-04 결정).
+         회사 휴무일은 두지 않기로 했습니다. 토·일은 늘 빠지므로 여기 적지 않습니다. */
+      A.HOLIDAYS = full.holidays || [];
     }
   };
 

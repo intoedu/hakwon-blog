@@ -998,7 +998,33 @@
     return out;
   }
 
+  /* 쉬는 날(법정공휴일) — 환불 기한 7영업일을 셀 때 뺍니다 (2026-10-04 결정) */
+  function renderHolidays() {
+    var t = $('holidays'); if (!t || !A.IS_ADMIN) return;
+    t.value = (A.HOLIDAYS || []).join('\n');
+    var m = $('holiMsg');
+    if (m) m.textContent = (A.HOLIDAYS || []).length
+      ? (A.HOLIDAYS || []).length + '일 적혀 있습니다'
+      : '아직 없습니다 — 지금은 토·일만 빠집니다';
+  }
+  if ($('holiSave')) $('holiSave').onclick = async function () {
+    var lines = ($('holidays').value || '').split('\n')
+      .map(function (x) { return x.trim(); }).filter(Boolean);
+    var bad = lines.filter(function (x) { return !/^\d{4}-\d{2}-\d{2}$/.test(x); });
+    if (bad.length) { A.toast('날짜 모양이 아닌 줄이 있습니다 : ' + bad[0]); return; }
+    lines = lines.filter(function (x, i) { return lines.indexOf(x) === i; }).sort();
+    this.disabled = true;
+    var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
+    var v = Object.assign({}, (s.data && s.data.value) || {}, { holidays: lines });
+    var r = await A.sb.from('settings').update({ value: v }).eq('key', 'blog').select();
+    this.disabled = false;
+    if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
+    A.HOLIDAYS = lines; renderHolidays(); renderOrders();
+    A.toast('쉬는 날 ' + lines.length + '일을 저장했습니다');
+  };
+
   function renderLevels() {
+    renderHolidays();
     $('levelBox').innerHTML = '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>단계</th><th>이름</th><th>일반 회원 글</th><th>파트너 회원 글</th>'
       + '<th>올라가는 기준 (후보 추천용)</th><th>인원</th></tr></thead><tbody>'
@@ -1799,15 +1825,23 @@
         : '체크하면 단계 단가 대신 이 금액이 나갑니다') + '</span></div>';
   }
 
-  /* 환불 기한 = 확정한 날부터 7영업일 (약관 제7조⑦ · 9/16 행정 확정). 토·일만 뺍니다 */
+  /* 환불 기한 = 확정한 날부터 7영업일 (약관 제7조⑦ · 9/16 행정 확정).
+     영업일 = 월~금에서 법정공휴일을 뺀 날 (2026-10-04 결정 · 회사 휴무일은 두지 않습니다).
+     쉬는 날은 설정의 「쉬는 날」 칸에 적습니다 — 비어 있으면 토·일만 빠집니다. */
   var REFUND_DAYS = 7;
+  function holidaySet() {
+    var o = {};
+    (A.HOLIDAYS || []).forEach(function (d) { o[String(d).trim()] = 1; });
+    return o;
+  }
   function bizDaysSince(ymd) {
     if (!ymd) return 0;
+    var hol = holidaySet();
     var d = new Date(ymd + 'T00:00:00Z'), end = new Date(A.today() + 'T00:00:00Z'), n = 0;
     while (d < end) {
       d.setUTCDate(d.getUTCDate() + 1);
       var w = d.getUTCDay();
-      if (w !== 0 && w !== 6) n++;
+      if (w !== 0 && w !== 6 && !hol[d.toISOString().slice(0, 10)]) n++;
     }
     return n;
   }
@@ -4055,7 +4089,7 @@
           /* 약관 개정안 제6조의2② — 금액을 먼저 알리고 확인받은 뒤 변경 */
           + '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;color:var(--ink)">'
           + '<input type="checkbox" id="kwOk" style="margin-top:4px"> '
-          + '<span><b>학원에 금액을 먼저 알리고 확인받았습니다.</b> 체크해야 바꿀 수 있습니다.</span></label>';
+          + '<span><b>고객에게 금액을 먼저 알리고 확인받았습니다.</b> 체크해야 바꿀 수 있습니다.</span></label>';
   }
   function openKwEdit(pid) {
     var p = POSTS.filter(function (x) { return x.id === pid; })[0];
@@ -5849,10 +5883,13 @@
                   : '이 주문은 9월 25일 약관 시행 전에 성립해 (부칙②)\n'
                     + '이 글의 원고료는 지급되지 않습니다.\n')
               + '따로 연락도 해 주세요.\n\n'
+              /* 🔴 10/4 이은총 님 결정 — 수정 요청에 답이 없으면 회수해 재배정합니다.
+                 마감까지 두면 원고료는 안 나가지만 고객에게 그 편을 환불해야 해서(제6조②)
+                 손해가 더 큽니다. 2차 약관 개정이 시행되면 회수해도 원고료가 안 나갑니다. */
               + (tp.status === 'rework' && payIt
-                  ? '⚠️ 수정 요청에 응하지 않아 회수하시는 거라면 — 회수하지 마시고\n'
-                    + '주문 마감까지 두세요. 지금 회수하면 원고료를 드려야 하고(제13조⑨),\n'
-                    + '마감까지 두면 원고료가 없습니다(제13조⑤).\n\n'
+                  ? '⚠️ 지금 회수하면 원래 블로거에게 원고료가 지급됩니다(제13조⑨).\n'
+                    + '주문 마감까지 다시 쓸 시간이 있으면 회수해 재배정하세요.\n'
+                    + '마감을 넘기면 고객 환불이 생깁니다.\n\n'
                   : '')
             : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
         + '글은 그대로 남고, 맡은 사람만 떨어집니다 (다시 나눠주실 수 있습니다).';
@@ -5902,7 +5939,7 @@
       var kwRsn = ($('kwModal') || { dataset: {} }).dataset.reason;
       if (!kwRsn) { A.toast('누가 바꾸자고 했는지(학원 요청 / 내부 교정) 골라 주세요'); return; }
       var kwPaid = kwRsn === '학원 요청';   /* 9/16 : 배정 전 글도 유료 */
-      if (kwPaid && !($('kwOk') || {}).checked) { A.toast('유료 변경입니다. 학원에 금액을 알리고 확인받았다는 칸에 체크해 주세요'); return; }
+      if (kwPaid && !($('kwOk') || {}).checked) { A.toast('유료 변경입니다. 고객에게 금액을 알리고 확인받았다는 칸에 체크해 주세요'); return; }
       var kwTop = topicOf(POSTS.filter(function (x) { return x.id === KW_POST; })[0] || {});
       var kwStg = kwTop && kwTop.stage ? stageBad(kwv, kwTop.stage) : null;
       if (kwStg && !confirm('이 제목은 글 내용과 학년이 안 맞습니다.\n\n'
