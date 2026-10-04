@@ -52,6 +52,18 @@ window.ESC = (function () {
     return Math.round((new Date(d + 'T00:00:00') - new Date(A.today() + 'T00:00:00')) / 86400000);
   };
 
+  /* -- 날짜로 정한 기한은 그날 22:00 까지입니다 (2026-10-04 전 팀 공통 결정) --
+     🔴 **원고 마감(권장일)에만** 씁니다. 주문 마감은 그대로 자정까지입니다 —
+        약관 제2조 6호가 「의뢰 시작일 + 30일」이라 시각을 당기면 약관보다 불리해집니다.
+     서버 blog_due_past() 와 같은 규칙입니다 — 한쪽만 고치지 마세요. */
+  A.DUE_HOUR = 22;
+  A.duePast = function (d) {
+    var n = A.dday(d);
+    if (n == null) return false;
+    if (n !== 0) return n < 0;
+    return A.kstNow().getUTCHours() >= A.DUE_HOUR;    /* kstNow 는 한국 시각을 UTC 자리에 담습니다 */
+  };
+
   var tTimer;
   A.toast = function (m) {
     var t = A.$('toast'); t.textContent = m; t.classList.add('on');

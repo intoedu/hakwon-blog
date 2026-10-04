@@ -198,7 +198,7 @@
     var toVerify = BP.filter(function (p) { return p.status === 'published'; }).length;
     var unass = BP.filter(function (p) { return p.status === 'pending'; }).length;
     var late = BP.filter(function (p) {
-      return p.due_date && A.dday(p.due_date) < 0 &&
+      return A.duePast(p.due_date) &&
         ['pending', 'assigned', 'writing', 'rework'].indexOf(p.status) >= 0;
     }).length;
     var wait = cnt('pending');
@@ -4779,8 +4779,8 @@
       + '<th>어디까지</th><th>마감</th><th></th></tr></thead><tbody>'
       + rows.slice(0, 300).map(function (p) {
         var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
-        var d = A.dday(p.due_date);
-        var late = d != null && d < 0 && ['pending', 'assigned', 'writing', 'rework'].indexOf(p.status) >= 0;
+        var late = A.duePast(p.due_date)
+          && ['pending', 'assigned', 'writing', 'rework'].indexOf(p.status) >= 0;
         return '<tr' + (p.status === 'rework' ? ' class="sent"' : '') + '>'
           + '<td class="mono">' + (p.seq || '') + '</td>'
           + '<td>' + esc(p.keyword || '') + '</td>'
@@ -5849,6 +5849,11 @@
                   : '이 주문은 9월 25일 약관 시행 전에 성립해 (부칙②)\n'
                     + '이 글의 원고료는 지급되지 않습니다.\n')
               + '따로 연락도 해 주세요.\n\n'
+              + (tp.status === 'rework' && payIt
+                  ? '⚠️ 수정 요청에 응하지 않아 회수하시는 거라면 — 회수하지 마시고\n'
+                    + '주문 마감까지 두세요. 지금 회수하면 원고료를 드려야 하고(제13조⑨),\n'
+                    + '마감까지 두면 원고료가 없습니다(제13조⑤).\n\n'
+                  : '')
             : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
         + '글은 그대로 남고, 맡은 사람만 떨어집니다 (다시 나눠주실 수 있습니다).';
       if (!confirm(msg)) return;

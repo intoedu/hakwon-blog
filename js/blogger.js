@@ -792,7 +792,9 @@
       + '</div>'
       + '<div class="grid g2" style="margin-top:14px">'
       + '<div class="card"><label class="f">분량</label><div style="font-size:20px;font-weight:750">1,200~1,500자</div></div>'
-      + '<div class="card"><label class="f">사진</label><div style="font-size:20px;font-weight:750">5~8장</div></div></div>'
+      /* 권장은 5~8장, 검수 통과 기준은 2장입니다 (2026-10-01 결정) — 둘 다 보여 줍니다 */
+      + '<div class="card"><label class="f">사진</label><div style="font-size:20px;font-weight:750">5~8장</div>'
+      + '<div class="mono" style="margin-top:3px">2장 미만이면 돌아갑니다</div></div></div>'
       /* 🔴 블로거는 학원에 가지 않고 받은 자료로 씁니다. 검수 반려 사유 칩(index.html .rj)과
          같은 말이어야 합니다 — 한쪽만 고치면 블로거가 반려 이유를 못 알아봅니다. */
       + '<div class="note warn" style="margin-top:14px"><b>직접 다녀온 것처럼 쓰면 안 됩니다.</b> '
