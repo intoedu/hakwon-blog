@@ -1251,8 +1251,11 @@
       return p.photo_note
         ? '<div class="note" style="margin:12px 0"><b>사진</b> — 학원이 링크로 주셨습니다.<br>'
         + '<a href="' + esc(p.photo_note) + '" target="_blank" rel="noopener">' + esc(p.photo_note) + ' ↗</a></div>'
+        /* 🔴 블로거는 의뢰처에 가지 않습니다 (10/1 확인). 사진은 고객이 보내 주신 것을 나눠 드립니다.
+           「직접 찍으신 사진을 5장 이상」은 가서 찍으라는 말이라 사실과 맞지 않았습니다. */
         : '<div class="note warn" style="margin:12px 0"><b>사진이 아직 없습니다.</b> '
-        + '직접 찍으신 사진(교재·시간표·안내문 등)을 5장 이상 넣어 주세요.</div>';
+        + '담당자에게 알려 주세요 — 의뢰처에서 사진을 받아 나눠 드립니다. '
+        + '직접 찍으러 가지 않으셔도 됩니다.</div>';
     }
     return '<div style="margin:12px 0"><label class="f">이 글에 쓸 사진 ' + mine.length + '장</label>'
       + '<div class="mono" style="margin-bottom:8px">글마다 다른 사진이 가도록 나눠 뒀습니다. '
