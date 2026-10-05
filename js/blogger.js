@@ -319,6 +319,7 @@
           + (p.kw_bonus ? ' + 검색어 변경 ' + won(p.kw_bonus) + '원' : '') + ' · '
         + (p.status === 'rework'
           ? '<b style="color:var(--bad)">다시 쓰기 — ' + esc((p.reject_reasons || []).join(', ')) + '</b>'
+            + (p.rework_due ? ' <span class="mono">· ' + esc(p.rework_due) + ' 22:00까지</span>' : '')
           : A.ST[p.status] ? A.ST[p.status][0] : p.status) + '</div></div>'
         + '<div class="right">'
         + '<span class="dday' + (late ? '' : ' calm') + '">'
@@ -747,7 +748,8 @@
       + A.stChip(p.status) + '</div>'
       + (p.status === 'rework' ? '<div class="note bad" style="margin-bottom:12px"><b>고쳐야 할 것</b><br>'
         + (p.reject_reasons || []).map(function (r) { return '· ' + esc(r); }).join('<br>')
-        + (p.review_note ? '<br><br>' + esc(p.review_note) : '') + '</div>' : '')
+        + (p.review_note ? '<br><br>' + esc(p.review_note) : '')
+        + reworkDueLine(p) + '</div>' : '')
       + kwChangedBox(p)
       + '<dl class="kv">'
       + '<dt>제목에 꼭 넣을 말</dt><dd><b>' + esc(p.keyword || '') + '</b></dd>'
@@ -856,7 +858,8 @@
           + '<span class="chip c-bad">고쳐 주세요</span></div>'
           + '<div class="note bad"><b>고쳐야 할 것</b><br>'
           + ((p.reject_reasons || []).map(function (r) { return '· ' + esc(r); }).join('<br>') || '·  —')
-          + (p.review_note ? '<br><br>' + esc(p.review_note) : '') + '</div>'
+          + (p.review_note ? '<br><br>' + esc(p.review_note) : '')
+          + reworkDueLine(p) + '</div>'
           + '<div class="mono" style="margin-top:8px">고치신 뒤 위 1번에서 다시 내주세요.</div></div>'
         : okd
           ? '<div class="step ok"><div class="sh"><span class="sn">2</span>검수'
@@ -1247,6 +1250,24 @@
     take(all, per - out.length);               /* 그래도 모자라면 아무거나 */
     return out;
   }
+  /* ── 다시 내야 하는 날 (2026-10-05 결정) ──
+     수정 요청을 받은 날부터 3영업일, 그날 22:00 까지입니다.
+     🔴 11월 4일부터는 이 기한을 넘겨 회수된 글에 원고료가 나가지 않습니다
+        (약관 제13조⑨ 단서 · 부칙②). 날짜는 서버가 찍습니다(blog_posts.rework_due).
+     서버 blog_biz_add() 와 화면 A.duePast() 가 같은 규칙입니다 — 한쪽만 고치지 마세요. */
+  var DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
+  function reworkDueLine(p) {
+    if (!p.rework_due) return '';
+    var d = new Date(p.rework_due + 'T00:00:00');
+    var txt = (d.getMonth() + 1) + '월 ' + d.getDate() + '일(' + DOW_KO[d.getDay()] + ') 22:00까지';
+    var past = A.duePast(p.rework_due);
+    return '<div style="margin-top:10px' + (past ? ';color:var(--bad)' : '') + '">'
+      + (past ? '<b>다시 내실 날(' + txt + ')이 지났습니다.</b> 지금이라도 내주시면 됩니다 — '
+                + '담당자에게 한 줄 알려 주세요.'
+              : '<b>' + txt + ' 다시 내 주세요.</b>')
+      + '</div>';
+  }
+
   function photoBlock(p) {
     var mine = myPhotos(p);
     if (!mine.length) {
