@@ -839,7 +839,10 @@
       + '· 마감: ' + mdKo(o.deadline) + '까지 모두 올라갑니다\n\n'
       + '글마다 어느 단계인지는 진행 현황 페이지에서 보실 수 있습니다.\n'
       + 'https://center.intomarketing.co.kr/status.html?k=' + o.share_key + '\n\n'
-      + 'ESC 학원지원 블로그 담당 ' + me + ' 드림';
+      /* 🔴 고객에게 보내는 글이라 인투마케팅입니다 (2026-10-08 채널 승인).
+         블로거에게 복사해 보내는 문구의 서명(A.SIGN)은 그대로 「ESC 학원지원 이은총 드림」입니다 —
+         그 값이 승인된 알림톡 17종의 서명이라, 바꾸면 전부 재심사입니다. */
+      + '인투마케팅 블로그 담당 ' + me + ' 드림';
   }
   async function copyText(txt, okMsg) {
     try { await navigator.clipboard.writeText(txt); A.toast(okMsg); }
