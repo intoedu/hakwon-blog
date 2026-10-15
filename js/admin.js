@@ -5283,7 +5283,12 @@
     if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
     return v || '';
   }
-  var PAY_TAIL = ['주민등록번호 (직접 입력)', '원천징수 (직접 입력)', '실지급액 (직접 입력)', '비고'];
+  /* 🔴 「원천징수 대상」은 칸만 만들어 두고 값은 비웁니다 (2026-10-15 행정).
+     교회 계좌로 가는 공동체 운영비를 원천징수 없이 지급해도 되는지는 세무사 답을 기다리는 중입니다.
+     칸 이름에 판단(「원천징수 없음」 등)을 박으면 답이 반대로 나왔을 때 세무사를 잘못 이끕니다.
+     답이 오면 이 칸을 자동으로 채우거나, 세무사가 줄마다 손으로 채웁니다. */
+  var PAY_TAIL = ['원천징수 대상 (세무사 확인)', '주민등록번호 (직접 입력)',
+                  '원천징수 (직접 입력)', '실지급액 (직접 입력)', '비고'];
 
   /* ① 개인별 지급대장 — 이 달. 블로거 원고료 + 검수 수당을 한 장에. 세무사에게 넘기는 표 */
   $('btnPayPeople').onclick = function () {
@@ -5294,7 +5299,26 @@
     var head = ['정산월', '구분', '이름', '전화번호', '이메일(로그인 아이디)', '공동체',
       '단계', '단계 이름', '편수', '편당 평균', '원고료',
       '원고 통과(편)', '노출 확인(편)', '검수 수당', '검색어 변경 보상', '지급액 합계',
-      '받는 방법', '지급 상태', '보낸 날', '받는 계좌', '예금주'].concat(PAY_TAIL);
+      /* 🔴 계좌가 두 벌입니다 (2026-10-15) — 값은 10/15 에 넣었는데 머리글이 빠져 있었습니다 */
+      '받는 방법', '지급 상태', '보낸 날',
+      '공동체 계좌', '공동체 예금주', '개인 계좌', '개인 예금주'].concat(PAY_TAIL);
+    /* 🔴 돈의 성격이 다르면 줄을 나눕니다 (2026-10-15 행정) —
+       사람 몫(원고료·검수 수당·검색어 보상)과 공동체 몫(운영비)은 세무 처리가
+       달라질 수 있어, 세무사가 줄마다 판단할 수 있어야 합니다.
+       운영비는 사람이 아니라 공동체에 가는 돈이라 지급대장에 아예 없었습니다. */
+    var opsRows = CPAY.filter(function (c) { return (c.ops_amount || 0) > 0; }).map(function (c) {
+      var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
+      return [m, '공동체 (운영비)', cm.name || '-', fmtPhone(cm.leader_phone), '', cm.name || '',
+        '', '', c.post_count || 0, '', 0,
+        '', '', 0, 0, c.ops_amount || 0,
+        '공동체로',
+        c.status === 'sent' ? '보냄' : '아직 안 보냄',
+        c.sent_at ? A.fdate(c.sent_at) : '',
+        [cm.bank_name, cm.bank_no].filter(Boolean).join(' '), cm.bank_holder || '',
+        '', '',
+        '', '', '', '', ''];
+    });
+
     var body = rows.map(function (r) {
       var cm = r.comm ? (A.COMMS.filter(function (x) { return x.name === r.comm; })[0] || {}) : {};
       var cp = r.cpRow || {};
@@ -5307,10 +5331,11 @@
         cp.sent_at ? A.fdate(cp.sent_at) : '',
         [cm.bank_name, cm.bank_no].filter(Boolean).join(' '), cm.bank_holder || '',
         [cm.pbank_name, cm.pbank_no].filter(Boolean).join(' '), cm.pbank_holder || '',
-        '', '', '', ''];
+        '', '', '', '', ''];
     });
-    saveCsv('ESC 블로그 지급대장 ' + m + '.csv', head, body);
-    A.toast(rows.length + '명의 지급대장을 저장했습니다 (블로거 · 검수자)');
+    saveCsv('ESC 블로그 지급대장 ' + m + '.csv', head, body.concat(opsRows));
+    A.toast(rows.length + '명 + 공동체 운영비 ' + opsRows.length
+      + '줄을 저장했습니다 (블로거 · 검수자 · 공동체)');
   };
 
   /* ② 공동체 이체 목록 — 이 달. 은행에서 보고 이체하는 표 */
@@ -5318,7 +5343,8 @@
     if (!CPAY.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
     var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
     var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '공동체 운영비', '검색어 변경 보상', '보낼 금액',
-      '공동체 계좌로 보낼 금액', '개인 계좌로 보낼 금액',
+      /* 🔴 칸 이름에 「원천징수 없음」 같은 판단을 박지 않습니다 (2026-10-15 행정) */
+      '공동체 계좌 금액', '개인 계좌 금액',
       '공동체 계좌 은행', '공동체 계좌번호', '공동체 예금주',
       '개인 계좌 은행', '개인 계좌번호', '개인 예금주', '리더 이름', '리더 연락처',
       '담당자', '담당자 연락처', '상태', '보낸 날', '메모'];
