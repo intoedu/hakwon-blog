@@ -5076,9 +5076,37 @@
     if (ptn && lateNoPay) ptn.innerHTML += '<br><b>주문 마감을 넘겨 올라온 글 ' + lateNoPay
       + '편</b>은 원고료를 잡지 않았습니다(약관 제13조⑤). 검수 수당은 그대로입니다.';
 
+    /* 어느 계좌로 얼마를 보낼지 한 칸에 —
+       공동체 계좌 ← 운영비 / 개인 계좌 ← 원고료 + 검수 수당 + 검색어 보상.
+       🔴 개인 계좌가 비어 있으면 나누지 않고 공동체 계좌 한 곳으로 보냅니다
+          (교회 없이 개인 영업실장만 있는 곳은 계좌를 하나만 적습니다). */
+    function payAcctCell(cm, blogAmt, rv, kw, ops) {
+      var comm = [cm.bank_name, cm.bank_no].filter(Boolean).join(' ');
+      var pers = [cm.pbank_name, cm.pbank_no].filter(Boolean).join(' ');
+      var toPerson = (Number(blogAmt) || 0) + (Number(rv) || 0) + (Number(kw) || 0);
+      var toComm = Number(ops) || 0;
+      if (!comm && !pers) return '<td class="mono" style="border-left:2px solid var(--line)">계좌 미입력</td>';
+      if (!pers) {
+        return '<td class="mono" style="border-left:2px solid var(--line)">'
+          + '<b>' + won(toComm + toPerson) + '원</b> → 공동체 ' + esc(comm) + '<br>'
+          + '<span style="color:var(--muted)">개인 계좌가 없어 한 곳으로 보냅니다</span></td>';
+      }
+      return '<td class="mono" style="border-left:2px solid var(--line)">'
+        + '<b>' + won(toComm) + '원</b> → 공동체 ' + (comm ? esc(comm) : '<span style="color:var(--bad)">계좌 없음</span>')
+        + ' <span style="color:var(--muted)">(운영비)</span><br>'
+        + '<b>' + won(toPerson) + '원</b> → 개인 ' + esc(pers)
+        + ' <span style="color:var(--muted)">(원고료 · 검수 · 검색어)</span></td>';
+    }
+
     $('payList').innerHTML = CPAY.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>공동체</th><th>인원</th><th>편수</th><th>블로거 지급</th><th>검수 수당</th>'
-      + '<th>공동체 운영비</th><th>검색어 보상</th><th>실제 이체액</th><th>계좌</th><th>상태</th><th></th></tr></thead><tbody>'
+      + '<th>공동체 운영비</th><th>검색어 보상</th><th>실제 이체액</th>'
+      /* 🔴 계좌를 둘로 나눠 보냅니다 (2026-10-15 이은총 님) —
+         공동체 운영비는 «공동체 계좌», 나머지 셋(원고료·검수 수당·검색어 보상)은 «개인 계좌».
+         교회 없이 개인 영업실장만 있는 곳은 계좌 하나만 적고, 그 한 곳으로 다 보냅니다.
+         🔴 실제로 나눠 보내는 것은 이용약관 제13조② 개정이 시행된 뒤부터입니다. */
+      + '<th style="border-left:2px solid var(--line)">어느 계좌로 얼마</th>'
+      + '<th>상태</th><th></th></tr></thead><tbody>'
       + CPAY.map(function (c) {
         var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
         var rv = Number(c.review_amount) || 0, kw = c.kw_amount || 0, ops = c.ops_amount || 0;
@@ -5090,11 +5118,7 @@
           + '<td class="num">' + (ops ? won(ops) : '<span class="mono">-</span>') + '</td>'
           + '<td class="num">' + (kw ? won(kw) : '<span class="mono">-</span>') + '</td>'
           + '<td class="num"><b>' + won(c.amount + rv + kw + ops) + '</b></td>'
-          /* 공동체 계좌와 개인 계좌 둘 다 보여 줍니다 — 어디로 보낼지는 보고 정하십니다 */
-          + '<td class="mono">' + (
-              [[cm.bank_name, cm.bank_no].filter(Boolean).join(' ') ? '공동체 ' + esc([cm.bank_name, cm.bank_no].join(' ')) : '',
-               [cm.pbank_name, cm.pbank_no].filter(Boolean).join(' ') ? '개인 ' + esc([cm.pbank_name, cm.pbank_no].join(' ')) : ''
-              ].filter(Boolean).join('<br>') || '계좌 미입력') + '</td>'
+          + payAcctCell(cm, c.amount, rv, kw, ops)
           + '<td>' + (c.status === 'sent' ? '<span class="chip c-ok">보냈음 ' + A.fdate(c.sent_at) + '</span>'
             : PAY_PREVIEW ? '<span class="chip">마감 전</span>' : '<span class="chip c-wait">아직 안 보냄</span>') + '</td>'
           + '<td>' + (c.status === 'sent' ? '' : PAY_PREVIEW ? '<span class="mono">마감 뒤</span>'
@@ -5294,6 +5318,7 @@
     if (!CPAY.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
     var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
     var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '공동체 운영비', '검색어 변경 보상', '보낼 금액',
+      '공동체 계좌로 보낼 금액', '개인 계좌로 보낼 금액',
       '공동체 계좌 은행', '공동체 계좌번호', '공동체 예금주',
       '개인 계좌 은행', '개인 계좌번호', '개인 예금주', '리더 이름', '리더 연락처',
       '담당자', '담당자 연락처', '상태', '보낸 날', '메모'];
@@ -5302,6 +5327,10 @@
       return [m, cm.name || '', c.people_count, c.post_count, c.amount, c.review_amount || 0,
         c.ops_amount || 0, c.kw_amount || 0,
         c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0),
+        /* 개인 계좌가 없으면 나누지 않고 공동체 계좌 한 곳으로 보냅니다 */
+        cm.pbank_no ? (c.ops_amount || 0)
+          : c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0),
+        cm.pbank_no ? c.amount + (c.review_amount || 0) + (c.kw_amount || 0) : 0,
         cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
         cm.pbank_name || '', cm.pbank_no || '', cm.pbank_holder || '',
         cm.leader_name || '', fmtPhone(cm.leader_phone),
