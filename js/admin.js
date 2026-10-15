@@ -1203,8 +1203,11 @@
       /* 🔴 대표(리더)와 담당자는 다를 수 있습니다 — 대표는 바빠서 못 하는 곳이 있고,
          블로거를 실제로 챙기며 센터와 이야기하는 사람은 따로인 경우가 많습니다.
          그래서 [저장] 뒤에서 한 번 끊고, 담당자는 오른쪽에 따로 둡니다. */
-      + '<thead><tr><th>이름</th><th>리더</th><th>연락처</th><th>은행</th><th>계좌번호</th><th>예금주</th>'
-      + '<th>인원</th><th></th>'
+      + '<thead><tr><th>이름</th><th>리더</th><th>연락처</th>'
+      + '<th style="border-left:2px solid var(--line)">공동체 계좌 은행</th><th>계좌번호</th><th>예금주</th>'
+      /* 공동체 계좌가 없거나 쓸 수 없는 곳이 있어 개인 계좌도 같이 받습니다 (2026-10-15) */
+      + '<th style="border-left:2px solid var(--line)">개인 계좌 은행</th><th>계좌번호</th><th>예금주</th>'
+      + '<th style="border-left:2px solid var(--line)">인원</th><th></th>'
       + '<th style="border-left:2px solid var(--line)">담당자</th><th>담당자 연락처</th></tr></thead><tbody>'
       + A.COMMS.map(function (c) {
         var n = A.PEOPLE.filter(function (p) {
@@ -1219,8 +1222,11 @@
           return p.community_id === c.id && ['approved', 'paused', 'pending', 'hold'].indexOf(p.status) >= 0;
         });
         return '<tr>' + cell('name', '이름') + cell('leader_name', '리더') + cell('leader_phone', '연락처')
-          + cell('bank_name', '국민') + cell('bank_no', '000-00-0000') + cell('bank_holder', '예금주')
-          + '<td class="num">' + n + '명</td>'
+          + cell('bank_name', '국민', 'border-left:2px solid var(--line)')
+          + cell('bank_no', '000-00-0000') + cell('bank_holder', '예금주')
+          + cell('pbank_name', '국민', 'border-left:2px solid var(--line)')
+          + cell('pbank_no', '000-00-0000') + cell('pbank_holder', '예금주')
+          + '<td class="num" style="border-left:2px solid var(--line)">' + n + '명</td>'
           + '<td><div class="row"><button class="btn btn-s" data-savec="' + c.id + '">저장</button>'
           + (mem.length ? '<button class="btn btn-s" data-mem="' + c.id + '">멤버 보기</button>' : '') + '</div></td>'
           /* 담당자 — [저장] 뒤에서 끊고 따로 둡니다. 저장은 위 [저장] 단추가 같이 합니다
@@ -1228,7 +1234,7 @@
           + cell('manager_name', '대표와 같으면 비워 두세요', 'border-left:2px solid var(--line)')
           + cell('manager_phone', '010-0000-0000')
           + '</tr>'
-          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="10"><div class="memlist">'
+          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="13"><div class="memlist">'
             + mem.map(function (p) {
               var s2 = stat(p.id);
               return '<span class="m">' + A.lvBadge(p.level) + ' <b>' + esc(p.name) + '</b>'
@@ -5084,7 +5090,11 @@
           + '<td class="num">' + (ops ? won(ops) : '<span class="mono">-</span>') + '</td>'
           + '<td class="num">' + (kw ? won(kw) : '<span class="mono">-</span>') + '</td>'
           + '<td class="num"><b>' + won(c.amount + rv + kw + ops) + '</b></td>'
-          + '<td class="mono">' + esc([cm.bank_name, cm.bank_no].filter(Boolean).join(' ') || '계좌 미입력') + '</td>'
+          /* 공동체 계좌와 개인 계좌 둘 다 보여 줍니다 — 어디로 보낼지는 보고 정하십니다 */
+          + '<td class="mono">' + (
+              [[cm.bank_name, cm.bank_no].filter(Boolean).join(' ') ? '공동체 ' + esc([cm.bank_name, cm.bank_no].join(' ')) : '',
+               [cm.pbank_name, cm.pbank_no].filter(Boolean).join(' ') ? '개인 ' + esc([cm.pbank_name, cm.pbank_no].join(' ')) : ''
+              ].filter(Boolean).join('<br>') || '계좌 미입력') + '</td>'
           + '<td>' + (c.status === 'sent' ? '<span class="chip c-ok">보냈음 ' + A.fdate(c.sent_at) + '</span>'
             : PAY_PREVIEW ? '<span class="chip">마감 전</span>' : '<span class="chip c-wait">아직 안 보냄</span>') + '</td>'
           + '<td>' + (c.status === 'sent' ? '' : PAY_PREVIEW ? '<span class="mono">마감 뒤</span>'
@@ -5272,6 +5282,7 @@
         r.comm ? (cp.status === 'sent' ? '보냄' : '아직 안 보냄') : '개별 확인',
         cp.sent_at ? A.fdate(cp.sent_at) : '',
         [cm.bank_name, cm.bank_no].filter(Boolean).join(' '), cm.bank_holder || '',
+        [cm.pbank_name, cm.pbank_no].filter(Boolean).join(' '), cm.pbank_holder || '',
         '', '', '', ''];
     });
     saveCsv('ESC 블로그 지급대장 ' + m + '.csv', head, body);
@@ -5283,7 +5294,8 @@
     if (!CPAY.length) { A.toast('이 달에 보낼 돈이 없습니다'); return; }
     var m = $('payMonth').value + (PAY_PREVIEW ? ' (마감 전 미리보기)' : '');
     var head = ['정산월', '공동체', '인원', '편수', '원고료', '검수 수당', '공동체 운영비', '검색어 변경 보상', '보낼 금액',
-      '은행', '계좌번호', '예금주', '리더 이름', '리더 연락처',
+      '공동체 계좌 은행', '공동체 계좌번호', '공동체 예금주',
+      '개인 계좌 은행', '개인 계좌번호', '개인 예금주', '리더 이름', '리더 연락처',
       '담당자', '담당자 연락처', '상태', '보낸 날', '메모'];
     var body = CPAY.map(function (c) {
       var cm = A.COMMS.filter(function (x) { return x.id === c.community_id; })[0] || {};
@@ -5291,6 +5303,7 @@
         c.ops_amount || 0, c.kw_amount || 0,
         c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0),
         cm.bank_name || '', cm.bank_no || '', cm.bank_holder || '',
+        cm.pbank_name || '', cm.pbank_no || '', cm.pbank_holder || '',
         cm.leader_name || '', fmtPhone(cm.leader_phone),
         cm.manager_name || '', fmtPhone(cm.manager_phone),
         c.status === 'sent' ? '보냄' : '아직 안 보냄',
