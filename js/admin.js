@@ -624,11 +624,14 @@
   }
 
   /* ── 블로거 목록 거르개 (2026-10-21) ──
-     눌러서 걸러 보고 몇 명인지 셉니다. 하나만 고를 수 있습니다 —
-     「교육 이수」와 「교육 미이수」를 같이 고르면 말이 안 되기 때문입니다.
+     눌러서 걸러 보고 몇 명인지 셉니다. **여러 개 고를 수 있고**, 같은 칩을
+     다시 누르면 꺼집니다.
+     🔑 여러 개 고르면 «하나라도 해당하는 사람»을 모읍니다(합집합).
+        「쉬는 블로거 + 교육 미이수」 = 둘 중 하나라도 해당하는 사람 수입니다.
+        한 사람이 두 조건에 다 걸려도 한 번만 셉니다.
      숫자는 위 거르개(공동체·단계·이름)를 적용한 뒤 세므로,
      「논산 + 교육 미이수」처럼 좁혀 볼 수 있습니다. */
-  var LIST_FILTER = '';
+  var LIST_FILTERS = [];
   var LIST_CHIPS = [
     { k: 'paused',   ko: '쉬는 블로거', tip: '쉬게 한 분입니다. 글을 받지 않습니다',
       f: function (p) { return p.status === 'paused'; } },
@@ -639,15 +642,30 @@
     { k: 'practice', ko: '연습 필요',   tip: '교육은 끝났는데 아직 올린 글이 한 편도 없습니다 (교육 이수 안에 들어갑니다)',
       f: function (p) { return !!stat(p.id).ready && needsPractice(p.id); } }
   ];
+  /* 고른 칩 중 하나라도 해당하면 포함 (합집합) */
+  function listPick(p) {
+    if (!LIST_FILTERS.length) return true;
+    return LIST_CHIPS.some(function (c) {
+      return LIST_FILTERS.indexOf(c.k) >= 0 && c.f(p);
+    });
+  }
   function renderListFilter(base) {
     var box = $('listFilter'); if (!box) return;
-    box.innerHTML = '<button data-listf=""' + (LIST_FILTER ? '' : ' class="on"') + '>전체 '
-      + base.length + '</button>'
+    var picked = base.filter(listPick).length;
+    box.innerHTML = '<button data-listf=""' + (LIST_FILTERS.length ? '' : ' class="on"')
+      + ' title="거르기를 모두 끕니다">전체 ' + base.length + '</button>'
       + LIST_CHIPS.map(function (c) {
         var n = base.filter(c.f).length;
-        return '<button data-listf="' + c.k + '"' + (LIST_FILTER === c.k ? ' class="on"' : '')
+        return '<button data-listf="' + c.k + '"'
+          + (LIST_FILTERS.indexOf(c.k) >= 0 ? ' class="on"' : '')
           + ' title="' + esc(c.tip) + '">' + c.ko + ' ' + n + '</button>';
-      }).join('');
+      }).join('')
+      + (LIST_FILTERS.length
+        ? '<span class="mono" style="margin-left:8px;align-self:center">'
+          + '고른 ' + LIST_FILTERS.length + '가지에 해당하는 사람 <b>' + picked + '명</b>'
+          + (LIST_FILTERS.length > 1 ? ' <span style="color:var(--muted)">— 하나라도 해당하면 셉니다</span>' : '')
+          + '</span>'
+        : '');
   }
 
   function renderList() {
@@ -666,13 +684,10 @@
 
     /* 칩 숫자는 거르개를 걸기 «전» 수입니다 — 눌러도 다른 칩 숫자가 흔들리지 않게 */
     renderListFilter(rows);
-    if (LIST_FILTER) {
-      var fc = LIST_CHIPS.filter(function (c) { return c.k === LIST_FILTER; })[0];
-      if (fc) rows = rows.filter(fc.f);
-    }
+    rows = rows.filter(listPick);
     if (!rows.length) {
-      $('listBox').innerHTML = A.empty(LIST_FILTER
-        ? '거르신 조건에 해당하는 블로거가 없습니다.' : '해당하는 블로거가 없습니다.');
+      $('listBox').innerHTML = A.empty(LIST_FILTERS.length
+        ? '고르신 조건에 해당하는 블로거가 없습니다.' : '해당하는 블로거가 없습니다.');
       return;
     }
 
@@ -6712,7 +6727,11 @@
     if ((t = e.target.closest('[data-pmrole]'))) { PM.role = t.dataset.pmrole; pmPaint(); return; }
 
     if ((t = e.target.closest('[data-listf]'))) {
-      LIST_FILTER = (LIST_FILTER === t.dataset.listf) ? '' : t.dataset.listf;
+      var lk = t.dataset.listf;
+      if (!lk) { LIST_FILTERS = []; }                 /* 「전체」 = 거르기 끄기 */
+      else if (LIST_FILTERS.indexOf(lk) >= 0) {       /* 다시 누르면 꺼집니다 */
+        LIST_FILTERS = LIST_FILTERS.filter(function (x) { return x !== lk; });
+      } else { LIST_FILTERS = LIST_FILTERS.concat(lk); }
       renderList();
       return;
     }
