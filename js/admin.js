@@ -1813,6 +1813,8 @@
         + (RV ? '' : '<div class="row" style="margin-top:10px">'
         + ((o.photo_paths || []).length
           ? '<span class="chip c-ok">사진 ' + o.photo_paths.length + '장 들어옴</span>'
+            + (A.picLastDate(o.photo_paths)
+              ? '<span class="chip c-info">마지막 ' + A.picLastDate(o.photo_paths) + ' 받음</span>' : '')
             + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기</button>'
             + '<span class="mono">글마다 다른 조합으로 5~8장씩 나눠 줍니다</span>'
           : o.photo_note
@@ -2040,6 +2042,7 @@
       + ((o.photo_paths || []).length
         ? '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
           + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button></div>'
+          + '<div class="mono" style="margin-top:7px">받은 때 — ' + A.picGroupText(o.photo_paths) + '</div>'
         : '<div class="note warn">사진이 없습니다. 리뷰는 사진이 생명이라 업체에 꼭 받으셔야 합니다.</div>')
 
       + '<div class="osec">5 · 만들어진 리뷰</div>'
@@ -2159,6 +2162,7 @@
           var tg = o.photo_tags || {}, n = Object.keys(tg).length;
           var sign = Object.keys(tg).filter(function (k) { return tg[k].t === '간판·외부'; }).length;
           return '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
+            + '<span class="chip c-info">받은 때 ' + A.picGroupText(o.photo_paths) + '</span>'
             + (n ? '<span class="chip c-info">꼬리표 ' + n + '장</span>'
                  : '<span class="chip c-bad">꼬리표 없음</span>')
             + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button></div>'
@@ -2226,7 +2230,11 @@
   var PICRV = false;
 
   async function showPics(o) {
-    var paths = o.photo_paths || [];
+    /* 받은 때가 같은 사진끼리 붙여 둡니다 — 아래 묶음 띠를 한 번씩만 그리려고요 */
+    var paths = [];
+    A.picGroups(o.photo_paths || []).forEach(function (g) {
+      g.paths.forEach(function (p) { paths.push(p); });
+    });
     if (!paths.length) { A.toast('받은 사진이 없습니다'); return; }
     var r = await A.sb.storage.from('request-photos').createSignedUrls(paths, 3600);
     if (r.error) throw new Error(r.error.message);
@@ -2248,7 +2256,8 @@
     var next = PICS.slice(PSHOWN, PSHOWN + 12);
     $('picBody').insertAdjacentHTML('beforeend', next.map(function (x, i) {
       var n = PSHOWN + i + 1;
-      return '<div class="piccell" data-pcell="' + esc(x.path) + '">'
+      return picBand(x, PICS[n - 2])
+        + '<div class="piccell" data-pcell="' + esc(x.path) + '">'
         + '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" class="picitem">'
         + '<img src="' + esc(x.url) + '" alt="사진 ' + n + '" style="' + rotStyle(x.path) + '">'
         + '<span>' + n + '</span></a>'
@@ -2261,6 +2270,15 @@
       : '<span class="mono">' + PICS.length + '장을 모두 보셨습니다</span>';
     if ($('picMoreBtn')) $('picMoreBtn').onclick = morePics;
     applyTagMode();
+  }
+  /* 받은 때가 바뀌는 자리마다 「언제 받았는지」 띠를 한 줄 넣습니다.
+     받은 때는 사진 파일 이름에서 읽습니다 (core.js A.picStamp 설명 참고) */
+  function picBand(x, prev) {
+    var at = A.picStamp(x.path);
+    if (prev && A.picStamp(prev.path) === at) return '';
+    var cnt = PICS.filter(function (y) { return A.picStamp(y.path) === at; }).length;
+    return '<div class="picband">' + (at ? A.fdt(at) + ' 받음' : '받은 날 모름')
+      + '<small>' + cnt + '장</small></div>';
   }
   /* 화면에서 미리 돌려 보여줍니다. 실제 파일은 내려받을 때 돌아갑니다 (core.js rotateBlob) */
   function rotStyle(path) {

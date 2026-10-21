@@ -52,6 +52,45 @@ window.ESC = (function () {
     return Math.round((new Date(d + 'T00:00:00') - new Date(A.today() + 'T00:00:00')) / 86400000);
   };
 
+  /* ── 받은 사진을 「올린 때」로 묶습니다 ──
+     🔴 blog_orders 에는 사진을 **언제** 받았는지 적는 칸이 없습니다. 대신 고객이
+     올릴 때 파일 이름 앞에 그 시각을 밀리초로 붙입니다 (status.html wireUpload:
+     `k-<열쇠>/<밀리초>-001.jpg`). 한 번에 올린 사진은 밀리초가 같아서,
+     파일 이름만으로 「언제 받은 묶음인지」를 되살릴 수 있습니다.
+     ⚠️ 올리는 쪽의 파일 이름 규칙을 바꾸면 이 묶음도 같이 깨집니다. */
+  A.picStamp = function (path) {
+    var m = String(path || '').split('?')[0].match(/\/(\d{13})-[^/]*$/);
+    return m ? Number(m[1]) : 0;
+  };
+  /* [{ at: 밀리초(이름에 없으면 0), paths: [...] }] — 최근에 받은 묶음이 먼저 */
+  A.picGroups = function (paths) {
+    var box = {}, keys = [];
+    (paths || []).forEach(function (p) {
+      var k = A.picStamp(p);
+      if (!box[k]) { box[k] = []; keys.push(k); }
+      box[k].push(p);
+    });
+    keys.sort(function (a, b) { return b - a; });
+    return keys.map(function (k) { return { at: Number(k), paths: box[k] }; });
+  };
+  /* 「2026.10.21 20장 · 2026.08.05 52장」 — 요약은 **날짜 단위**로 합칩니다.
+     같은 날 두 번에 나눠 보내와도 한 줄로 보이게요. 몇 시에 받았는지는
+     사진 보기 화면의 묶음 띠에 그대로 나옵니다. */
+  A.picGroupText = function (paths) {
+    var box = {}, keys = [];
+    A.picGroups(paths).forEach(function (g) {
+      var d = g.at ? A.fdate(g.at) : '받은 날 모름';
+      if (!box[d]) { box[d] = 0; keys.push(d); }
+      box[d] += g.paths.length;
+    });
+    return keys.map(function (d) { return d + ' ' + box[d] + '장'; }).join(' · ');
+  };
+  /* 가장 최근에 받은 날 — 없거나 이름에 시각이 없으면 빈 글자 */
+  A.picLastDate = function (paths) {
+    var g = A.picGroups(paths)[0];
+    return (g && g.at) ? A.fdate(g.at) : '';
+  };
+
   /* -- 날짜로 정한 기한은 그날 22:00 까지입니다 (2026-10-04 전 팀 공통 결정) --
      🔴 **원고 마감(권장일)에만** 씁니다. 주문 마감은 그대로 자정까지입니다 —
         약관 제2조 6호가 「의뢰 시작일 + 30일」이라 시각을 당기면 약관보다 불리해집니다.

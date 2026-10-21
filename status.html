@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>블로그 홍보 진행현황 · 인투마케팅</title>
-<link rel="stylesheet" href="app.css?v=261021b">
+<link rel="stylesheet" href="app.css?v=261021c">
 <style>
   body{background:var(--ground)}
   .pg{max-width:900px;margin:0 auto;padding:0 18px 70px}
@@ -40,6 +40,12 @@
   .rk{font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap}
   .hide{display:none !important}
   .picgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-top:14px}
+  /* 「언제 보내신 사진인지」를 격자 한 줄로 끊어 줍니다 */
+  .picband{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
+       color:var(--muted);padding:6px 2px 0;border-top:1px solid var(--line);margin-top:6px;
+       font-variant-numeric:tabular-nums}
+  .picband:first-child{border-top:0;margin-top:0;padding-top:0}
+  .picband small{font-weight:650;color:var(--ink-2)}
   .picitem{position:relative;display:block;aspect-ratio:1;border:1px solid var(--line);
            border-radius:9px;overflow:hidden;background:var(--surface-2)}
   .picitem img{width:100%;height:100%;object-fit:cover;display:block}
@@ -146,6 +152,33 @@
     if (!d) return null;
     return Math.round((new Date(d + 'T00:00:00') - new Date(todayKst() + 'T00:00:00')) / 86400000);
   }
+  /* ── 보내신 사진을 「올린 때」로 묶습니다 ──
+     사진을 올릴 때 파일 이름 앞에 그 시각을 밀리초로 붙입니다 (아래 wireUpload).
+     받은 날짜를 적는 칸이 따로 없어서 파일 이름에서 되살립니다.
+     🔴 관리자 화면 core.js 의 A.picStamp 와 **같은 규칙**입니다 — 한쪽만 고치지 마세요. */
+  function picStamp(u) {
+    var m = String(u || '').split('?')[0].match(/\/(\d{13})-[^/]*$/);
+    return m ? Number(m[1]) : 0;
+  }
+  function picGroups(urls) {
+    var box = {}, keys = [];
+    (urls || []).forEach(function (u) {
+      var k = picStamp(u);
+      if (!box[k]) { box[k] = []; keys.push(k); }
+      box[k].push(u);
+    });
+    keys.sort(function (a, b) { return b - a; });
+    return keys.map(function (k) { return { at: Number(k), urls: box[k] }; });
+  }
+  /* 받은 때가 바뀌는 자리마다 띠를 한 줄 넣습니다 */
+  function picBand(u, prev) {
+    var at = picStamp(u);
+    if (prev !== undefined && picStamp(prev) === at) return '';
+    var cnt = PICS.filter(function (y) { return picStamp(y) === at; }).length;
+    return '<div class="picband">' + (at ? fdt(at) + ' 보내심' : '보낸 날 모름')
+      + '<small>' + cnt + '장</small></div>';
+  }
+
   /* 열어도 되는 주소만 링크로 겁니다 */
   function safeUrl(u) {
     if (!u) return '';
@@ -410,7 +443,9 @@
       + '<span class="mono" id="upMsg">1회 60장까지 · <b>업로드 시 용량 자동 축소</b></span></div>'
       + (d.photos ? '<div class="msg ok" style="margin:14px 0 0">'
         + '✓ <b>' + d.photos + '장</b> 수신 완료. ' + W('담당 블로거','리뷰 작성자') + '에게 분배됩니다. '
-        + '<button class="btn btn-s" id="seeMyPics" style="margin-left:6px">🖼 전달한 사진 보기</button></div>'
+        + '<button class="btn btn-s" id="seeMyPics" style="margin-left:6px">🖼 전달한 사진 보기</button>'
+        + '<div class="mono" style="margin-top:7px">열어 보시면 <b>보내신 날짜별로 나뉘어</b> 보입니다. '
+        + '나중에 더 보내주신 사진도 따로 묶여 쌓입니다.</div></div>'
         + '<div id="myPics" class="picgrid hide"></div>' : '')
       + '</div>';
 
@@ -490,7 +525,8 @@
     var next = PICS.slice(SHOWN, SHOWN + 12);
     box.insertAdjacentHTML('beforeend', next.map(function (u, i) {
       var n = SHOWN + i + 1;
-      return '<a class="picitem" href="' + esc(u) + '" target="_blank" rel="noopener">'
+      return picBand(u, PICS[n - 2])
+        + '<a class="picitem" href="' + esc(u) + '" target="_blank" rel="noopener">'
         + '<img src="' + esc(u) + '" loading="lazy" alt="사진 ' + n + '">'
         + '<span>' + n + '</span></a>';
     }).join(''));
@@ -522,7 +558,11 @@
         });
         var j = await r.json();
         if (!r.ok) throw new Error(j.error || '오류');
-        PICS = j.urls || [];
+        /* 보낸 때가 같은 사진끼리 붙여 둡니다 — 띠를 한 번씩만 그리려고요 */
+        PICS = [];
+        picGroups(j.urls || []).forEach(function (g) {
+          g.urls.forEach(function (u) { PICS.push(u); });
+        });
         SHOWN = 0;
         box.innerHTML = '';
         box.classList.remove('hide');
