@@ -623,6 +623,33 @@
         : '');
   }
 
+  /* ── 블로거 목록 거르개 (2026-10-21) ──
+     눌러서 걸러 보고 몇 명인지 셉니다. 하나만 고를 수 있습니다 —
+     「교육 이수」와 「교육 미이수」를 같이 고르면 말이 안 되기 때문입니다.
+     숫자는 위 거르개(공동체·단계·이름)를 적용한 뒤 세므로,
+     「논산 + 교육 미이수」처럼 좁혀 볼 수 있습니다. */
+  var LIST_FILTER = '';
+  var LIST_CHIPS = [
+    { k: 'paused',   ko: '쉬는 블로거', tip: '쉬게 한 분입니다. 글을 받지 않습니다',
+      f: function (p) { return p.status === 'paused'; } },
+    { k: 'edu_no',   ko: '교육 미이수', tip: '필수 교육 영상·요약이 아직 끝나지 않았습니다. 글을 배정할 수 없습니다',
+      f: function (p) { return !stat(p.id).ready; } },
+    { k: 'edu_ok',   ko: '교육 이수',   tip: '교육이 끝나 글을 받을 수 있습니다',
+      f: function (p) { return !!stat(p.id).ready; } },
+    { k: 'practice', ko: '연습 필요',   tip: '교육은 끝났는데 아직 올린 글이 한 편도 없습니다 (교육 이수 안에 들어갑니다)',
+      f: function (p) { return !!stat(p.id).ready && needsPractice(p.id); } }
+  ];
+  function renderListFilter(base) {
+    var box = $('listFilter'); if (!box) return;
+    box.innerHTML = '<button data-listf=""' + (LIST_FILTER ? '' : ' class="on"') + '>전체 '
+      + base.length + '</button>'
+      + LIST_CHIPS.map(function (c) {
+        var n = base.filter(c.f).length;
+        return '<button data-listf="' + c.k + '"' + (LIST_FILTER === c.k ? ' class="on"' : '')
+          + ' title="' + esc(c.tip) + '">' + c.ko + ' ' + n + '</button>';
+      }).join('');
+  }
+
   function renderList() {
     var q = ($('fName').value || '').trim(), cid = $('fComm').value;
     var lvf = $('fLevel') ? $('fLevel').value : '';
@@ -636,7 +663,18 @@
       if (blogRoleOf(p.id) && !p.also_blogging) return false;
       return true;
     });
-    if (!rows.length) { $('listBox').innerHTML = A.empty('해당하는 블로거가 없습니다.'); return; }
+
+    /* 칩 숫자는 거르개를 걸기 «전» 수입니다 — 눌러도 다른 칩 숫자가 흔들리지 않게 */
+    renderListFilter(rows);
+    if (LIST_FILTER) {
+      var fc = LIST_CHIPS.filter(function (c) { return c.k === LIST_FILTER; })[0];
+      if (fc) rows = rows.filter(fc.f);
+    }
+    if (!rows.length) {
+      $('listBox').innerHTML = A.empty(LIST_FILTER
+        ? '거르신 조건에 해당하는 블로거가 없습니다.' : '해당하는 블로거가 없습니다.');
+      return;
+    }
 
     $('listBox').innerHTML = '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>이름</th><th>공동체</th><th>단계</th><th>편당</th><th>이웃</th>'
@@ -6673,6 +6711,11 @@
     if ((t = e.target.closest('[data-openpm]'))) { openPromote(t.dataset.openpm); return; }
     if ((t = e.target.closest('[data-pmrole]'))) { PM.role = t.dataset.pmrole; pmPaint(); return; }
 
+    if ((t = e.target.closest('[data-listf]'))) {
+      LIST_FILTER = (LIST_FILTER === t.dataset.listf) ? '' : t.dataset.listf;
+      renderList();
+      return;
+    }
     if ((t = e.target.closest('[data-staffk]'))) {
       var k = t.dataset.staffk;
       if (!k) STAFF_FILTER = [];
