@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261021h">
+<link rel="stylesheet" href="app.css?v=261021i">
 </head>
 <body>
 
@@ -1172,9 +1172,9 @@
     <section class="screen" data-screen="noti">
       <div class="head"><div class="step-of">챙길 것</div>
         <h1>알림 보내기</h1>
-        <p><b>센터 안 알림은 이미 자동으로 갔습니다.</b> 블로거가 로그인하면 작업함 맨 위에 떠 있습니다.
-          여기 있는 것은 <b>카톡으로 한 번 더 보낼 문구</b>입니다 —
-          <b>[복사]</b>해서 붙여넣으신 뒤 <b>[보냄]</b>으로 표시하시면 목록에서 사라집니다.</p></div>
+        <p><b>센터 안 알림도, 카카오 알림톡도 자동으로 나갑니다.</b> 손대실 것이 없습니다.
+          알림톡이 나가지 않은 것만 <b>빨간 딱지</b>가 붙습니다 — 그런 건만
+          <b>[복사]</b>해서 카톡으로 보내 주시면 됩니다.</p></div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn btn-p" id="notiScan">🔄 지금 챙길 것 찾기</button>
         <button class="btn" id="notiCopyAll">📋 보이는 것 전부 복사</button>
@@ -1267,10 +1267,14 @@
         </div>
       </details>
       <div class="note" style="margin-top:16px">
-        <b>지금은 어떻게 나가나요?</b> — 알림톡 템플릿 22종은 모두 승인되었고
-        발송 함수도 올려 런습니다. 다만 <b>자동 발송은 아직 붙이지 않았습니다</b> —
-        위 「알림톡 시험」에서 한 건씩 보내 보고, 잠모없으면 차례로 자동으로 바꿀 예정입니다.
-        그동안 이 목록에서 복사해 카톡으로 보내시면 됩니다.
+        <b>지금은 어떻게 나가나요?</b> — <b>알림이 생기면 카카오 알림톡이 자동으로 나갑니다</b>
+        (2026-10-21부터). 누르실 것이 없습니다.<br>
+        <b>안 나가는 경우</b>는 셋입니다 — ① 승인된 알림톡 문구 밖이라 막은 것
+        (<span class="chip c-bad">알림톡 안 보냄 · 따로 연락</span> 딱지가 붙습니다)
+        ② 받는 분 번호가 휴대전화가 아닌 것 ③ <b>2026년 10월 21일 전에 쌓인 알림</b>
+        (지난 안내가 지금 도착하면 혼란스러워 보내지 않습니다).
+        이런 건만 <b>[복사]</b>해서 카톡으로 보내 주세요.<br>
+        실제로 나갔는지는 위 「알림톡 시험」의 <b>[보낸 기록 보기]</b>에서 보실 수 있습니다.
       </div>
     </section>
 
@@ -1399,10 +1403,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261021h"></script>
-<script src="js/gate.js?v=261021h"></script>
-<script src="js/admin.js?v=261021h"></script>
-<script src="js/blogger.js?v=261021h"></script>
+<script src="js/core.js?v=261021i"></script>
+<script src="js/gate.js?v=261021i"></script>
+<script src="js/admin.js?v=261021i"></script>
+<script src="js/blogger.js?v=261021i"></script>
 <script>ESC.boot();</script>
 </body>
 </html>
