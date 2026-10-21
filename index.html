@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261021f">
+<link rel="stylesheet" href="app.css?v=261021g">
 </head>
 <body>
 
@@ -619,10 +619,13 @@
           <div><label class="f">주문 편수</label><input class="inp" id="no_qty" type="number" placeholder="100"></div>
           <div><label class="f">편당 받는 돈</label><input class="inp" id="no_price" type="number"></div>
         </div>
+        <!-- 🔴 마감일을 여기서 정하지 않습니다 (2026-10-21).
+             「의뢰 시작」을 누를 때 서버가 **그날 + 30일**로 정합니다
+             (order_start · 약관 제2조 6호). 여기서 넣어 봤자 어차피 덮어썼졌고,
+             약관과 다른 날짜를 넣을 위험만 있었습니다. -->
         <div class="row" style="margin-top:12px">
-          <label class="f" style="margin:0">마감일</label>
-          <input class="inp" id="no_deadline" type="date" style="width:auto">
           <button class="btn btn-p" id="btnAddOrder">주문 만들기</button>
+          <span class="mono">마감일은 <b>의뢰 시작을 누른 날부터 30일</b>로 자동으로 정해집니다</span>
         </div>
       </details>
     </section>
@@ -1396,10 +1399,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261021f"></script>
-<script src="js/gate.js?v=261021f"></script>
-<script src="js/admin.js?v=261021f"></script>
-<script src="js/blogger.js?v=261021f"></script>
+<script src="js/core.js?v=261021g"></script>
+<script src="js/gate.js?v=261021g"></script>
+<script src="js/admin.js?v=261021g"></script>
+<script src="js/blogger.js?v=261021g"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

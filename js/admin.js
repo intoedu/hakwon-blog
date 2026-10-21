@@ -7333,7 +7333,8 @@
     try {
       await A.rpc('order_create', {
         p_academy: name, p_qty: qty, p_sale: Number($('no_price').value) || sale().normal,
-        p_deadline: $('no_deadline').value || null, p_region: $('no_region').value.trim() || null
+        /* 🔴 마감일은 보내지 않습니다 — 「의뢰 시작」 때 서버가 그날 + 30일로 정합니다 */
+        p_deadline: null, p_region: $('no_region').value.trim() || null
       });
       /* 지금 보고 있는 갈래로 만듭니다 (order_create 는 블로그 기준이라 뒤에서 표시만 바꿉니다) */
       if ((A.TRACK || 'blog') === 'review') {
