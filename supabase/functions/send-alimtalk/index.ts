@@ -9,8 +9,8 @@
 // 부르는 법 ---------------------------------------------------
 //   POST /functions/v1/send-alimtalk
 //   헤더 : Authorization: Bearer <로그인한 관리자 토큰>   (센터 화면에서 시험 발송)
-//          또는 Authorization: Bearer <service_role 키>   (DB 트리거·서버에서 부를 때)
-//          또는 x-hook-secret: <ALIMTALK_HOOK_SECRET>     (열쇠를 넣어 둔 경우)
+//          또는 x-call-token: <1회용 열쇠>                 (DB 트리거에서 부를 때)
+//          또는 Authorization: Bearer <service_role 키>   (다른 서버에서 부를 때)
 //   본문 : { "kind": "request_received",
 //            "to": "01012345678",
 //            "vars": { "상호": "○○학원", "서비스명": "홈페이지 제작" },
@@ -30,7 +30,9 @@
 //   SOLAPI_API_KEY        솔라피 API Key
 //   SOLAPI_API_SECRET     솔라피 API Secret
 //   SOLAPI_SENDER         대체발송용 발신번호 (없어도 보내집니다)
-//   ALIMTALK_HOOK_SECRET  (없어도 됩니다) 서버에서 부를 때 쓰는 열쇠
+//
+// 🔴 **넣어야 하는 것은 솔라피 키 두 개뿐입니다.** 서버끼리 쓰는 열쇠는 DB 안에서
+//    1회용으로 주고받으므로(alimtalk_calls 표) 사람이 옮겨 적을 값이 없습니다.
 //
 // 템플릿 ID · 발신프로필(pfId) 은 비밀값이 아니라 센터 `settings` 표
 // key='blog' 의 `alimtalk_templates` · `alimtalk_pf` 에 있습니다.
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
     return new Response('ok', {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hook-secret',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-call-token',
       },
     });
   }
@@ -98,12 +100,17 @@ Deno.serve(async (req) => {
   );
 
   /* ── 부를 수 있는 사람인지 ──
-     ① x-hook-secret 이 맞으면 통과 (열쇠를 넣어 둔 경우)
-     ② service_role 키로 부르면 통과 (DB 트리거·서버에서 부를 때)
+     ① x-call-token 이 DB 에 있는 1회용 열쇠면 통과 (DB 트리거에서 부를 때).
+        열쇠는 5분만 살고 한 번 쓰면 끝이라, 새어 나가도 되쓸 수 없습니다.
+     ② service_role 키로 부르면 통과 (다른 서버에서 부를 때)
      ③ 아니면 로그인한 **관리자**여야 합니다 (센터 화면에서 시험 발송)
      🔴 아무나 부르게 두면 남의 번호로 알림톡을 쏠 수 있고 돈이 나갑니다. */
-  const hook = env('ALIMTALK_HOOK_SECRET');
-  let allowed = !!hook && req.headers.get('x-hook-secret') === hook;
+  let allowed = false;
+  const callToken = req.headers.get('x-call-token');
+  if (callToken) {
+    const { data } = await admin.rpc('alimtalk_use_call_token', { p_token: callToken });
+    allowed = data === true;
+  }
   if (!allowed) {
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
     if (token && token === env('SUPABASE_SERVICE_ROLE_KEY')) {
