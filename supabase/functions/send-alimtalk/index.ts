@@ -127,6 +127,28 @@ Deno.serve(async (req) => {
   if (!allowed) return json({ ok: false, error: '권한이 없습니다' }, 403);
 
   const body = await req.json().catch(() => ({}));
+
+  /* ── { "check": true } — 키가 맞는지 · 잔액이 얼마인지만 봅니다 ──
+     아무것도 보내지 않고 돈도 들지 않습니다. 솔라피 잔액 조회로 열쇠를 시험합니다. */
+  if (body.check === true) {
+    if (!env('SOLAPI_API_KEY') || !env('SOLAPI_API_SECRET')) {
+      return json({ ok: false, check: 'no_key', error: '솔라피 키가 아직 없습니다' });
+    }
+    try {
+      const r = await fetch('https://api.solapi.com/cash/v1/balance', {
+        headers: { Authorization: await authHeader() },
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        return json({ ok: false, check: 'bad_key',
+          error: (j.errorMessage ?? '') + ' (' + (j.errorCode ?? r.status) + ')' });
+      }
+      return json({ ok: true, check: 'ok', balance: j.balance ?? null, point: j.point ?? null });
+    } catch (e) {
+      return json({ ok: false, check: 'error', error: String(e) });
+    }
+  }
+
   const kind = String(body.kind ?? '').trim();
   const to = digits(body.to);
   const ref = body.ref ? String(body.ref).slice(0, 200) : null;

@@ -5851,6 +5851,36 @@
     this.disabled = false;
   };
 
+  /* 솔라피 키가 맞는지 · 잔액이 얼마인지만 봅니다 — 아무것도 보내지 않고 돈도 안 듭니다 */
+  if ($('atCheck')) $('atCheck').onclick = async function () {
+    var msg = $('atMsg');
+    this.disabled = true;
+    msg.innerHTML = '<div class="mono">확인하는 중…</div>';
+    try {
+      var r = await A.sb.functions.invoke('send-alimtalk', { body: { check: true } });
+      var d = r.data;
+      if (!d && r.error && r.error.context && r.error.context.json) {
+        d = await r.error.context.json().catch(function () { return null; });
+      }
+      if (!d) throw new Error((r.error && r.error.message) || '닿지 못했습니다');
+      msg.innerHTML = d.check === 'ok'
+        ? '<div class="note"><b>키가 맞습니다.</b> 보낼 준비가 되었습니다.'
+          + '<div class="mono" style="margin-top:4px">잔액 ' + A.won(d.balance || 0)
+          + ' · 포인트 ' + (d.point || 0) + 'P — 알림톡 한 통 14.3원으로 약 '
+          + Math.floor((Number(d.balance || 0) + Number(d.point || 0)) / 14.3) + '통 보낼 수 있습니다</div></div>'
+        : '<div class="note bad"><b>아직 보낼 수 없습니다.</b> ' + esc(d.error || '')
+          + (d.check === 'bad_key'
+            ? '<div class="mono" style="margin-top:4px">API Key 와 API Secret 이 <b>한 쌍</b>인지 확인해 주세요.</div>'
+            : d.check === 'no_key'
+              ? '<div class="mono" style="margin-top:4px">Supabase › Edge Functions › Secrets 에 '
+                + 'SOLAPI_API_KEY · SOLAPI_API_SECRET 을 넣어 주세요.</div>'
+              : '') + '</div>';
+    } catch (e) {
+      msg.innerHTML = '<div class="note bad"><b>확인하지 못했습니다.</b> ' + esc(e.message) + '</div>';
+    }
+    this.disabled = false;
+  };
+
   if ($('atLogGo')) $('atLogGo').onclick = async function () {
     var box = $('atLog');
     this.disabled = true;
