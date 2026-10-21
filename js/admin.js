@@ -119,9 +119,26 @@
 
   function stat(id) { return STATS.filter(function (s) { return s.id === id; })[0] || {}; }
   function prog(id) { return PROG.filter(function (p) { return p.id === id; })[0] || {}; }
+  /* ── 같은 학원이 여러 번 주문하면 「혼공기적학원 2」처럼 순번을 붙입니다 (2026-10-21) ──
+     주문이 한 건뿐이면 이름만 그대로 나옵니다. 순번은 주문한 날 순입니다.
+     🔴 센터 «안에서만» 씁니다 — 고객에게 보내는 문구([의뢰 시작] 안내 · 알림톡)와
+        고객 진행현황 화면에는 붙이지 않습니다. 고객은 자기 주문만 보므로 번호가 더 헷갈립니다.
+     🔴 키워드에 들어가는 학원 이름과 AI 에게 주는 정보에도 붙이면 안 됩니다. */
+  function orderLabel(o) {
+    if (!o) return '-';
+    var same = A.ORDERS.filter(function (x) { return x.academy_name === o.academy_name; });
+    if (same.length < 2) return o.academy_name;
+    same.sort(function (a, b) {
+      return String(a.ordered_at || '').localeCompare(String(b.ordered_at || ''))
+          || String(a.created_at || '').localeCompare(String(b.created_at || ''));
+    });
+    var n = 0;
+    for (var i = 0; i < same.length; i++) { if (same[i].id === o.id) { n = i + 1; break; } }
+    return o.academy_name + ' ' + n;
+  }
   function orderName(id) {
     var o = A.ORDERS.filter(function (x) { return x.id === id; })[0];
-    return o ? o.academy_name : '-';
+    return o ? orderLabel(o) : '-';
   }
   function cnt(st) { return A.PEOPLE.filter(function (x) { return x.status === st; }).length; }
 
@@ -132,7 +149,7 @@
 
   function fillSelects() {
     var opts = A.ORDERS.map(function (o) {
-      return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)</option>';
+      return '<option value="' + o.id + '">' + esc(orderLabel(o)) + ' (' + o.total_qty + '편)</option>';
     }).join('');
     /* 4번 주문 고르는 칸에는 「이미 만들었음」을 붙여 둡니다 —
        같은 학원 키워드를 또 만들어 글이 두 배로 늘어나는 사고를 막습니다 */
@@ -141,7 +158,7 @@
       var k0 = el0.value;
       el0.innerHTML = A.ORDERS.map(function (o) {
         var s = kwMade(o.id);
-        return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)'
+        return '<option value="' + o.id + '">' + esc(orderLabel(o)) + ' (' + o.total_qty + '편)'
           + (s.made ? ' — 이미 ' + s.made + '편 만듦' : ' — 아직 안 만듦') + '</option>';
       }).join('') || '<option value="">주문이 없습니다</option>';
       if (k0) el0.value = k0;
@@ -157,7 +174,7 @@
       var k1 = el1.value;
       el1.innerHTML = sorted.map(function (o) {
         var n = left(o.id);
-        return '<option value="' + o.id + '">' + esc(o.academy_name)
+        return '<option value="' + o.id + '">' + esc(orderLabel(o))
           + (n ? ' — 맡길 글 ' + n + '편' : ' — 다 맡김') + '</option>';
       }).join('') || '<option value="">주문이 없습니다</option>';
       if (k1 && A.ORDERS.some(function (o) { return o.id === k1; })) el1.value = k1;
@@ -166,7 +183,7 @@
       + A.ORDERS.filter(function (o) {
           return (o.track || 'blog') === (A.TRACK || 'blog');
         }).map(function (o) {
-          return '<option value="' + o.id + '">' + esc(o.academy_name)
+          return '<option value="' + o.id + '">' + esc(orderLabel(o))
             + ' (' + o.total_qty + '편)</option>';
         }).join('');
     /* ⚠️ 다시 채우면 고른 공동체가 풀립니다 — 쉬게 하기 · 단계 바꾸기 뒤에도 그대로 두려고 기억해 둡니다 (9/17) */
@@ -254,7 +271,7 @@
         var d = A.dday(o.deadline);
         var fin = closed(o);
         return '<tr' + (fin ? ' style="opacity:.5"' : '') + '>'
-          + '<td><b>' + esc(o.academy_name) + '</b>'
+          + '<td><b>' + esc(orderLabel(o)) + '</b>'
           + (fin ? ' <span class="chip c-off">끝난 주문</span>' : '')
           + '<div class="mono">' + esc(o.region || '') + '</div></td>'
           + '<td class="num">' + o.total_qty + '편</td>'
@@ -1758,7 +1775,7 @@
       var p = prog(o.id);
       return '<div class="card" style="margin-bottom:12px" data-ordercard="' + o.id + '">'
         + '<div class="row" style="justify-content:space-between"><div>'
-        + '<h3 style="font-size:16.5px">' + esc(o.academy_name) + ' ' + memBadge(o)
+        + '<h3 style="font-size:16.5px">' + esc(orderLabel(o)) + ' ' + memBadge(o)
         + (o.is_practice ? ' <span class="chip c-info">연습 주문</span>' : '')
         + (!RV && o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '')
         + (RV && o.visit_type === 'material' ? ' <span class="chip">자료형</span>'
@@ -2220,7 +2237,7 @@
     PICRV = (o.track || 'blog') === 'review';
     PICTAGS = Object.assign({}, o.photo_tags || {});
     PSHOWN = 0;
-    $('picTitle').textContent = o.academy_name + ' — '
+    $('picTitle').textContent = orderLabel(o) + ' — '
       + (PICRV ? '업체' : '학원') + '가 보낸 사진 ' + PICS.length + '장';
     $('picBody').innerHTML = '';
     morePics();
@@ -2884,7 +2901,7 @@
     var el = $('tpOrder'); if (!el) return;
     var k = el.value;
     el.innerHTML = A.ORDERS.map(function (o) {
-      return '<option value="' + o.id + '">' + esc(o.academy_name) + '</option>';
+      return '<option value="' + o.id + '">' + esc(orderLabel(o)) + '</option>';
     }).join('') || '<option value="">주문이 없습니다</option>';
     if (k) el.value = k;
   }
@@ -3032,7 +3049,7 @@
     var el = $('tgOrder'); if (!el) return;
     var k = el.value;
     el.innerHTML = A.ORDERS.map(function (o) {
-      return '<option value="' + o.id + '">' + esc(o.academy_name) + '</option>';
+      return '<option value="' + o.id + '">' + esc(orderLabel(o)) + '</option>';
     }).join('') || '<option value="">주문이 없습니다</option>';
     if (k) el.value = k;
   }
@@ -3143,7 +3160,7 @@
     var el = $(id); if (!el) return;
     var k = el.value;
     el.innerHTML = rvOrders().map(function (o) {
-      return '<option value="' + o.id + '">' + esc(o.academy_name) + ' (' + o.total_qty + '편)</option>';
+      return '<option value="' + o.id + '">' + esc(orderLabel(o)) + ' (' + o.total_qty + '편)</option>';
     }).join('') || '<option value="">리뷰 주문이 없습니다</option>';
     if (k) el.value = k;
   }
@@ -3175,7 +3192,7 @@
     var made = POSTS.filter(function (x) { return x.order_id === o.id; }).length;
     var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
     $('rmInfo').innerHTML = '<div class="note">'
-      + '<b>' + esc(o.academy_name) + '</b> — 주문 ' + o.total_qty + '편 · '
+      + '<b>' + esc(orderLabel(o)) + '</b> — 주문 ' + o.total_qty + '편 · '
       + '구성 합계 ' + want + '편 · <b>지금까지 만든 리뷰 ' + made + '편</b>'
       + (specs.length
         ? '<div class="tagline" style="margin-top:8px">' + specs.map(function (x) {
@@ -3537,7 +3554,7 @@
       var who = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
       return '<div class="card" style="margin-bottom:12px">'
         + '<div class="row" style="justify-content:space-between"><div>'
-        + '<h3 style="font-size:15.5px">' + esc(o.academy_name || '') + ' <span class="chip">'
+        + '<h3 style="font-size:15.5px">' + esc(orderLabel(o)) + ' <span class="chip">'
         + esc(p.category || '-') + '</span></h3>'
         + '<div class="mono" style="margin-top:3px">' + esc(who ? who.name : '?')
         + ' · ' + A.fdt(p.published_at) + ' 올림'
