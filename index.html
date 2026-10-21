@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261021d">
+<link rel="stylesheet" href="app.css?v=261021e">
 </head>
 <body>
 
@@ -1235,10 +1235,38 @@
           </div>
         </div>
       </details>
+      <!-- 🔴 알림톡 시험 발송 — 돈이 나가는 일이라 잡었습니다.
+           자동 발송은 아직 붙이지 않았습니다 — 여기서 한 건씩 보내 보고 확인하십시오. -->
+      <details id="atTestBox" style="margin-top:20px" data-adminonly>
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
+          📤 알림톡 시험으로 한 건 보내기</summary>
+        <div class="card" style="margin-top:10px">
+          <div class="note warn">진짜로 나가고 <b>돈이 듈니다</b>(한 통 14.3원).
+            처음엔 <b>비밀값이 없으니 「암리지 않았습니다」로 나오는 것이 정상</b>입니다.
+            받는 번호는 <b>본인 번호로</b> 먼제 시험하십시오.</div>
+          <div class="grid g2" style="gap:0 13px;margin-top:12px">
+            <div class="fld"><label class="f">어떤 알림으로</label>
+              <select class="inp" id="atKind"></select></div>
+            <div class="fld"><label class="f">받는 핬대전화</label>
+              <input class="inp" id="atTo" type="tel" inputmode="numeric" placeholder="010-0000-0000"></div>
+          </div>
+          <div class="fld"><label class="f">변수 — 한 줄에 하나씩 「이름=값」</label>
+            <textarea class="inp" id="atVars" style="min-height:76px"
+              placeholder="상호=○○학원&#10;서비스명=홈페이지 제작"></textarea>
+            <div class="mono" style="margin-top:4px">🔴 이름은 템플릿 변수와 글자까지 같아야 합니다. 한 글자라도 다르면 발송이 막힙니다</div></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-p btn-s" id="atGo">한 건 보내기</button>
+            <button class="btn btn-s" id="atLogGo">보낸 기록 보기</button>
+          </div>
+          <div id="atMsg" style="margin-top:12px"></div>
+          <div id="atLog"></div>
+        </div>
+      </details>
       <div class="note" style="margin-top:16px">
-        <b>왜 자동으로 안 보내나요?</b> — 카카오 알림톡은 사업자등록과 발신프로필 심사가 필요하고,
-        이메일은 도메인이 있어야 스팸함을 면합니다. 둘 다 정리되면 <b>이 목록을 그대로 읽어 자동으로 나가게</b>
-        붙일 수 있습니다. 지금은 문구까지만 만들어 두고 보내는 것은 사람이 합니다.
+        <b>지금은 어떻게 나가나요?</b> — 알림톡 템플릿 22종은 모두 승인되었고
+        발송 함수도 올려 런습니다. 다만 <b>자동 발송은 아직 붙이지 않았습니다</b> —
+        위 「알림톡 시험」에서 한 건씩 보내 보고, 잠모없으면 차례로 자동으로 바꿀 예정입니다.
+        그동안 이 목록에서 복사해 카톡으로 보내시면 됩니다.
       </div>
     </section>
 
@@ -1367,10 +1395,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261021d"></script>
-<script src="js/gate.js?v=261021d"></script>
-<script src="js/admin.js?v=261021d"></script>
-<script src="js/blogger.js?v=261021d"></script>
+<script src="js/core.js?v=261021e"></script>
+<script src="js/gate.js?v=261021e"></script>
+<script src="js/admin.js?v=261021e"></script>
+<script src="js/blogger.js?v=261021e"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

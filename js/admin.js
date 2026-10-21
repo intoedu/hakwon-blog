@@ -5778,7 +5778,103 @@
             + (on[k] === false ? '' : ' checked') + '>' + esc(kindKo(k)) + '</label>';
         }).join('') + '</div>';
     }).join('');
+    renderAtTest();
   }
+  /* ── 📤 알림톡 시험 발송 ──
+     자동 발송을 붙이기 전에, 진짜로 나가는지를 한 건씩 보며 확인하는 칸입니다.
+     🔴 돈이 나가므로 한 번 더 물어봅니다. 템플릿·발신프로필·채널 가르기는
+        모두 서버 함수(send-alimtalk)가 합니다 — 화면은 골라 주기만 합니다. */
+  function atTemplates() {
+    var t = NOTI_SET.alimtalk_templates || {};
+    return Object.keys(t).sort().map(function (k) {
+      return { kind: k, name: (t[k] || {}).name || k, approved: (t[k] || {}).approved };
+    });
+  }
+  /* 고객에게 가는 알림 — 인투마케팅 채널로 나갑니다 (서버 함수와 같은 목록) */
+  var AT_CUSTOMER = ['order_paid', 'first_post', 'half', 'order_done', 'request_received'];
+
+  function renderAtTest() {
+    var sel = $('atKind'); if (!sel) return;
+    var ts = atTemplates();
+    sel.innerHTML = ts.length
+      ? ts.map(function (t) {
+        return '<option value="' + esc(t.kind) + '">' + esc(t.name)
+          + ' — ' + (AT_CUSTOMER.indexOf(t.kind) >= 0 ? '인투마케팅' : 'ESC')
+          + (t.approved ? '' : ' (승인 전)') + '</option>';
+      }).join('')
+      : '<option value="">등록된 템플릿이 없습니다</option>';
+  }
+
+  function atParseVars(text) {
+    var out = {};
+    String(text || '').split(/\r?\n/).forEach(function (line) {
+      var i = line.indexOf('=');
+      if (i <= 0) return;
+      var k = line.slice(0, i).trim(), v = line.slice(i + 1).trim();
+      if (k) out[k] = v;
+    });
+    return out;
+  }
+
+  if ($('atGo')) $('atGo').onclick = async function () {
+    var kind = $('atKind').value;
+    var to = ($('atTo').value || '').replace(/[^0-9]/g, '');
+    var vars = atParseVars($('atVars').value);
+    var msg = $('atMsg');
+    if (!kind) { A.toast('보낼 알림을 골라 주세요'); return; }
+    if (!to) { A.toast('받는 번호를 적어 주세요'); return; }
+    var nm = ($('atKind').selectedOptions[0] || {}).textContent || kind;
+    if (!confirm('「' + nm + '」 를\n' + to + ' 로 보냅니다.'
+      + '\n\n진짜로 나가고 돈이 듭니다 (한 통 14.3원). 계속할까요?')) return;
+
+    this.disabled = true;
+    msg.innerHTML = '<div class="mono">보내는 중…</div>';
+    try {
+      var r = await A.sb.functions.invoke('send-alimtalk', {
+        body: { kind: kind, to: to, vars: vars, ref: null }
+      });
+      /* 서버가 ok:false 로 돌려주면 invoke 는 error 로 봅니다 — 본문을 지에 읽어 보여 줍니다 */
+      var d = r.data;
+      if (!d && r.error && r.error.context && r.error.context.json) {
+        d = await r.error.context.json().catch(function () { return null; });
+      }
+      if (!d) throw new Error((r.error && r.error.message) || '닿지 못했습니다');
+      msg.innerHTML = d.ok === true && d.message_id
+        ? '<div class="note"><b>보냈습니다.</b> 카톡을 확인해 보세요.'
+          + '<div class="mono" style="margin-top:4px">솔라피 글 번호 ' + esc(d.message_id) + '</div></div>'
+        : d.ok === true
+          ? '<div class="note warn"><b>보내지 않았습니다.</b> ' + esc(d.skipped || '') + '</div>'
+          : '<div class="note bad"><b>실패했습니다.</b> ' + esc(d.error || '') + '</div>';
+    } catch (e) {
+      msg.innerHTML = '<div class="note bad"><b>실패했습니다.</b> ' + esc(e.message) + '</div>';
+    }
+    this.disabled = false;
+  };
+
+  if ($('atLogGo')) $('atLogGo').onclick = async function () {
+    var box = $('atLog');
+    this.disabled = true;
+    var r = await A.sb.from('alimtalk_log')
+      .select('created_at,kind,channel,to_phone,status,error,message_id')
+      .order('created_at', { ascending: false }).limit(20);
+    this.disabled = false;
+    if (r.error) { box.innerHTML = '<div class="note bad">기록을 읽지 못했습니다: ' + esc(r.error.message) + '</div>'; return; }
+    var rows = r.data || [];
+    if (!rows.length) { box.innerHTML = '<div class="mono" style="margin-top:10px">아직 보낸 기록이 없습니다.</div>'; return; }
+    box.innerHTML = '<table class="tbl" style="margin-top:12px"><thead><tr>'
+      + '<th>때</th><th>알림</th><th>채널</th><th>받는 번호</th><th>결과</th></tr></thead><tbody>'
+      + rows.map(function (x) {
+        var ko = x.status === 'sent' ? '<span class="chip c-ok">보냄</span>'
+          : x.status === 'skipped' ? '<span class="chip c-wait">안 보냄</span>'
+            : '<span class="chip c-bad">실패</span>';
+        return '<tr><td class="mono">' + A.fdt(x.created_at) + '</td>'
+          + '<td>' + esc(kindKo(x.kind) || x.kind) + '</td>'
+          + '<td class="mono">' + (x.channel === 'intomarketing' ? '인투마케팅' : 'ESC') + '</td>'
+          + '<td class="mono">' + esc(fmtPhone(x.to_phone)) + '</td>'
+          + '<td>' + ko + (x.error ? ' <span class="mono">' + esc(x.error) + '</span>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  };
+
   $('notiSetSave').onclick = async function () {
     this.disabled = true;
     var on = {};
