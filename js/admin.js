@@ -2041,9 +2041,16 @@
       + '<div class="osec">4 · 사진</div>'
       + ((o.photo_paths || []).length
         ? '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
-          + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button></div>'
+          + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button>'
+          + (photoDonors(o).length
+            ? '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>' : '')
+          + '</div>'
           + '<div class="mono" style="margin-top:7px">받은 때 — ' + A.picGroupText(o.photo_paths) + '</div>'
-        : '<div class="note warn">사진이 없습니다. 리뷰는 사진이 생명이라 업체에 꼭 받으셔야 합니다.</div>')
+        : '<div class="note warn">사진이 없습니다. 리뷰는 사진이 생명이라 업체에 꼭 받으셔야 합니다.'
+          + (photoDonors(o).length
+            ? '<div class="row" style="margin-top:9px">'
+              + '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>'
+              + '</div>' : '') + '</div>')
 
       + '<div class="osec">5 · 만들어진 리뷰</div>'
       + (made
@@ -2165,7 +2172,10 @@
             + '<span class="chip c-info">받은 때 ' + A.picGroupText(o.photo_paths) + '</span>'
             + (n ? '<span class="chip c-info">꼬리표 ' + n + '장</span>'
                  : '<span class="chip c-bad">꼬리표 없음</span>')
-            + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button></div>'
+            + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button>'
+            + (photoDonors(o).length
+              ? '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>' : '')
+            + '</div>'
             + (n
               ? '<div class="mono" style="margin-top:7px">'
                 + (sign ? '간판·외부 ' + sign + '장이 글마다 맨 앞에 한 장씩 들어갑니다. '
@@ -2176,7 +2186,14 @@
                 + '영어 이야기를 쓰는 글에 수학 사진이 가고, 간판 사진이 한 장도 없는 글이 생깁니다. '
                 + '<b>[🖼 사진 보기]</b> → <b>[🏷 꼬리표 달기]</b> 에서 달아 주세요.</div>');
         })()
-        : '<div class="mono">받은 사진이 없습니다.</div>')
+        : '<div class="mono">받은 사진이 없습니다.</div>'
+          + (photoDonors(o).length
+            ? '<div class="note warn" style="margin-top:9px">'
+              + '<b>사진이 없으면 블로거에게 줄 것이 없습니다.</b> 고객에게 새 사진을 받는 것이 '
+              + '원칙이지만, 급하시면 이전 주문 사진을 끌어올 수 있습니다.'
+              + '<div class="row" style="margin-top:9px">'
+              + '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>'
+              + '</div></div>' : ''))
 
       + '<div class="osec">5 · 광고 표시 문구 <small>법으로 정해진 표시 · 글마다 다른 문장이 뜹니다</small></div>'
       + (ads.length
@@ -2228,6 +2245,62 @@
      리뷰에는 과목이 없으므로 과목 칸은 숨깁니다. */
   var PT_KIND_RV = ['영수증', '실제 사진'];
   var PICRV = false;
+
+  /* ── 이전 주문 사진 가져오기 ──
+     같은 학원이 주문을 또 하면 새 주문은 사진이 0장입니다. 원칙은 고객에게
+     **새로 받는 것**이고(쓴 사진을 다시 돌리면 네이버가 중복으로 잡습니다),
+     급할 때만 이 길을 씁니다. 서버는 같은 학원끼리만 허용합니다 (order_pull_photos). */
+  function photoDonors(o) {
+    return A.ORDERS.filter(function (x) {
+      return x.id !== o.id && x.academy_name === o.academy_name
+        && (x.photo_paths || []).length;
+    }).sort(function (a, b) {
+      return String(b.ordered_at || '').localeCompare(String(a.ordered_at || ''));
+    });
+  }
+  /* 그 주문 사진이 이미 몇 편 글에 나갔는지 — 중복 위험을 가늠하시게 */
+  function donorUsed(oid) {
+    return POSTS.filter(function (x) {
+      return x.order_id === oid && ['published', 'verified', 'paid'].indexOf(x.status) >= 0;
+    }).length;
+  }
+  function showPullPhotos(o) {
+    var ds = photoDonors(o);
+    if (!ds.length) { A.toast('가져올 사진이 있는 이전 주문이 없습니다'); return; }
+    var m = $('pullModal');
+    if (!m) {
+      m = document.createElement('div'); m.id = 'pullModal'; m.className = 'ovl hide';
+      document.body.appendChild(m);
+    }
+    m.innerHTML = '<div class="ovlcard" style="max-width:520px">'
+      + '<h3>' + esc(orderLabel(o)) + ' — 이전 주문 사진 가져오기</h3>'
+      + '<div class="note warn" style="margin:12px 0">'
+      + '<b>원칙은 고객에게 새 사진을 받는 것입니다.</b> 이미 글에 쓴 사진을 다시 쓰면 '
+      + '네이버가 <b>중복으로 잡아 글이 밀립니다.</b> 새 사진을 받기 어려울 때만 쓰세요.</div>'
+      + ds.map(function (d) {
+        var used = donorUsed(d.id);
+        return '<div class="person" style="margin-top:10px">'
+          + '<h4>' + esc(orderLabel(d)) + '</h4>'
+          + '<div class="mono" style="margin-top:4px">'
+          + A.fdate(d.ordered_at) + ' 의뢰 · ' + d.total_qty + '편 · 사진 '
+          + d.photo_paths.length + '장'
+          + (Object.keys(d.photo_tags || {}).length
+            ? ' · 꼬리표 ' + Object.keys(d.photo_tags).length + '장 (함께 옵니다)'
+            : ' · 꼬리표 없음') + '</div>'
+          + '<div class="mono" style="margin-top:4px">받은 때 — '
+          + A.picGroupText(d.photo_paths) + '</div>'
+          + (used
+            ? '<div class="note warn" style="margin-top:8px">이 사진은 이미 <b>' + used
+              + '편</b> 글에 나갔습니다. 중복 위험이 큽니다.</div>'
+            : '<div class="mono" style="margin-top:6px">아직 글에 나간 적이 없습니다.</div>')
+          + '<div class="row" style="margin-top:9px">'
+          + '<button class="btn btn-s" data-pulldo="' + o.id + ':' + d.id + '">'
+          + '이 주문에서 ' + d.photo_paths.length + '장 가져오기</button></div></div>';
+      }).join('')
+      + '<div class="row" style="margin-top:16px"><button class="btn" data-pullclose="1">닫기</button></div>'
+      + '</div>';
+    m.classList.remove('hide');
+  }
 
   async function showPics(o) {
     /* 받은 때가 같은 사진끼리 붙여 둡니다 — 아래 묶음 띠를 한 번씩만 그리려고요 */
@@ -6894,6 +6967,34 @@
         A.toast(dn2 + '편을 지웠습니다');
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); }
+      return;
+    }
+
+    if ((t = e.target.closest('[data-pullpics]'))) {
+      var pullO = A.ORDERS.filter(function (x) { return x.id === t.dataset.pullpics; })[0];
+      if (pullO) showPullPhotos(pullO);
+      return;
+    }
+    if ((t = e.target.closest('[data-pullclose]'))) {
+      var pm0 = $('pullModal'); if (pm0) { pm0.classList.add('hide'); pm0.innerHTML = ''; }
+      return;
+    }
+    if ((t = e.target.closest('[data-pulldo]'))) {
+      var ids = t.dataset.pulldo.split(':');
+      var fromO = A.ORDERS.filter(function (x) { return x.id === ids[1]; })[0];
+      if (!confirm((fromO ? orderLabel(fromO) + ' 의 ' : '') + '사진을 가져옵니다.'
+        + '\n\n이미 글에 쓴 사진이면 네이버가 중복으로 잡을 수 있습니다. 계속할까요?')) return;
+      t.disabled = true;
+      try {
+        var pr = await A.rpc('order_pull_photos', { p_order: ids[0], p_from: ids[1] });
+        var pm1 = $('pullModal'); if (pm1) { pm1.classList.add('hide'); pm1.innerHTML = ''; }
+        A.toast(pr.added + '장을 가져왔습니다 (이 주문 사진 ' + pr.total + '장)');
+        await A.loadAdmin();
+        renderOrders();
+      } catch (err) {
+        A.toast('가져오지 못했습니다: ' + err.message);
+        t.disabled = false;
+      }
       return;
     }
 
