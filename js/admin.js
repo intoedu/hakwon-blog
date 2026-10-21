@@ -5679,6 +5679,48 @@
       }).join('') + '</div>';
   }
 
+  /* ── 📤 알림을 그대로 알림톡으로 보내기 ──
+     알림을 만들 때 템플릿 변수가 같이 담기므로(notifications.vars),
+     손으로 적을 것이 없습니다. 단추만 누르면 됩니다.
+     🔴 변수가 없는 알림(오늘 전에 쌓인 것)은 보낼 수 없습니다 — 단추가 안 나옵니다. */
+  function notiPhone(n) {
+    if (n.blogger_id) {
+      var p = A.PEOPLE.filter(function (x) { return x.id === n.blogger_id; })[0];
+      return p ? (p.phone || '') : '';
+    }
+    if (n.order_id) {
+      var o = A.ORDERS.filter(function (x) { return x.id === n.order_id; })[0];
+      return o ? (o.contact_phone || '') : '';
+    }
+    return '';
+  }
+  function notiCanSend(n) {
+    return n.audience !== 'staff'
+      && n.alimtalk_ok !== false
+      && n.vars && Object.keys(n.vars).length > 0
+      && !n.sent_at
+      && !!notiPhone(n);
+  }
+  /* 한 건 보냅니다. 돌려주는 값 : {ok:true} / {skipped:'이유'} / {error:'사유'} */
+  async function notiSendOne(n) {
+    var r = await A.sb.functions.invoke('send-alimtalk', {
+      body: { kind: n.kind, to: notiPhone(n), vars: n.vars, ref: 'noti:' + n.id }
+    });
+    var d = r.data;
+    if (!d && r.error && r.error.context && r.error.context.json) {
+      d = await r.error.context.json().catch(function () { return null; });
+    }
+    if (!d) return { error: (r.error && r.error.message) || '닿지 못했습니다' };
+    if (d.ok && d.message_id) {
+      await A.sb.from('notifications')
+        .update({ sent_at: new Date().toISOString() }).eq('id', n.id);
+      n.sent_at = new Date().toISOString();
+      return { ok: true };
+    }
+    if (d.ok) return { skipped: d.skipped || '보내지 않았습니다' };
+    return { error: d.error || '실패했습니다' };
+  }
+
   function renderNoti() {
     /* 검수자는 '우리끼리 챙길 것'만 보고, 보내는 일은 하지 않습니다 */
     var rev = !A.IS_ADMIN;
@@ -5694,7 +5736,18 @@
         : '보낼 것이 없습니다. 위 [지금 챙길 것 찾기]를 눌러보세요.');
       return;
     }
-    $('notiList').innerHTML = rows.map(function (n) {
+    var sendable = rows.filter(notiCanSend);
+    $('notiList').innerHTML =
+      (rev || !sendable.length ? '' :
+        '<div class="note" style="margin-bottom:12px">'
+        + '<b>알림톡으로 보낼 수 있는 알림이 ' + sendable.length + '건</b> 있습니다. '
+        + '변수는 이미 담겨 있어 따로 적으실 것이 없습니다.'
+        + '<div class="row" style="margin-top:9px">'
+        + '<button class="btn btn-p btn-s" id="notiSendAll">📤 ' + sendable.length + '건 모두 보내기</button>'
+        + '<span class="mono">한 통 14.3원 · 모두 보내면 약 '
+        + Math.round(sendable.length * 14.3).toLocaleString() + '원</span></div>'
+        + '<div id="notiSendMsg" style="margin-top:9px"></div></div>')
+      + rows.map(function (n) {
       var w = notiWho(n);
       return '<div class="card" style="margin-bottom:10px"'
         + (n.sent_at ? ' data-sentcard="1"' : '') + '>'
@@ -5710,6 +5763,8 @@
         + '<div class="mono" style="margin-top:3px">' + esc(w.sub || '') + '</div></div>'
         + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
         + (n.audience === 'staff' || rev ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '">📋 복사</button>')
+        + (rev || !notiCanSend(n) ? ''
+          : '<button class="btn btn-a btn-s" data-notisend="' + n.id + '">📤 알림톡</button>')
         + (n.sent_at || rev ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
           + (n.audience === 'staff' ? '확인함' : '보냄') + '</button>')
         + '</span></div>'
@@ -5793,6 +5848,42 @@
   /* 고객에게 가는 알림 — 인투마케팅 채널로 나갑니다 (서버 함수와 같은 목록) */
   var AT_CUSTOMER = ['order_paid', 'first_post', 'half', 'order_done', 'request_received'];
 
+  /* 알림 종류별로 필요한 템플릿 변수 이름 — 시험 칸을 자동으로 채워 줍니다.
+     🔴 정본은 `학원지원센터/알림톡-변수표-1021.md` 입니다. 한 글자라도 다르면 발송이 막힙니다. */
+  var VARS_BY_KIND = {
+    approved: ['이름'],
+    rejected: ['이름', '사유'],
+    assigned: ['이름', '학원명', '검색어', '마감일', '주문마감일'],
+    due1: ['이름', '마감일', '학원명', '검색어'],
+    overdue: ['이름', '마감일', '학원명', '검색어', '주문마감일'],
+    rework: ['이름', '학원명', '검색어', '사유', '메모'],
+    approved_post: ['이름'],
+    pub_late: ['이름', '올릴날', '학원명', '검색어', '주문마감일'],
+    keyword_changed: ['이름', '학원명', '예전검색어', '새검색어', '바꾼이유', '안내1', '안내2'],
+    taken_back: ['이름', '학원명', '검색어', '사유', '안내'],
+    info_changed: ['이름', '학원명', '바뀜내용', '편수'],
+    edu_wait: ['이름'],
+    edu_ok: ['자료제목', '메모'],
+    edu_no: ['자료제목', '메모'],
+    payout: ['이름', '정산월', '편수', '금액', '공동체명'],
+    deadline_passed: ['이름', '주문마감일', '학원명', '검색어'],
+    guardian_consent: ['이름', '나이', '공동체명', '동의키'],
+    order_paid: ['학원명', '편수', '마감', '주소키'],
+    first_post: ['학원명', '검색어', '순위', '주소키'],
+    half: ['학원명', '주문편수', '올라간편수', '주소키'],
+    order_done: ['학원명', '편수', '주소키'],
+    request_received: ['상호', '서비스명']
+  };
+  function atFillVars() {
+    var k = ($('atKind') || {}).value, box = $('atVars');
+    if (!box || !k) return;
+    var names = VARS_BY_KIND[k];
+    box.value = names
+      ? names.map(function (v) { return v + '='; }).join('\n')
+      : '';
+    box.placeholder = names ? '' : '이 종류의 변수를 모릅니다 — 변수표를 보고 적어 주세요';
+  }
+
   function renderAtTest() {
     var sel = $('atKind'); if (!sel) return;
     var ts = atTemplates();
@@ -5803,6 +5894,8 @@
           + (t.approved ? '' : ' (승인 전)') + '</option>';
       }).join('')
       : '<option value="">등록된 템플릿이 없습니다</option>';
+    sel.onchange = atFillVars;
+    atFillVars();
   }
 
   function atParseVars(text) {
@@ -7039,6 +7132,44 @@
       return;
     }
 
+    /* 📤 이 알림을 그대로 알림톡으로 — 변수는 알림에 담겨 있습니다 */
+    if ((t = e.target.closest('[data-notisend]'))) {
+      var sn = NOTI.filter(function (x) { return x.id === t.dataset.notisend; })[0];
+      if (!sn) return;
+      if (!confirm('「' + sn.title + '」 를 ' + notiWho(sn).name + ' 님께\n'
+        + fmtPhone(notiPhone(sn)) + ' 로 알림톡 보냅니다. (14.3원)')) return;
+      t.disabled = true; t.textContent = '보내는 중…';
+      var sr = await notiSendOne(sn);
+      if (sr.ok) { A.toast('보냈습니다'); renderNoti(); }
+      else {
+        A.toast(sr.skipped ? '보내지 않았습니다: ' + sr.skipped : '실패: ' + sr.error);
+        t.disabled = false; t.textContent = '📤 알림톡';
+      }
+      return;
+    }
+    /* 보낼 수 있는 것을 한꺼번에 — 한 건씩 차례로 보내고 결과를 줄로 쌓습니다 */
+    if ((t = e.target.closest('#notiSendAll'))) {
+      var list = notiRows().filter(notiCanSend);
+      if (!list.length) { A.toast('보낼 수 있는 알림이 없습니다'); return; }
+      if (!confirm(list.length + '건을 알림톡으로 보냅니다.\n\n'
+        + '진짜로 나가고 약 ' + Math.round(list.length * 14.3).toLocaleString()
+        + '원이 듭니다. 계속할까요?')) return;
+      t.disabled = true;
+      var box = $('notiSendMsg'), ok = 0, skip = 0, bad = 0;
+      for (var i = 0; i < list.length; i++) {
+        box.innerHTML = '<div class="mono">' + list.length + '건 중 ' + (i + 1) + '건째 보내는 중…</div>';
+        var rr = await notiSendOne(list[i]);
+        if (rr.ok) ok++;
+        else if (rr.skipped) { skip++; box.insertAdjacentHTML('beforeend',
+          '<div class="mono">· ' + esc(notiWho(list[i]).name) + ' — 안 보냄: ' + esc(rr.skipped) + '</div>'); }
+        else { bad++; box.insertAdjacentHTML('beforeend',
+          '<div class="mono">🔴 ' + esc(notiWho(list[i]).name) + ' — 실패: ' + esc(rr.error) + '</div>'); }
+      }
+      box.insertAdjacentHTML('beforeend', '<div class="note" style="margin-top:9px"><b>끝났습니다.</b> '
+        + '보냄 ' + ok + '건 · 안 보냄 ' + skip + '건 · 실패 ' + bad + '건</div>');
+      await A.loadAdmin();
+      return;
+    }
     if ((t = e.target.closest('[data-notisent]'))) {
       t.disabled = true;
       try { await A.rpc('notify_sent', { p_ids: [t.dataset.notisent] }); await loadNoti(false); }
