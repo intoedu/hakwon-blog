@@ -851,7 +851,7 @@
     var s2 = st === 'submitted'
       ? '<div class="step wait"><div class="sh"><span class="sn">2</span>검수'
         + '<span class="chip c-wait">보는 중</span></div>'
-        + '<div class="mono">담당자가 원고를 읽고 있습니다. <b>하루 안에</b> 결과를 알려드립니다. '
+        + '<div class="mono">담당자가 원고를 읽고 있습니다. <b>2영업일 안에</b> 결과를 알려드립니다. '
         + '결과가 나오면 이 자리에 뜨고, 알림도 갑니다.</div></div>'
       : st === 'rework'
         ? '<div class="step bad"><div class="sh"><span class="sn">2</span>검수'
@@ -976,7 +976,7 @@
           p_post: p.id, p_url: u, p_memo: $('docMemo').value.trim() || null,
           p_face_known: true
         });
-        A.toast('냈습니다. 하루 안에 결과를 알려드립니다');
+        A.toast('냈습니다. 2영업일 안에 결과를 알려드립니다');
         await A.loadBlogger(); A.show('b-inbox');
       } catch (e) { A.toast('실패: ' + e.message); this.disabled = false; }
     };
@@ -1132,11 +1132,15 @@
   function dailyRule() {
     var f = A.FORM || {};
     var n = Number(f.daily_limit) || 1;
-    if (n <= 1) return '오늘 이미 다른 글을 올리셨다면 내일 올려 주세요 <b>(하루 한 편)</b>';
-    return '하루에 <b>' + n + '편까지</b> 올리실 수 있습니다'
-      + (f.same_academy_daily === 0 ? ''
+    /* 같은 학원 글을 한 사람이 한 달에 몇 편까지 맡는지 (2026-10-25 새 기준) */
+    var am = Number(f.same_academy_month) || 0;
+    var tail = (f.same_academy_daily === 0 ? ''
         : ' — 다만 <b>같은 학원 글은 하루 한 편만</b> 올려 주세요. '
-          + '한 블로그에 같은 학원 글이 몰리면 광고 블로그로 보여 둘 다 검색에서 밀립니다');
+          + '한 블로그에 같은 학원 글이 몰리면 광고 블로그로 보여 둘 다 검색에서 밀립니다')
+      + (am ? '<br>같은 학원 글은 한 달에 <b>' + am + '편까지</b>만 맡겨 드립니다.' : '');
+    if (n <= 1) return '오늘 이미 다른 글을 올리셨다면 내일 올려 주세요 <b>(하루 한 편)</b>'
+      + (am ? '<br>같은 학원 글은 한 달에 <b>' + am + '편까지</b>만 맡겨 드립니다.' : '');
+    return '하루에 <b>' + n + '편까지</b> 올리실 수 있습니다' + tail;
   }
   function adBlock(p) {
     var line = adLineOf(p);
@@ -1363,7 +1367,8 @@
           + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 보기</button>'
           + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'
           + '</div><div id="picBox" style="margin-top:10px"></div>'
-        : '<div class="mono">받은 사진이 없습니다. 직접 찍으신 사진을 쓰셔도 됩니다.</div>')
+        : '<div class="mono">받은 사진이 없습니다. 담당자에게 알려 주세요 — '
+          + '의뢰처에서 사진을 받아 나눠 드립니다.</div>')
       + '</div>';
 
     /* ③ 올리고 캡처 */

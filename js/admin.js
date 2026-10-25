@@ -3100,6 +3100,7 @@
     var f = A.FORM || {};
     $('dailyLimit').value = String(f.daily_limit || 1);
     $('sameAcad').checked = f.same_academy_daily !== 0;
+    $('acadMonth').value = String(f.same_academy_month || 3);
     /* ⚠️ 값이 없으면 「요구함」이 기본입니다 (서버 blog_require_t1() 과 같은 규칙) */
     if ($('reqT1')) $('reqT1').checked = f.require_t1 !== false;
     var cap = Number(A.MONTH_CAP) || 30;
@@ -3117,6 +3118,8 @@
     v.form = Object.assign({}, v.form, {
       daily_limit: Number($('dailyLimit').value) || 1,
       same_academy_daily: $('sameAcad').checked ? 1 : 0,
+      /* 같은 학원 글을 한 사람에게 한 달에 몇 편까지 — posts_auto_assign 이 읽습니다 */
+      same_academy_month: Math.max(1, Number($('acadMonth').value) || 3),
       /* 1차 줌을 배정 조건으로 볼지 — 서버 blog_require_t1() 이 같은 값을 읽습니다 */
       require_t1: $('reqT1') ? !!$('reqT1').checked : true
     });
