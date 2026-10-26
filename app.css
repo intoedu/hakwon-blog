@@ -94,6 +94,28 @@ a{color:var(--info)}
 .picitem img{width:100%;height:100%;object-fit:cover;display:block}
 .picitem span{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.6);color:#fff;
      font-size:11px;padding:1px 6px;border-radius:20px;font-variant-numeric:tabular-nums}
+/* 📖 지침 — 매뉴얼 창이 만든 HTML 을 센터 모양으로 입혀 보여 줍니다.
+   표와 상자(.box · .box.warn · .box.bad)가 구분되어 보이는 것이 핵심입니다 */
+.guidebox{line-height:1.75;font-size:14px}
+.guidebox h1{font-size:21px;margin:0 0 14px}
+.guidebox h2{font-size:17px;margin:26px 0 10px;padding-top:16px;border-top:1px solid var(--line)}
+.guidebox h2:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.guidebox h3{font-size:14.5px;margin:18px 0 7px}
+.guidebox p{margin:0 0 11px}
+.guidebox ul,.guidebox ol{margin:0 0 12px;padding-left:20px}
+.guidebox li{margin:4px 0}
+.guidebox code{background:var(--surface-2);border:1px solid var(--line);border-radius:5px;
+     padding:1px 5px;font-size:12.5px}
+.guidebox table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+.guidebox th,.guidebox td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.guidebox th{background:var(--surface-2);font-weight:700}
+.guidebox .box{margin:12px 0;padding:12px 14px;border-radius:9px;
+     background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--ink-2)}
+.guidebox .box.warn{background:var(--wait-bg);border-color:var(--wait);border-left-color:var(--wait)}
+.guidebox .box.bad{background:var(--bad-bg);border-color:var(--bad);border-left-color:var(--bad)}
+.guidebox .box > :first-child{margin-top:0}
+.guidebox .box > :last-child{margin-bottom:0}
+
 /* 사진 묶음 띠 — 「언제 받은 사진인지」를 격자 한 줄로 끊어 줍니다 */
 .picband{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
      color:var(--muted);padding:6px 2px 0;border-top:1px solid var(--line);margin-top:6px;

@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261025a">
+<link rel="stylesheet" href="app.css?v=261026a">
 </head>
 <body>
 
@@ -293,6 +293,7 @@
       <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
       <button class="nav" data-go="s-edu">📚 직원 교육</button>
       <button class="nav" data-go="links">🔗 주소 모음</button>
+      <button class="nav" data-go="guide">📖 지침</button>
     </div>
 
     <!-- ESC 직원 중 '검수만' 권한을 가진 분 -->
@@ -303,6 +304,7 @@
       <button class="nav" data-go="r-pay">내 검수 정산</button>
       <button class="nav" data-go="s-edu">📚 직원 교육</button>
       <button class="nav" data-go="noti">🔔 챙길 것</button>
+      <button class="nav" data-go="guide">📖 지침</button>
     </div>
 
     <div id="navBlogger" class="hide">
@@ -311,6 +313,7 @@
       <button class="nav" data-go="b-edu"><span class="n">1</span><span id="bnEdu">교육 받기</span></button>
       <button class="nav" data-go="b-work"><span class="n">2</span><span id="bnWork">글 쓰기</span></button>
       <button class="nav" data-go="b-pay"><span class="n">3</span><span id="bnPay">내 정산</span></button>
+      <button class="nav" data-go="guide">📖 지침</button>
     </div>
 
     <div class="sidefoot">
@@ -1367,6 +1370,33 @@
       <div id="bPayList"></div>
     </section>
 
+    <!-- 📖 지침 — 저장소가 아니라 DB 에서 읽어 보여 줍니다.
+         저장소에 두면 주소만 알면 로그인 없이 열립니다 (GitHub Pages).
+         로그인한 사람의 역할만큼만 보입니다 — guides 표의 RLS 가 가립니다. -->
+    <section class="screen" data-screen="guide">
+      <div class="head"><div class="step-of">찾아보기</div>
+        <h1>지침</h1><p>일하시다 헷갈리실 때 여기를 보세요.</p></div>
+      <div class="chips" id="guideTabs" style="margin-bottom:16px"></div>
+      <div id="guideBody"></div>
+      <details id="guideEditBox" class="hide" style="margin-top:22px">
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
+          ✍️ 지침 올리기 · 고치기</summary>
+        <div class="card" style="margin-top:10px">
+          <div class="note">만들어 주신 HTML 을 그대로 붙여넣으시면 됩니다.
+            「&lt;main class="guide"&gt;」 안쪽만 넣으셔도 되고, 통째로 넣으셔도 됩니다
+            — 센터가 알아서 안쪽만 꺼냅니다.</div>
+          <div class="fld" style="margin-top:12px"><label class="f">어느 지침을</label>
+            <select class="inp" id="guideEditRole" style="width:auto"></select></div>
+          <div class="fld"><label class="f">HTML</label>
+            <textarea class="inp" id="guideEditHtml" style="min-height:220px;font-family:ui-monospace,monospace;font-size:12.5px"></textarea></div>
+          <div class="row" style="margin-top:12px">
+            <button class="btn btn-p btn-s" id="guideSave">저장</button>
+            <span class="mono" id="guideMsg"></span>
+          </div>
+        </div>
+      </details>
+    </section>
+
   </div></main>
 </div>
 
@@ -1411,10 +1441,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261025a"></script>
-<script src="js/gate.js?v=261025a"></script>
-<script src="js/admin.js?v=261025a"></script>
-<script src="js/blogger.js?v=261025a"></script>
+<script src="js/core.js?v=261026a"></script>
+<script src="js/gate.js?v=261026a"></script>
+<script src="js/admin.js?v=261026a"></script>
+<script src="js/blogger.js?v=261026a"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

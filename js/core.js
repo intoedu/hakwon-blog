@@ -513,8 +513,86 @@ window.ESC = (function () {
       b.classList.toggle('on', b.dataset.go === name);
     });
     window.scrollTo(0, 0);
+    /* 📖 지침은 관리자·검수자·블로거가 모두 보므로 여기서 불러 줍니다
+       (admin.js 의 onShow 는 블로거를 막습니다) */
+    if (name === 'guide') A.loadGuide();
     if (A.onShow) A.onShow(name);
   };
+
+  /* ── 📖 지침 ──
+     🔴 저장소(GitHub Pages)에 두면 주소만 알면 로그인 없이 열립니다.
+     그래서 DB(guides 표)에 담고, 로그인한 사람의 역할만큼만 내어 줍니다.
+     가리는 것은 화면이 아니라 **서버 RLS** 입니다 — 화면을 속여도 안 보입니다. */
+  A.GUIDES = [];
+  var GUIDE_PICK = '';
+  A.loadGuide = async function () {
+    var body = A.$('guideBody'); if (!body) return;
+    body.innerHTML = '<div class="mono">불러오는 중…</div>';
+    var r = await A.sb.from('guides').select('*').order('role');
+    if (r.error) {
+      body.innerHTML = '<div class="note bad">지침을 불러오지 못했습니다: ' + A.esc(r.error.message) + '</div>';
+      return;
+    }
+    A.GUIDES = r.data || [];
+    if (!A.GUIDES.length) {
+      body.innerHTML = '<div class="empty">보실 수 있는 지침이 아직 없습니다.</div>';
+      A.$('guideTabs').innerHTML = '';
+      return;
+    }
+    if (!GUIDE_PICK || !A.GUIDES.some(function (g) { return g.role === GUIDE_PICK; })) {
+      GUIDE_PICK = A.GUIDES[0].role;
+    }
+    A.paintGuide();
+
+    /* 관리자만 「올리기」 칸이 보입니다 */
+    var box = A.$('guideEditBox');
+    if (box) {
+      box.classList.toggle('hide', !A.IS_ADMIN);
+      if (A.IS_ADMIN) {
+        A.$('guideEditRole').innerHTML = A.GUIDES.map(function (g) {
+          return '<option value="' + A.esc(g.role) + '">' + A.esc(g.title) + '</option>';
+        }).join('');
+        A.$('guideEditRole').onchange = function () {
+          var g = A.GUIDES.filter(function (x) { return x.role === this.value; }.bind(this))[0];
+          A.$('guideEditHtml').value = g ? (g.html || '') : '';
+        };
+        A.$('guideEditRole').onchange();
+      }
+    }
+  };
+  A.paintGuide = function () {
+    A.$('guideTabs').innerHTML = A.GUIDES.map(function (g) {
+      return '<button class="chip' + (g.role === GUIDE_PICK ? ' on' : '')
+        + '" data-guidetab="' + A.esc(g.role) + '">' + A.esc(g.title) + '</button>';
+    }).join('');
+    var g = A.GUIDES.filter(function (x) { return x.role === GUIDE_PICK; })[0];
+    var html = g ? (g.html || '') : '';
+    /* 「<main class="guide">」 으로 올리셔도, 안쪽만 올리셔도 되게 꺼냅니다 */
+    var m = html.match(/<main[^>]*class="[^"]*guide[^"]*"[^>]*>([\s\S]*?)<\/main>/i);
+    if (m) html = m[1];
+    A.$('guideBody').innerHTML = html.trim()
+      ? '<div class="card guidebox">' + html + '</div>'
+      : '<div class="empty">아직 올리지 않았습니다.</div>';
+  };
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-guidetab]');
+    if (t) { GUIDE_PICK = t.dataset.guidetab; A.paintGuide(); return; }
+    if (e.target.closest('#guideSave')) {
+      var role = A.$('guideEditRole').value;
+      var html = A.$('guideEditHtml').value;
+      var msg = A.$('guideMsg');
+      msg.textContent = '저장하는 중…';
+      A.sb.from('guides').update({ html: html, updated_at: new Date().toISOString() })
+        .eq('role', role).select().then(function (r) {
+          if (r.error || !r.data || !r.data.length) {
+            msg.textContent = '저장하지 못했습니다' + (r.error ? ': ' + r.error.message : '');
+            return;
+          }
+          msg.textContent = '저장했습니다';
+          A.loadGuide();
+        });
+    }
+  });
   A.view = function (name) {
     document.querySelectorAll('.dv').forEach(function (d) {
       d.classList.toggle('on', d.dataset.view === name);
