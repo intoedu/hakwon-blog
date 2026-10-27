@@ -312,8 +312,12 @@
             ? '<div class="mono" style="color:var(--wait)">📌 제목이 바뀌었습니다 — '
               + '들어가서 확인해 주세요</div>' : '')
         + '<div class="meta">' + (p.is_practice ? '<span class="chip c-info">연습글</span> ' : '') + esc(p.academy_name) + ' · '
+          /* 연습글 — 원고료가 없는 이유를 적습니다. 0원만 보이면 왜 0원인지 알 수 없습니다 (매뉴얼 창 10/27 문구)
+             마감을 보지 않는 주문이라 주문 마감 날짜도 함께 빼 둡니다 */
+          + (p.is_practice
+            ? '<b style="color:var(--info)">연습글 · 원고료 없음 — 교육 뒤 연습으로 올리는 글입니다</b>'
           /* 주문 마감을 넘긴 글 — 원고료 없음 (약관 개정안 제13조⑤). 21번 알림톡과 같은 말 */
-          + (p.late_nopay
+            : p.late_nopay
             ? '<b style="color:var(--bad)">주문 마감(' + esc(p.order_deadline || '') + ')이 지나 원고료가 없는 글입니다 · 고객과 약속한 글이라 꼭 올려 주세요</b>'
             : won(p.payout_rate) + '원' + (p.order_deadline ? ' · 주문 마감 ' + esc(p.order_deadline) : ''))
           + (p.kw_bonus ? ' + 검색어 변경 ' + won(p.kw_bonus) + '원' : '') + ' · '
@@ -446,7 +450,7 @@
         + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
         + (r.videoWait ? ' <b style="color:var(--wait)">' + r.videoWait
           + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
-      + (RV ? '' : '<br><br><b>첫 글도 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.')
+      + (RV ? '' : '<br><br><b>「연습글」로 표시되지 않은 글은 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.')
       + '</div></div>';
 
     /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
