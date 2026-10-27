@@ -335,7 +335,9 @@
       + items.map(function (x, i) {
           var done = x.stage === '발행 완료';
           return '<tr><td class="mono">' + (i + 1) + '</td>'
-            + '<td>' + esc(x.keyword || '') + '</td>'
+            + '<td>' + esc(x.keyword || '')
+              + (x.free ? ' <span class="chip c-off" title="무상으로 올려 드린 글입니다. 주문 편수에는 들어가지 않습니다">무상</span>' : '')
+              + '</td>'
             + '<td><span class="chip ' + (STAGE_CHIP[x.stage] || 'c-off') + '">' + esc(x.stage) + '</span></td>'
             + '<td class="mono">' + (done && x.at ? fdate(x.at) : '') + '</td>'
             + (RV ? '' : '<td>' + (done ? rank(x.rank) : '') + '</td>'
@@ -358,6 +360,9 @@
       T.qty += o.qty || 0; T.made += o.made || 0; T.writing += o.writing || 0;
       T.review += o.review || 0; T.published += o.published || 0; T.checked += o.checked || 0;
     });
+    /* 무상으로 올려 드린 글(연습글) — 주문 요약에는 넣지 않고 글 목록에만 보여 드립니다 (2026-10-27).
+       그래서 「○/○편 발행」 숫자와 아래 글 수가 다를 수 있어, 그 차이를 한 줄로 설명합니다. */
+    var freeN = (d.items || []).filter(function (x) { return x.free; }).length;
     var pct = T.qty ? Math.round(T.published / T.qty * 100) : 0;
     var working = T.writing + T.review;
     var waiting = Math.max(0, T.qty - T.published - working);
@@ -370,6 +375,11 @@
                           '발행 완료된 리뷰입니다.')
       + ' 신규 발행 시 갱신됩니다.</p></div>';
 
+    if (!orders.length) {
+      /* 무상으로만 올려 드리는 학원 — 주문 요약 대신 올라간 글만 보여 드립니다 */
+      h += '<div class="big"><div class="n"><b>' + posts.length + '</b><em>편 발행</em></div>'
+        + '<div class="legend"><span>무상으로 올려 드린 글입니다.</span></div></div>';
+    } else {
     h += '<div class="big">'
       + '<div class="n"><b>' + T.published + '</b><em>/ ' + T.qty + '편 발행</em>'
       + '<span class="chip ' + (pct >= 100 ? 'c-ok' : 'c-info') + '" style="margin-left:auto">'
@@ -380,6 +390,11 @@
       + '<span><i style="background:var(--info)"></i>' + W('작성 중','발행 대기') + ' ' + working + '편</span>'
       + '<span><i style="background:var(--line)"></i>준비 중 ' + waiting + '편</span>'
       + '</div></div>';
+      if (freeN) {
+        h += '<div class="msg ok" style="margin-top:12px">위 숫자는 주문하신 ' + T.qty + '편 기준입니다. '
+          + '아래 목록에는 <b>무상으로 올려 드린 글 ' + freeN + '편</b>이 함께 들어 있습니다.</div>';
+      }
+    }
 
     if (unpaid) {
       h += '<div class="msg ok" style="margin-top:12px">입금 확인 후 ' + W('원고 작성이','리뷰 작성이') + ' 시작됩니다. '

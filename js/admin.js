@@ -256,6 +256,17 @@
       todo.unshift(job('주문 마감 ' + (s.d === 0 ? '오늘' : s.d + '일 남음') + ' · ' + o.academy_name + ' ' + s.left + '편 남음',
         soonText(s), 'orders', '3 주문 · 입금 →', true));
     });
+    /* 🔴 입금은 받았는데 [의뢰 시작]을 안 누른 주문 — 아무도 모르게 멈춰 있습니다 (행정 창 2026-10-27).
+       약관 제6조①은 기간을 «의뢰 시작일»부터 셉니다. 안 누르면 기한 위반은 아니지만
+       고객은 돈을 내고 기다리고, 화면에는 「아직 시작 안 됨」만 보입니다. 3영업일이 넘으면 짚어 줍니다. */
+    A.ORDERS.forEach(function (o) {
+      if (!o.paid_at || o.started_at || o.status === 'done' || o.status === 'closed') return;
+      var bd = bizDaysSince(o.paid_at);
+      if (bd < 3) return;
+      todo.unshift(job('입금 ' + bd + '영업일 지남 · ' + o.academy_name + ' ' + (o.total_qty || 0) + '편 — 아직 [의뢰 시작] 안 누름',
+        '고객 화면에 「아직 시작 안 됨」으로 보입니다. 자료를 확인하고 [의뢰 시작]을 눌러 주세요 (입금 ' + o.paid_at + ')',
+        'orders', '3 주문 · 입금 →', true));
+    });
     var cand = candidates();
     if (cand.length) todo.push(job('승급 후보 ' + cand.length + '명',
       '기준을 넘었습니다. 확인하고 올려주세요', 'staff', '단계 관리 →'));
