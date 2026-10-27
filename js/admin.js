@@ -65,6 +65,8 @@
     renderOrders(); fillSelects(); renderProgress(); renderPay && renderPay();
   };
 
+  var PRAC = {};   /* 블로거별 연습글 상태 (서버 bloggers_practice_state 가 내려 줍니다) */
+
   A.loadAdmin = async function () {
     A.COMMS = await A.sel('communities', { order: 'name' });
     A.PEOPLE = await A.sel('bloggers', { order: 'created_at', asc: false });
@@ -86,6 +88,14 @@
 
     await loadBlogStaff();
     await A.loadTraining();     /* 배정 화면이 「왜 못 받는지」를 적으려면 이게 있어야 합니다 */
+
+    /* 연습글 상태 — 배정을 막는 기준과 같은 것을 씁니다 (2026-10-27) */
+    PRAC = {};
+    try {
+      (await A.rpc('bloggers_practice_state', {}) || []).forEach(function (x) {
+        PRAC[x.blogger_id] = x;
+      });
+    } catch (e) {}
 
     /* 돌려보낸 이력 — 다시 제출되면 글에서는 사유가 지워지므로 기록에서 가져옵니다 */
     REWORKS = {};
@@ -729,8 +739,11 @@
           + '<td class="num">' + rankAvgCell(s) + '</td>'
           + '<td class="num">' + (s.done_month || 0) + '</td><td class="num">' + (s.done_total || 0) + '</td>'
           + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>'
-              + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 연습글이 남았습니다">연습 필요 '
-                + practiceDone(p.id) + '/' + practiceNeed() + '</span>' : '')
+              + (needsPractice(p.id)
+                  ? ' <span class="chip c-info" title="교육은 끝났고 연습글이 남았습니다. 2026-11-04 부터는 진짜 주문을 맡을 수 없습니다">연습 필요 '
+                    + practiceDone(p.id) + '/' + practiceNeed() + '</span>'
+                  : practiceExempt(p.id)
+                  ? ' <span class="chip c-wait" title="관리자가 풀어 준 사람입니다">연습 면제</span>' : '')
             : '<span class="chip c-wait">미완</span>') + '</td>'
           + '<td><div class="row">'
           + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-lv="' + p.id + '">' + opts + '</select>'
@@ -738,6 +751,13 @@
           + '<button class="btn btn-s" data-wants="' + p.id + '" data-on="' + (p.wants_more ? 1 : 0)
           + '" title="글을 많이 받고 싶다는 표시. 켜면 배정에서 먼저 갑니다">'
           + (p.wants_more ? '★ 많이' : '☆ 많이') + '</button>'
+          /* 연습글을 안 마친 사람에게도 진짜 주문을 주어야 할 때 풉니다 (이은총 님 2026-10-27)
+             이미 진짜 글을 맡은 적 있는 사람은 저절로 면제라 단추가 필요 없습니다 */
+          + ((needsPractice(p.id) || practiceExempt(p.id))
+            ? '<button class="btn btn-s" data-pexempt="' + p.id + '" data-on="' + (practiceExempt(p.id) ? 1 : 0)
+              + '" title="켜면 연습글을 안 마쳐도 진짜 주문을 맡을 수 있습니다">'
+              + (practiceExempt(p.id) ? '연습 면제 끄기' : '연습 면제') + '</button>'
+            : '')
           + '<button class="btn btn-s" data-act="' + (p.status === 'approved' ? 'paused' : 'approved')
           + '" data-id="' + p.id + '">' + (p.status === 'approved' ? '쉬게 하기' : '다시 활동') + '</button>'
           + '</div></td></tr>';
@@ -1052,13 +1072,17 @@
   function practiceNeed() {
     return Math.max(1, Number((A.FORM || {}).practice_posts) || 2);
   }
+  /* 🔴 판정은 서버(bloggers_practice_state)가 합니다. 화면에서 따로 세면 배정을 막는 기준과 어긋납니다.
+     면제 ⑴ 관리자가 풀어 준 사람 ⑵ 연습이 아닌 글을 한 편이라도 맡은 적 있는 사람 ⑶ 연습글을 다 올린 사람 */
   function practiceDone(pid) {
-    return POSTS.filter(function (x) {
-      return x.blogger_id === pid && ['published', 'verified', 'paid'].indexOf(x.status) >= 0;
-    }).length;
+    return ((PRAC[pid] || {}).done) || 0;
   }
   function needsPractice(pid) {
-    return practiceDone(pid) < practiceNeed();
+    var st = PRAC[pid];
+    return st ? !st.ok : false;
+  }
+  function practiceExempt(pid) {
+    return !!((PRAC[pid] || {}).exempt);
   }
 
   function candidates() {
@@ -7295,6 +7319,20 @@
       t.disabled = true;
       try { await showPics(po); } catch (err) { A.toast('불러오지 못했습니다: ' + err.message); }
       t.disabled = false;
+      return;
+    }
+
+    /* 연습 면제 — 연습글을 안 마쳐도 진짜 주문을 맡게 풉니다 (이은총 님 2026-10-27) */
+    if ((t = e.target.closest('[data-pexempt]'))) {
+      var pxOn = t.dataset.on !== '1';
+      var pxName = (A.PEOPLE.filter(function (x) { return x.id === t.dataset.pexempt; })[0] || {}).name || '이 블로거';
+      if (pxOn && !confirm(pxName + ' 님의 연습글을 면제합니다.\n\n연습글을 올리지 않아도 학원이 돈을 낸 진짜 주문을 맡게 됩니다. 계속할까요?')) return;
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_set_practice_exempt', { p_blogger: t.dataset.pexempt, p_on: pxOn });
+        await A.loadAdmin();
+        A.toast(pxOn ? '연습 면제를 켰습니다' : '연습 면제를 껐습니다');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
 
