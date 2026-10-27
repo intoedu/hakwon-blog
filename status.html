@@ -437,6 +437,7 @@
         + '<div><label>금액</label><span>' + (o.amount ? won(o.amount) + '원' : '무상 진행') + '</span></div>'
         + '</div></div>';
     }).join('');
+    }   /* ← 산 주문이 없으면 「주문」 칸만 건너뜁니다. 아래 사진 · 전달사항은 늘 보여 드립니다 */
 
     /* 사진 보내기 */
     h += '<div class="sec">사진 전달 <small>' + (d.photos || 0) + '장 수신</small></div>'
@@ -491,7 +492,6 @@
       + '</div>';
 
     /* 달력 — 며칠에 몇 편이 올라갔는지 */
-    }
     h += calHtml(orders, posts);
 
     /* 글별 진행 — 달력 아래, 한 편이 한 줄 */
