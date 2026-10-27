@@ -656,7 +656,7 @@
       f: function (p) { return !stat(p.id).ready; } },
     { k: 'edu_ok',   ko: '교육 이수',   tip: '교육이 끝나 글을 받을 수 있습니다',
       f: function (p) { return !!stat(p.id).ready; } },
-    { k: 'practice', ko: '연습 필요',   tip: '교육은 끝났는데 아직 올린 글이 한 편도 없습니다 (교육 이수 안에 들어갑니다)',
+    { k: 'practice', ko: '연습 필요',   tip: '교육은 끝났는데 연습글을 다 올리지 않았습니다 (교육 이수 안에 들어갑니다)',
       f: function (p) { return !!stat(p.id).ready && needsPractice(p.id); } }
   ];
   /* 고른 칩 중 하나라도 해당하면 포함 (합집합) */
@@ -729,7 +729,8 @@
           + '<td class="num">' + rankAvgCell(s) + '</td>'
           + '<td class="num">' + (s.done_month || 0) + '</td><td class="num">' + (s.done_total || 0) + '</td>'
           + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>'
-              + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 아직 올린 글이 없습니다">연습 필요</span>' : '')
+              + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 연습글이 남았습니다">연습 필요 '
+                + practiceDone(p.id) + '/' + practiceNeed() + '</span>' : '')
             : '<span class="chip c-wait">미완</span>') + '</td>'
           + '<td><div class="row">'
           + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-lv="' + p.id + '">' + opts + '</select>'
@@ -1046,11 +1047,18 @@
     return (s.avg_rank == null ? '-' : s.avg_rank + '위')
       + (s.out_count ? '<div class="mono" title="50위 밖은 평균에 넣지 않습니다">50위 밖 ' + s.out_count + '편</div>' : '');
   }
-  /* 연습 필요 — 교육은 끝났는데 아직 올린 글이 한 편도 없는 사람 (9/17) */
-  function needsPractice(pid) {
-    return !POSTS.some(function (x) {
+  /* 연습 필요 — 교육은 끝났는데 올린 글이 연습 편수에 미치는 사람 (9/17 · 2026-10-27 두 편으로)
+     🔴 편수는 관리자 ⚙️ 화면에서 고칩니다 (settings.blog.form.practice_posts) */
+  function practiceNeed() {
+    return Math.max(1, Number((A.FORM || {}).practice_posts) || 2);
+  }
+  function practiceDone(pid) {
+    return POSTS.filter(function (x) {
       return x.blogger_id === pid && ['published', 'verified', 'paid'].indexOf(x.status) >= 0;
-    });
+    }).length;
+  }
+  function needsPractice(pid) {
+    return practiceDone(pid) < practiceNeed();
   }
 
   function candidates() {
@@ -1880,6 +1888,8 @@
       s.toPost ? '통과했는데 안 올린 글 ' + s.toPost : ''].filter(Boolean).join(' · ');
   }
   function soonBox(o) {
+    /* 🔴 연습 주문은 끝나지 않는 주문입니다 — 마감을 보지 않습니다 (2026-10-27) */
+    if (o.is_practice) return '';
     var s = soonInfo(o); if (!s) return '';
     return '<div class="msg err" style="margin:14px 0 0"><b>주문 마감 ' + (s.d === 0 ? '오늘' : s.d + '일 남음')
       + ' (' + mdKo(o.deadline) + ') — 아직 안 올라간 글 ' + s.left + '편</b><br>' + soonText(s) + '<br>'
@@ -1945,7 +1955,7 @@
       + (late ? ' · 주문 마감 넘긴 글 ' + late + '편' : '') + '</small></div>'
       + (owedLate ? '<div class="msg err" style="margin:0 0 10px"><b>돌려줄 날이 지난 환불이 ' + owedLate + '건 있습니다.</b> '
         + '확정한 날부터 <b>7영업일</b> 안에 입금하신 계좌로 돌려드리기로 되어 있습니다(약관 제7조⑦).</div>' : '')
-      + (short && o.started_at ? '<div class="note warn" style="margin:0 0 10px"><b>주문 편수보다 만든 글이 '
+      + (short && o.started_at && !o.is_practice ? '<div class="note warn" style="margin:0 0 10px"><b>주문 편수보다 만든 글이 '
         + short + '편 적습니다.</b> 「4 키워드 만들기」에서 만들어 주세요. 마감을 넘겨 환불한 글도 '
         + '<b>만들어서 올려 드립니다</b>(9/16 결정).</div>' : '')
       + (mine.length ? '<div class="tblbox tblscroll"><table><thead><tr><th>사유</th><th>편수</th><th>금액</th>'
@@ -2540,6 +2550,22 @@
     var o = A.ORDERS.filter(function (x) { return x.id === $('kwOrder').value; })[0];
     if (!o) { box.innerHTML = ''; return; }
     var s = kwMade(o.id);
+    /* 🔴 연습 주문은 끝나지 않는 주문입니다 (2026-10-27).
+       편수를 넘기는 것이 정상이므로 「더 만드시겠습니까」로 겵주지 않고,
+       지금 상황만 알려 줍니다. 다만 「안 맡긴 글」은 집어 줍니다 —
+       그걸 두고 또 만들면 나눠줄 글만 쌓입니다. */
+    if (o.is_practice) {
+      box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">'
+        + '<b>연습 주문입니다.</b> 편수를 맞추지 않아도 되고, 마감도 보지 않습니다. '
+        + '필요할 때마다 더 만드세요.'
+        + (s.made ? '<br>지금까지 ' + s.made + '편 만들었고, 맡긴 글 ' + s.given
+            + '편 · 올라간 글 ' + s.up + '편입니다.' : '')
+        + (s.idle ? '<br><b>아직 안 맡긴 글이 ' + s.idle + '편 있습니다.</b> '
+            + '먼저 나눠주시는 것이 좋습니다. '
+            + '<button class="link" data-goassign="' + o.id + '">5번으로 가기 →</button>' : '')
+        + '</div>';
+      return;
+    }
     if (!s.made) {
       box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">'
         + '<b>이 학원은 아직 키워드를 안 만들었습니다.</b> 처음 만드시는 것이 맞습니다.</div>';
@@ -3101,6 +3127,7 @@
     $('dailyLimit').value = String(f.daily_limit || 1);
     $('sameAcad').checked = f.same_academy_daily !== 0;
     $('acadMonth').value = String(f.same_academy_month || 3);
+    $('practicePosts').value = String(f.practice_posts || 2);
     /* ⚠️ 값이 없으면 「요구함」이 기본입니다 (서버 blog_require_t1() 과 같은 규칙) */
     if ($('reqT1')) $('reqT1').checked = f.require_t1 !== false;
     var cap = Number(A.MONTH_CAP) || 30;
@@ -3120,6 +3147,8 @@
       same_academy_daily: $('sameAcad').checked ? 1 : 0,
       /* 같은 학원 글을 한 사람에게 한 달에 몇 편까지 — posts_auto_assign 이 읽습니다 */
       same_academy_month: Math.max(1, Number($('acadMonth').value) || 3),
+      /* 교육 뒤 연습으로 올릴 글 편수 — needsPractice() 가 읽습니다 */
+      practice_posts: Math.max(1, Number($('practicePosts').value) || 2),
       /* 1차 줌을 배정 조건으로 볼지 — 서버 blog_require_t1() 이 같은 값을 읽습니다 */
       require_t1: $('reqT1') ? !!$('reqT1').checked : true
     });
@@ -3949,7 +3978,8 @@
         + '<input type="checkbox" class="pk-ppl" value="' + p.id + '"' + (needsPractice(p.id) ? ' data-practice="1"' : '') + '>'
         + '<span><b>' + esc(p.name) + '</b>'
         + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
-        + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 아직 올린 글이 없습니다">연습 필요</span>' : '')
+        + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 연습글이 남았습니다">연습 필요 '
+          + practiceDone(p.id) + '/' + practiceNeed() + '</span>' : '')
         + ' <span class="mono">' + esc(A.commName(p.community_id))
         + ' · ' + p.level + '단계</span></span>'
         + '<span class="sub">이번 달 <b>' + x.m + '편</b> · 이 학원 ' + here + '편</span></label>';

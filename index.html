@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261026a">
+<link rel="stylesheet" href="app.css?v=261027a">
 </head>
 <body>
 
@@ -782,6 +782,15 @@
             <span class="mono">편까지</span>
             <span class="mono" style="margin-left:6px">주문이 여러 건이어도 <b>같은 학원이면 합쳐서</b> 셉니다</span>
           </div>
+          <!-- 🔴 교육을 마친 뒤 연습으로 올리는 글 편수 (2026-10-27 한 편 → 두 편).
+               이 편수를 다 올릴 때까지 「연습 필요」로 표시됩니다. -->
+          <div class="row" style="margin-top:10px">
+            <label class="f" style="margin:0">교육 뒤 연습으로 올릴 글</label>
+            <input class="inp" id="practicePosts" type="number" min="1" style="width:90px">
+            <span class="mono">편</span>
+            <span class="mono" style="margin-left:6px">이만큼 올릴 때까지 <b>「연습 필요」</b>로 표시됩니다</span>
+          </div>
+
           <div class="sec" style="margin-top:18px">글을 받으려면 무엇을 마쳐야 하나</div>
           <label class="row" style="gap:7px;cursor:pointer;font-size:13px">
             <input type="checkbox" id="reqT1">
@@ -1441,10 +1450,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261026a"></script>
-<script src="js/gate.js?v=261026a"></script>
-<script src="js/admin.js?v=261026a"></script>
-<script src="js/blogger.js?v=261026a"></script>
+<script src="js/core.js?v=261027a"></script>
+<script src="js/gate.js?v=261027a"></script>
+<script src="js/admin.js?v=261027a"></script>
+<script src="js/blogger.js?v=261027a"></script>
 <script>ESC.boot();</script>
 </body>
 </html>
