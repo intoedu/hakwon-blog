@@ -14,6 +14,9 @@
   var REWORKS = {};     /* 글 id → 돌려보낸 이력 (사유가 지워져도 여기 남습니다) */
   var RPAY = [];        /* 이번 달 검수 수당 명세 */
   var PITEMS = [], PSRC = {};   /* 정산 명세(blog_pay_items) — 이 달 것 / 어느 달이든 이미 잡힌 것 */
+  /* 영업실장 커미션 (계약서 제7조) — 🔴 다른 몫과 달의 기준이 다릅니다.
+     블로거 · 검수는 «일한 날», 실장은 «고객이 입금한 날»로 잡힙니다. 그래서 표를 따로 둡니다. */
+  var PPAY = [], PPITEMS = [], PARTNERS = [], REFUNDS = [];
   var PAY_PREVIEW = false;      /* 9/18 — 마감 전 달은 payout_preview 로 지금까지 한 일을 계산해 보여 줍니다 */
   function revRate() { return A.REVIEW_RATE || { approve: 250, verify: 250 }; }
   function sale() { return A.SALE || { normal: 6000, premium: 3000 }; }
@@ -90,6 +93,7 @@
     await A.loadTraining();     /* 배정 화면이 「왜 못 받는지」를 적으려면 이게 있어야 합니다 */
 
     /* 연습글 상태 — 배정을 막는 기준과 같은 것을 씁니다 (2026-10-27) */
+    try { PARTNERS = await A.rpc('partners_list', {}) || []; } catch (e) { PARTNERS = []; }
     PRAC = {};
     try {
       (await A.rpc('bloggers_practice_state', {}) || []).forEach(function (x) {
@@ -1095,6 +1099,10 @@
   function practiceExempt(pid) {
     return !!((PRAC[pid] || {}).exempt);
   }
+  /* 주문을 소개한 영업실장 이름 — 커미션이 왜 잡혔는지 주문에서 바로 보이게 (계약서 제7조) */
+  function partnerName(pid) {
+    return (PARTNERS.filter(function (x) { return x.id === pid; })[0] || {}).name || '';
+  }
 
   function candidates() {
     var out = [];
@@ -1821,6 +1829,8 @@
         + '<h3 style="font-size:16.5px">' + esc(orderLabel(o)) + ' ' + memBadge(o)
         + (o.is_practice ? ' <span class="chip c-info">연습 주문</span>' : '')
         + (!RV && o.request_id ? ' <span class="chip c-ok">홈페이지 의뢰에서 넘어옴</span>' : '')
+        + (o.partner_id ? ' <span class="chip" title="이 주문의 커미션이 이 실장 몫으로 잡힙니다">소개 '
+          + esc(partnerName(o.partner_id) || '영업실장') + '</span>' : '')
         + (RV && o.visit_type === 'material' ? ' <span class="chip">자료형</span>'
            : RV ? ' <span class="chip c-ok">방문형</span>' : '') + '</h3>'
         + '<div class="mono" style="margin-top:3px">' + esc(o.region || '지역 미입력')
@@ -5235,16 +5245,26 @@
     PITEMS = await A.sel('blog_pay_items', { eq: { pay_month: m } });
     PSRC = {};
     (await A.sel('blog_pay_items', { select: 'src' })).forEach(function (x) { PSRC[x.src] = 1; });
+    PPAY = await A.sel('partner_payouts', { eq: { month: m } });
+    PPITEMS = await A.sel('partner_pay_items', { eq: { pay_month: m } });
+    REFUNDS = await A.sel('blog_refunds');
     /* 아직 마감 안 한 달 → 마감을 돌려 본 결과(되돌림)를 그대로 보여 줍니다. 저장되는 것은 없습니다 */
-    PAY_PREVIEW = !CPAY.length && !BPAY.length && !RPAY.length;
+    PAY_PREVIEW = !CPAY.length && !BPAY.length && !RPAY.length && !PPAY.length;
     if (PAY_PREVIEW) {
       try {
         var pv = await A.rpc('payout_preview', { p_month: m }) || {};
         CPAY = pv.cp || []; BPAY = pv.bp || []; RPAY = pv.rp || []; PITEMS = pv.items || [];
+        PPAY = pv.pp || []; PPITEMS = pv.pitems || [];
         PITEMS.forEach(function (x) { PSRC[x.src] = 1; });
       } catch (e) { A.toast('미리보기 실패: ' + e.message); }
     }
     renderPay();
+  }
+  /* 커미션 지급일 = 그 달의 «다음 달 10일» (계약서 제7조) */
+  function nextTenth(ym) {
+    var y = +String(ym).slice(0, 4), mo = +String(ym).slice(5, 7) + 1;
+    if (mo > 12) { mo = 1; y++; }
+    return y + '-' + (mo < 10 ? '0' : '') + mo + '-10';
   }
   function renderPay() {
     /* 정산은 갈래를 안 나눕니다 — 사람이 같으니 한 사람에게 한 번만 보냅니다.
@@ -5387,6 +5407,51 @@
           + '<td class="num">' + (b.kw_count ? b.kw_count + '편 · ' + won(b.kw_amount) : '-') + '</td>'
           + '<td class="num"><b>' + won(b.amount + (b.kw_amount || 0)) + '</b></td></tr>';
       }).join('') + '</tbody></table></div>';
+    /* ── 영업실장 커미션 (계약서 제7조 · 2026-10-27 결정) ──
+       🔴 다른 몫과 «달의 기준»이 다릅니다 — 블로거 · 검수는 일한 날, 실장은 «고객이 입금한 날».
+          그래서 위 표에 섞지 않고 따로 보여 드립니다. 섞으면 어느 쪽 숫자도 맞지 않습니다.
+       🔴 위 「블로그센터 몫」에서 이 돈이 빠져 나갑니다. 다만 두 숫자의 달 기준이 달라
+          그 칸에서 바로 깎지 않습니다 (깎으면 틀린 숫자가 됩니다). */
+    var ppOn = PPAY.filter(function (p) { return (Number(p.amount) || 0) !== 0; });
+    /* 「그 밖」 환불은 우리 잘못인지 고객 취소인지 자료로 가릴 수 없어 자동으로 차감하지 않습니다.
+       그런 환불이 실장 주문에 있으면 관리자가 보고 정하도록 띄웁니다. */
+    var etcRf = REFUNDS.filter(function (r) {
+      if (r.reason !== '그 밖') return false;
+      var o = A.ORDERS.filter(function (x) { return x.id === r.order_id; })[0];
+      return !!(o && o.partner_id);
+    });
+    $('payPartner').innerHTML = (ppOn.length || etcRf.length)
+      ? '<div class="sec" style="margin-top:14px">영업실장 커미션 <small>'
+        + ppOn.length + '명 · 고객이 <b>입금한 달</b>로 잡힙니다 · 다음 달 10일 지급</small></div>'
+        + '<div class="note">이 돈은 <b>인투마케팅 몫에서 나갑니다</b> — 블로거 원고료 · 검수 수당 · 공동체 운영비는 줄지 않습니다. '
+        + '공동체 대표가 실장을 겸하면 <b>운영비와 커미션을 둘 다</b> 받습니다. '
+        + '고객이 취소해 환불한 편수만 빠지고, <b>우리가 마감을 못 지켜 생긴 환불은 그대로 지급</b>합니다(계약서 제7조).</div>'
+        + (etcRf.length ? '<div class="note warn">⚠️ <b>사유가 「그 밖」인 환불 ' + etcRf.length + '건</b>이 실장 주문에 있습니다. '
+          + '우리 잘못인지 고객 취소인지 자료로 가릴 수 없어 <b>커미션에서 빼지 않았습니다.</b> '
+          + '고객이 취소한 것이면 환불 사유를 「중도 해지」로 고쳐 주십시오 — 그러면 다음 마감 때 저절로 빠집니다.</div>' : '')
+        + (ppOn.length ? '<div class="tblbox tblscroll"><table><thead><tr>'
+        + '<th>영업실장</th><th>주문</th><th>커미션</th><th>지급 예정</th><th>상태</th><th></th></tr></thead><tbody>'
+        + ppOn.map(function (pp) {
+          var who = (PARTNERS.filter(function (x) { return x.id === pp.partner_id; })[0] || {}).name || '(이름 모름)';
+          var det = PPITEMS.filter(function (i) { return i.partner_id === pp.partner_id && !i.void; });
+          var lines = det.map(function (i) {
+            var o = A.ORDERS.filter(function (x) { return x.id === i.order_id; })[0] || {};
+            return (i.kind === 'refund' ? '↩︎ 환불 ' : '') + esc(o.academy_name || '-')
+              + ' ' + Math.abs(i.qty || 0) + '편 · 기준 ' + won(Math.abs(i.base || 0)) + '원 → '
+              + '<b>' + (i.amount < 0 ? '−' : '') + won(Math.abs(i.amount)) + '원</b>'
+              + ' <span style="color:var(--muted)">(' + esc(i.earned_at || '') + ' 입금)</span>';
+          }).join('<br>');
+          return '<tr><td><b>' + esc(who) + '</b></td>'
+            + '<td class="mono" style="font-size:13px">' + (lines || '-') + '</td>'
+            + '<td class="num"><b>' + won(pp.amount) + '</b></td>'
+            + '<td class="mono">' + esc(nextTenth($('payMonth').value)) + '</td>'
+            + '<td>' + (pp.status === 'sent'
+              ? '<span class="chip c-ok">보냈습니다 ' + esc((pp.sent_at || '').slice(0, 10)) + '</span>'
+              : PAY_PREVIEW ? '<span class="chip c-off">마감 전</span>' : '<span class="chip">보낼 차례</span>') + '</td>'
+            + '<td>' + (pp.status === 'sent' || PAY_PREVIEW ? ''
+              : '<button class="btn btn-s" data-psend="' + pp.id + '">보냈다고 표시</button>') + '</td></tr>';
+        }).join('') + '</tbody></table></div>' : '')
+      : '';
     $('payDetail').innerHTML = '';
   }
   /* ── 사람별로 얼마 ──
@@ -7386,6 +7451,13 @@
       return;
     }
 
+    if ((t = e.target.closest('[data-psend]'))) {
+      /* 영업실장 커미션을 보냈다고 표시합니다. 표시한 달은 다시 마감할 수 없습니다 */
+      if (!confirm('이 영업실장에게 커미션을 보낸 것으로 표시합니다.\n\n표시하면 이 달은 다시 마감할 수 없습니다. 계속할까요?')) return;
+      try { await A.rpc('partner_payout_send', { p_id: t.dataset.psend }); A.toast('보낸 것으로 표시했습니다'); await loadPay(); }
+      catch (err) { A.toast('실패: ' + err.message); }
+      return;
+    }
     if ((t = e.target.closest('[data-send]'))) {
       if (!confirm('이 공동체에 돈을 보낸 것으로 표시할까요?\n표시하면 해당 글들이 정산 완료로 바뀝니다.')) return;
       t.disabled = true;
