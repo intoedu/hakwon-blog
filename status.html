@@ -312,12 +312,15 @@
         + encodeURIComponent(kw) + '">검색 ↗</a>' : '');
   }
   var STAGE_CHIP = { '배정 전': 'c-off', '작성 중': 'c-wait', '검수 중': 'c-info', '발행 대기': 'c-info', '발행 완료': 'c-ok' };
+  var PAID_NONE = false;   /* 산 주문이 하나도 없는 학원(무상으로만 올려 드리는 곳) */
   function itemsHtml(items) {
     /* 예전 「올라간 글」 표를 여기에 합쳤습니다(9/13) — 발행 완료 줄에 글 보기 · 검색 단추가 붙습니다 */
     if (!items.length) {
       return '<div class="sec">' + W('글','리뷰') + '별 진행</div>'
         + '<div class="tblbox"><div class="empty">아직 ' + W('게시물','리뷰') + '이 없습니다. '
-        + '입금 확인 후 ' + W('게시물','리뷰') + '이 생성되며, 편별 진행 단계가 여기에 표시됩니다.</div></div>';
+        /* 무상으로만 올려 드리는 학원에는 입금이 없습니다 (2026-10-27) */
+        + (PAID_NONE ? '' : '입금 확인 후 ')
+        + W('게시물','리뷰') + '이 생성되면 편별 진행 단계가 여기에 표시됩니다.</div></div>';
     }
     var steps = RV ? ['배정 전', '발행 대기', '발행 완료']
                    : ['배정 전', '작성 중', '검수 중', '발행 대기', '발행 완료'];
@@ -355,6 +358,7 @@
       if (hb) hb.textContent = '리뷰 진행현황';
     }
     var orders = d.orders || [], posts = d.posts || [];
+    PAID_NONE = !orders.length;
     var T = { qty: 0, made: 0, writing: 0, review: 0, published: 0, checked: 0 };
     orders.forEach(function (o) {
       T.qty += o.qty || 0; T.made += o.made || 0; T.writing += o.writing || 0;
@@ -402,6 +406,7 @@
     }
 
     /* 주문 */
+    if (orders.length) {
     h += '<div class="sec">주문 <small>' + orders.length + '건</small></div>';
     h += orders.map(function (o) {
       /* 의뢰 시작 전 주문은 마감이 흐르지 않습니다(약관 제2조·제5조 — 입금과 자료를 확인한 날부터 30일).
@@ -486,6 +491,7 @@
       + '</div>';
 
     /* 달력 — 며칠에 몇 편이 올라갔는지 */
+    }
     h += calHtml(orders, posts);
 
     /* 글별 진행 — 달력 아래, 한 편이 한 줄 */
