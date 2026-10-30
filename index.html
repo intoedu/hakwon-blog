@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261030a">
+<link rel="stylesheet" href="app.css?v=261030b">
 </head>
 <body>
 
@@ -638,7 +638,7 @@
       <div class="head"><div class="step-of">4단계 · 주문이 들어오면</div>
         <h1>키워드 만들기</h1><p>글마다 <b>다른 검색어</b>를 하나씩 붙입니다.</p></div>
       <div class="note warn" style="margin-bottom:16px">
-        같은 학원 글이 서로 비슷하면 네이버가 걸러내서 <b>대부분 검색에 안 나옵니다.</b>
+        같은 업체 글이 서로 비슷하면 네이버가 걸러내서 <b>대부분 검색에 안 나옵니다.</b>
         "성수동 영어학원"으로는 못 이기지만 <b>"성수동 초등 영어 내신"</b> 같은 긴 검색어는
         경쟁이 없어서 글 1편으로도 1페이지에 갑니다.
       </div>
@@ -696,7 +696,7 @@
       <div class="note" style="margin-bottom:14px">
         <b>학원이 보낸 전달사항을 여기에 잘라 넣으세요.</b>
         통째로 주면 50편이 서로 비슷해져 <b>유사문서로 검색에서 통째로 빠집니다.</b>
-        주제별로 잘라 두면 글마다 하나씩 돌아가며 배정돼, 같은 학원 글이어도 내용이 서로 달라집니다.<br>
+        주제별로 잘라 두면 글마다 하나씩 돌아가며 배정돼, 같은 업체 글이어도 내용이 서로 달라집니다.<br>
         <span class="mono">예) 「[영어] 수행평가 감점 케어」 / 「[수학] 3.14 원장 직강」 / 「[국어] 1:1 첨삭」 …</span>
       </div>
       <div class="card">
@@ -769,7 +769,7 @@
             </select>
             <label class="row" style="gap:7px;cursor:pointer;font-size:13px">
               <input type="checkbox" id="sameAcad" checked>
-              <b>같은 학원 글은 하루 1편만</b></label>
+              <b>같은 업체 글은 하루 1편만</b></label>
             <label class="f" style="margin:0 0 0 auto">한 사람 월 상한</label>
             <input class="inp" id="monthCap" type="number" min="1" style="width:90px">
             <span class="mono">편</span>
@@ -777,10 +777,10 @@
           <!-- 🔴 같은 학원 글이 한 사람에게 몰리면 그 블로그가 광고 채널로 보입니다
                (2026-10-25 새 기준). 나눔 때 넘치는 사람을 뒤로 미릉니다. -->
           <div class="row" style="margin-top:10px">
-            <label class="f" style="margin:0">같은 학원 글은 한 사람에게 한 달에</label>
+            <label class="f" style="margin:0">같은 업체 글은 한 사람에게 한 달에</label>
             <input class="inp" id="acadMonth" type="number" min="1" style="width:90px">
             <span class="mono">편까지</span>
-            <span class="mono" style="margin-left:6px">주문이 여러 건이어도 <b>같은 학원이면 합쳐서</b> 셉니다</span>
+            <span class="mono" style="margin-left:6px">주문이 여러 건이어도 <b>같은 업체이면 합쳐서</b> 셉니다</span>
           </div>
           <!-- 🔴 교육을 마친 뒤 연습으로 올리는 글 편수 (2026-10-27 한 편 → 두 편).
                이 편수를 다 올릴 때까지 「연습 필요」로 표시됩니다. -->
@@ -812,8 +812,8 @@
             벌이를 늘리시려면 <b>이 숫자를 같이 올리셔야</b> 합니다.
           </div>
           <div class="note warn" style="margin-top:10px">
-            <b>이 숫자를 올려도 같은 학원 글은 하루 1편으로 두시길 권합니다.</b>
-            한 블로그에 같은 학원 글이 하루에 여러 개 올라가면,
+            <b>이 숫자를 올려도 같은 업체 글은 하루 1편으로 두시길 권합니다.</b>
+            한 블로그에 같은 업체 글이 하루에 여러 개 올라가면,
             그 블로그가 그 학원 <b>광고 채널로 보이고</b> 글끼리도 서로 잡아먹습니다.
             하루 편수를 늘리는 것이 실제로 벌이가 되려면 <b>맡을 학원이 여러 곳이어야</b> 합니다.<br>
             그리고 이건 <b>안내 문구일 뿐 시스템이 막지는 않습니다</b> —
@@ -1451,10 +1451,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261030a"></script>
-<script src="js/gate.js?v=261030a"></script>
-<script src="js/admin.js?v=261030a"></script>
-<script src="js/blogger.js?v=261030a"></script>
+<script src="js/core.js?v=261030b"></script>
+<script src="js/gate.js?v=261030b"></script>
+<script src="js/admin.js?v=261030b"></script>
+<script src="js/blogger.js?v=261030b"></script>
 <script>ESC.boot();</script>
 </body>
 </html>
