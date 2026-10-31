@@ -3802,6 +3802,70 @@
     return miss.join(' · ') || '알 수 없음';
   }
 
+  /* 이번 달 '배정받은' 편수 — 끝낸 편수가 아니라 «받은 편수»입니다.
+     🔴 서버 posts_auto_assign 의 mc 와 «같은 셈법»이어야 합니다 —
+        assigned_at 이 그 달(한국 시간)이고 status 가 'cancelled' 가 아닌 글.
+        한쪽만 고치면 화면 숫자와 상한 검사가 어긋납니다. */
+  function monthGot(bid) {
+    var m = A.thisMonth();
+    return POSTS.filter(function (x) {
+      return x.blogger_id === bid && A.kstMonth(x.assigned_at) === m && x.status !== 'cancelled';
+    }).length;
+  }
+
+  /* 📊 이번 달 받은 편수 — 몰림을 한눈에 봅니다 (행정 창 2026-10-31 · 이은총 님 확정).
+     까닭 — 월 상한이 2026-11-04 에 30 → 150 편으로 늘어납니다. 배정 순서는 그대로 두기로
+     했으므로(「많이 원함」을 켠 분이 먼저 뽑힙니다), 몰리는지 사람이 보면서 조절해야 합니다.
+     🔑 「받은(배정된) 편수」입니다 — 공동체 [멤버 보기] 의 「끝낸 편수」와는 «다른 숫자»입니다.
+        두 숫자를 섞지 않습니다(행정 창 지시).
+     🔑 접어 두고 제목에 가장 많은 편수를 적습니다 — 펼치지 않아도 몰림이 보입니다. */
+  function renderMonthLoad() {
+    var box = $('asLoad'); if (!box) return;
+    var cap = Number(A.MONTH_CAP) || 30;
+    var rows = (A.PEOPLE || []).filter(function (p) { return p.status === 'approved'; })
+      .map(function (p) { return { p: p, m: monthGot(p.id) }; })
+      /* 많이 받은 사람이 위로 — 몰림을 보려고 만든 표입니다 */
+      .sort(function (a, b) {
+        if (a.m !== b.m) return b.m - a.m;
+        if (!!a.p.wants_more !== !!b.p.wants_more) return a.p.wants_more ? -1 : 1;
+        return (a.p.name || '').localeCompare(b.p.name || '');
+      });
+    if (!rows.length) { box.innerHTML = ''; return; }
+
+    var top = rows[0].m, zero = rows.filter(function (r) { return r.m === 0; }).length;
+    var got = rows.length - zero, sum = rows.reduce(function (t, r) { return t + r.m; }, 0);
+    var wm = rows.filter(function (r) { return r.p.wants_more; });
+    var wmSum = wm.reduce(function (t, r) { return t + r.m; }, 0);
+
+    box.innerHTML = '<details class="outbox" style="margin-top:14px"><summary>📊 이번 달 받은 편수'
+      + ' — 가장 많은 분 <b>' + top + '편</b> / 상한 ' + cap + '편'
+      + (zero ? ' · 아직 0편인 분 <b>' + zero + '명</b>' : '')
+      + '</summary>'
+      + '<div class="note"><b>받은(배정된) 편수입니다.</b> 끝낸 편수가 아닙니다 — '
+      + '공동체 표의 [멤버 보기]에 있는 「이번 달 N편」은 <b>끝낸</b> 편수라 이 숫자와 다릅니다.<br>'
+      + '이 달에 모두 <b>' + sum + '편</b>이 나갔고 <b>' + got + '명</b>이 받았습니다. '
+      + '한 사람 상한은 <b>' + cap + '편</b>입니다.</div>'
+      + (wm.length ? '<div class="note' + (top >= cap * 0.8 ? ' warn' : '') + '">'
+        + '★ <b>「많이 원함」을 켠 분이 ' + wm.length + '명</b>이고, 이 달 받은 글 가운데 <b>' + wmSum + '편</b>'
+        + '(' + (sum ? Math.round(wmSum * 100 / sum) : 0) + '%)을 그분들이 받았습니다. '
+        + '자동으로 나눠주면 이분들이 <b>먼저</b> 뽑힙니다 — 한쪽으로 몰리면 '
+        + '[고른 사람에게만 나눠주기]로 다른 분께 돌려 주십시오.</div>' : '')
+      + '<div class="tblbox tblscroll"><table><thead><tr><th>#</th><th>이름</th><th>공동체</th>'
+      + '<th>이번 달 받은 편수</th><th>남은 편수</th></tr></thead><tbody>'
+      + rows.map(function (r, i) {
+        var left = cap - r.m;
+        return '<tr><td class="mono">' + (i + 1) + '</td>'
+          + '<td><b>' + esc(r.p.name || '') + '</b>'
+          + (r.p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '') + '</td>'
+          + '<td class="mono">' + esc(A.commName(r.p.community_id)) + '</td>'
+          + '<td><b' + (r.m >= cap ? ' style="color:var(--bad)"' : r.m >= cap * 0.8 ? ' style="color:var(--amber)"' : '')
+          + '>' + r.m + '편</b></td>'
+          + '<td class="mono">' + (left <= 0 ? '<b style="color:var(--bad)">상한까지 찼습니다</b>' : left + '편') + '</td></tr>';
+      }).join('')
+      + '</tbody></table></div></details>';
+  }
+
+
   function renderAssign() {
     var oid = $('asOrder').value || (A.ORDERS[0] && A.ORDERS[0].id);
     var wk = $('asWeek').value;
@@ -3994,13 +4058,8 @@
         + '<span class="mono">잘못 만들어진 검색어를 뺄 때 쓰세요</span></div>' : '')
       : whyEmpty();
 
-    /* 이번 달 '배정받은' 편수 — 끝낸 편수(done_month)가 아니라 받은 편수로 봐야 공평합니다 */
-    var thisM = A.thisMonth() + '-01';
-    function gotThisMonth(bid) {
-      return POSTS.filter(function (x) {
-        return x.blogger_id === bid && A.kstMonth(x.assigned_at) === thisM.slice(0, 7) && x.status !== 'cancelled';
-      }).length;
-    }
+    /* 이번 달 '배정받은' 편수 — 아래 📊 표와 «같은 셈법»을 씁니다 (monthGot) */
+    var gotThisMonth = monthGot;
     /* 자동 배정과 같은 순서로 보여줍니다 — 위에 있는 사람이 먼저 받습니다 */
     var ppl = A.PEOPLE.filter(function (p) { return p.status === 'approved'; })
       .map(function (p) { return { p: p, s: stat(p.id), m: gotThisMonth(p.id) }; })
@@ -4030,6 +4089,7 @@
         + '<span class="sub">이번 달 <b>' + x.m + '편</b> · 이 업체 ' + here + '편</span></label>';
     }).join('') : '<div class="empty">승인된 블로거가 없습니다.</div>';
 
+    renderMonthLoad();
     $('allPosts').checked = false; $('allPeople').checked = false;
     refreshPick();
   }
