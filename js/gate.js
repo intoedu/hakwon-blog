@@ -10,14 +10,11 @@
     $('su_pwWrap').classList.add('hide');
 
     /* ESC 직원이 블로거를 병행할 때는 공동체가 아니라 ESC 소속입니다.
-       공동체 칸 맨 위에 「ESC」를 넣어 두고 그것을 고르게 합니다 (community_id 는 빈 값). */
+       공동체 칸을 「ESC (직원)」로 미리 채워 둡니다 (community_id 는 빈 값).
+       🔴 다른 공동체로 바꾸실 수도 있습니다 — 칸을 지우고 적으면 찾기가 그대로 됩니다. */
     if (A.IS_ADMIN || A.IS_REVIEWER) {
-      var sel = $('su_comm');
-      if (sel && !sel.dataset.esc) {
-        sel.insertAdjacentHTML('afterbegin', '<option value="esc">ESC (직원)</option>');
-        sel.dataset.esc = '1';
-        sel.value = 'esc';
-      }
+      $('su_comm').value = 'esc';
+      $('su_commText').value = 'ESC (직원)';
     }
   };
 
@@ -81,13 +78,129 @@
     if (this.value === '기타') $('su_gRelEtc').focus();
   });
 
+  /* ── 공동체 칸 — 적으면 아래에 뜨는 꼴 (10/31) ────────────────────────
+     예전에는 공동체가 전부 보이는 «고르는 목록»이었습니다. 신청하시는 분께 다른
+     공동체 이름까지 보일 까닭이 없어 바꿨습니다.
+     🔴 목록을 미리 받아 두지 않습니다 — 적으신 글자로 그때그때 서버에서 찾으므로,
+        화면에도, 받아 오는 자료에도 안 맞는 공동체는 들어오지 않습니다.
+     🔴 신청에 쓰이는 값은 보이는 이름이 아니라 su_comm(숨은 칸)의 «공동체 id» 입니다.
+        아래 목록에서 누를 때만 채워집니다. 이름을 손으로 고치면 다시 비웁니다 —
+        비우지 않으면 「적힌 이름」과 「저장되는 공동체」가 어긋납니다. */
+  var COMM_WAIT = null, COMM_ROWS = [], COMM_AT = -1;
+  var COMM_HELP = '전체를 적지 않아도 됩니다 — 일부만 적으면 아래에 나옵니다. '
+    + '<b>나온 것을 눌러 주세요.</b>';
+
+  function commHint(html) { var h = $('su_commHint'); if (h) h.innerHTML = html; }
+
+  function commClose() {
+    var b = $('su_commList');
+    if (b) { b.classList.add('hide'); b.innerHTML = ''; }
+    COMM_ROWS = []; COMM_AT = -1;
+  }
+
+  function commPick(i) {
+    var r = COMM_ROWS[i];
+    if (!r) return;
+    $('su_comm').value = r.id;
+    $('su_commText').value = r.name;
+    commClose();
+    commHint('✅ <b>' + A.esc(r.name) + '</b> (으)로 신청합니다. '
+      + '다른 곳이면 칸을 지우고 다시 적어 주세요.');
+  }
+
+  function commDraw(q) {
+    var b = $('su_commList');
+    if (!b) return;
+    if (!COMM_ROWS.length) {
+      b.innerHTML = '<div class="acnone">「' + A.esc(q) + '」(으)로는 찾지 못했습니다. '
+        + '이름의 일부만 적어 보시고, 그래도 없으면 공동체 대표님께 '
+        + '등록된 이름을 물어봐 주세요.</div>';
+      b.classList.remove('hide');
+      return;
+    }
+    b.innerHTML = COMM_ROWS.map(function (r, i) {
+      /* 적으신 토막을 진하게 — 왜 이것이 나왔는지 보이게 합니다 */
+      var at = q ? r.name.toLowerCase().indexOf(q.toLowerCase()) : -1;
+      var n = at < 0 ? A.esc(r.name)
+        : A.esc(r.name.slice(0, at)) + '<b>' + A.esc(r.name.slice(at, at + q.length))
+          + '</b>' + A.esc(r.name.slice(at + q.length));
+      return '<button type="button" data-ci="' + i + '">' + n + '</button>';
+    }).join('');
+    b.classList.remove('hide');
+  }
+
+  async function commFind(q) {
+    /* ilike 에서 % 와 _ 는 「아무 글자」라는 뜻이라, 적으신 글자에서는 빼고 찾습니다 */
+    var k = q.replace(/[%_\\]/g, ''), rows = [];
+    if (k) {
+      var r = await A.sb.from('communities_public').select('id,name')
+        .ilike('name', '%' + k + '%').order('name').limit(8);
+      rows = r.error ? [] : (r.data || []);
+    }
+    /* 직원은 「ESC (직원)」로 돌아올 수 있어야 합니다 — 직원 화면에만 뜹니다 */
+    if ((A.IS_ADMIN || A.IS_REVIEWER) && 'esc (직원)'.indexOf(q.toLowerCase()) >= 0)
+      rows.unshift({ id: 'esc', name: 'ESC (직원)' });
+    COMM_ROWS = rows; COMM_AT = -1;
+    commDraw(q);
+  }
+
+  if ($('su_commText')) {
+    $('su_commText').oninput = function () {
+      $('su_comm').value = '';            /* 손으로 고치면 고른 공동체를 풉니다 */
+      commHint(COMM_HELP);
+      var q = this.value.trim();
+      clearTimeout(COMM_WAIT);
+      if (!q) { commClose(); return; }
+      /* 한글은 글자를 맞추는 동안에도 입력이 들어옵니다 — 조금 기다려 모아서 찾습니다 */
+      COMM_WAIT = setTimeout(function () { commFind(q); }, 220);
+    };
+
+    $('su_commText').onkeydown = function (e) {
+      if (e.key === 'Escape') { commClose(); return; }
+      if (!COMM_ROWS.length) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        COMM_AT += (e.key === 'ArrowDown' ? 1 : -1);
+        if (COMM_AT < 0) COMM_AT = COMM_ROWS.length - 1;
+        if (COMM_AT >= COMM_ROWS.length) COMM_AT = 0;
+        var bs = $('su_commList').querySelectorAll('button');
+        for (var i = 0; i < bs.length; i++) bs[i].classList.toggle('on', i === COMM_AT);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        /* 하나만 나왔으면 바로 고를 수 있게 합니다 */
+        commPick(COMM_AT >= 0 ? COMM_AT : (COMM_ROWS.length === 1 ? 0 : -1));
+      }
+    };
+
+    /* 🔴 click 이 아니라 mousedown 입니다 — click 은 칸에서 손이 떠난 뒤에 오므로
+          아래 「밖을 누르면 닫기」가 먼저 닫아 버려, 눌러도 안 골라집니다. */
+    $('su_commList').addEventListener('mousedown', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('[data-ci]') : null;
+      if (!b) return;
+      e.preventDefault();
+      commPick(Number(b.dataset.ci));
+    });
+
+    document.addEventListener('mousedown', function (e) {
+      if (!(e.target && e.target.closest && e.target.closest('.ac'))) commClose();
+    });
+  }
+
   $('btnSignup').onclick = async function () {
     var v = function (id) { return ($(id).value || '').trim(); };
     var comm = v('su_comm'), name = v('su_name');
     var nid = v('su_nid'), alias = v('su_alias'), band = v('su_band'), phone = v('su_phone');
     var email = v('su_email'), pw = $('su_pw').value, pw2 = $('su_pw2').value;
 
-    if (!comm) { A.msg('suMsg', '공동체를 골라 주세요.'); return; }
+    if (!comm) {
+      /* 적어 놓기만 하고 아래 목록을 누르지 않으면 공동체 id 가 비어 있습니다 */
+      A.msg('suMsg', v('su_commText')
+        ? '공동체는 칸 아래에 뜨는 것을 눌러서 골라 주세요. (적어 놓기만 하면 저장되지 않습니다)'
+        : '공동체 이름을 적어 주세요.');
+      return;
+    }
     if (comm === 'esc') comm = null;      /* ESC 직원 — 공동체 없음 */
     if (!name) { A.msg('suMsg', '이름을 입력해 주세요.'); return; }
 

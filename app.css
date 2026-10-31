@@ -642,3 +642,18 @@ tr.seen td{background:var(--amber-bg)}
 tr.seen td:first-child{box-shadow:inset 4px 0 0 var(--amber)}
 .seenmark{background:var(--amber-bg);border-left:4px solid var(--amber);
      padding:1px 5px 1px 8px;border-radius:3px}
+
+/* ── 적으면 아래에 뜨는 칸 (블로거 신청 — 공동체 고르기) ────────────────
+   🔴 .ac 에 position:relative 가 있어야 목록이 칸 바로 밑에 붙습니다.
+   🔴 .aclist 는 다음 칸(이름·생년월일) 위에 떠야 하므로 z-index 가 필요합니다. */
+.ac{position:relative}
+.aclist{position:absolute;left:0;right:0;top:100%;margin-top:3px;z-index:30;
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 10px 26px rgba(8,12,20,.18);overflow:hidden;max-height:252px;overflow-y:auto}
+.aclist button{display:block;width:100%;text-align:left;padding:10px 12px;border:0;
+  background:none;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;
+  border-bottom:1px solid var(--line)}
+.aclist button:last-child{border-bottom:0}
+.aclist button:hover,.aclist button.on{background:var(--info-bg)}
+.aclist button b{color:var(--brand)}
+.aclist .acnone{padding:11px 12px;font-size:13px;color:var(--muted);line-height:1.6}

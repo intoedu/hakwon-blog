@@ -854,8 +854,6 @@ window.ESC = (function () {
     A.REVIEW_RATE = { approve: 250, verify: 250 };
     A.KW_FEE = { admin: 2000, blogger: 1000 };
 
-    await A.loadCommsPublic();
-
     var ses = await A.sb.auth.getSession();
     A.SESSION = ses.data ? ses.data.session : null;
     var wantSignup = location.hash === '#signup';
@@ -1039,13 +1037,12 @@ window.ESC = (function () {
   };
   window.addEventListener('hashchange', function () { if (A.IS_ADMIN) A.applyHash(); });
 
-  A.loadCommsPublic = async function () {
-    var list = await A.sel('communities_public');
-    var sel = A.$('su_comm');
-    if (sel) sel.innerHTML = '<option value="">고르세요</option>' + list.map(function (c) {
-      return '<option value="' + c.id + '">' + A.esc(c.name) + '</option>';
-    }).join('');
-  };
+  /* 🔴 loadCommsPublic 은 없앴습니다 (10/31).
+     신청 화면의 공동체 칸을 «고르는 목록»에서 «적으면 아래에 뜨는» 칸으로 바꿨습니다.
+     예전에는 여기서 로그인도 하기 전에 공동체 전체를 받아 왔는데, 신청하시는 분께
+     다른 공동체 이름까지 보여 줄 까닭이 없었습니다.
+     지금은 gate.js 가 적으신 글자로 그때그때 찾습니다 — 미리 받아 두지 않습니다.
+     (아래 A.COMMS 는 다른 것입니다 — 로그인한 블로거·관리자 화면에서 이름을 쓰려고 받습니다) */
 
   A.$('btnReload').onclick = function () { A.boot(); };
 

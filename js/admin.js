@@ -6991,7 +6991,7 @@
       var r = await A.sb.from('communities').update(patch).eq('id', cid).select();
       t.disabled = false;
       if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
-      A.toast('저장했습니다'); await A.loadAdmin(); await A.loadCommsPublic(); return;
+      A.toast('저장했습니다'); await A.loadAdmin(); return;
     }
 
     /* 학원이 뒤늦게 보낸 내용을, 이미 글을 맡고 있는 분들에게 알립니다 */
@@ -7672,7 +7672,7 @@
     this.disabled = false;
     if (r.error) { A.toast('추가 실패: ' + r.error.message); return; }
     $('newComm').value = ''; A.toast('추가했습니다');
-    await A.loadAdmin(); await A.loadCommsPublic();
+    await A.loadAdmin();
   };
   $('btnAddOrder').onclick = async function () {
     var name = $('no_name').value.trim(), qty = Number($('no_qty').value);
