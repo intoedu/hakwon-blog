@@ -358,7 +358,7 @@
         : '가장 높은 단계입니다.')
       + '<br><b>단계는 블로그·리뷰가 같이 씁니다.</b>'
       + (myRates().length > 1
-        ? '<br><b>학원에 따라 편당 단가가 다릅니다.</b> 글마다 정해진 값은 「2 '
+        ? '<br><b>업체에 따라 편당 단가가 다릅니다.</b> 글마다 정해진 값은 「2 '
           + (RV ? '리뷰 올리기' : '글 쓰기') + '」에서 보실 수 있습니다.'
         : '')
       + '</div></div></div>'
@@ -450,7 +450,7 @@
         + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
         + (r.videoWait ? ' <b style="color:var(--wait)">' + r.videoWait
           + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
-      + (RV ? '' : '<br><br><b>「연습글」로 표시되지 않은 글은 연습이 아니라 진짜 일입니다.</b> 학원이 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.')
+      + (RV ? '' : '<br><br><b>「연습글」로 표시되지 않은 글은 연습이 아니라 진짜 일입니다.</b> 업체가 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.')
       + '</div></div>';
 
     /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
@@ -767,7 +767,7 @@
       + (p.info_pack ? '<label class="f">정보 박스 — 글에 그대로 붙여넣으세요</label>'
         + '<textarea class="inp" id="ipk" readonly>' + esc(p.info_pack) + '</textarea>'
         + '<div class="row" style="margin-top:8px"><button class="btn btn-s" id="btnCopyPack">정보팩 복사</button>'
-        + (p.academy_url ? '<a class="btn btn-s" href="' + esc(p.academy_url) + '" target="_blank" rel="noopener">학원 홈페이지 ↗</a>' : '')
+        + (p.academy_url ? '<a class="btn btn-s" href="' + esc(p.academy_url) + '" target="_blank" rel="noopener">업체 홈페이지 ↗</a>' : '')
         + '</div>' : '')
       + '</div>';
 
@@ -784,8 +784,8 @@
          예전 「마무리 = 2줄 + 홈페이지 링크 1개」 안내 때문에 같은 링크가 정보 박스 바로
          아래에 또 붙었습니다. 그래서 마무리에서는 링크를 빼라고 적습니다. */
       + fl('정보 박스', '위의 [정보팩 복사] 눌러서 그대로 붙여넣기'
-        + '<br><span class="mono">학원명 · 주소 · 전화 · 수업시간 · 홈페이지가 다 들어 있습니다</span>')
-      + fl('지도', '네이버 지도에서 학원 검색해서 넣기 · 30초')
+        + '<br><span class="mono">업체명 · 주소 · 전화 · 수업시간 · 홈페이지가 다 들어 있습니다</span>')
+      + fl('지도', '네이버 지도에서 업체 검색해서 넣기 · 30초')
       + fl('마무리', '2~3줄로 짧게 맺기'
         + '<br><span class="mono">홈페이지 주소는 <b style="color:var(--ink)">위 정보 박스에 이미 있습니다</b> — 또 넣지 마세요</span>')
       + fl('태그', tagCount(p) ? '아래에 정해 둔 ' + tagCount(p) + '개를 그대로 넣으세요'
@@ -889,7 +889,7 @@
         ? '<div class="note warn" style="margin-bottom:12px">'
           + '<b>원고는 통과됐지만 올리는 날은 ' + esc(pon) + ' 입니다'
           + (dleft != null ? ' (' + dleft + '일 남음)' : '') + '.</b><br>'
-          + '한 학원 글이 며칠 안에 몰려 올라가면 서로 검색어를 잡아먹고, '
+          + '한 업체 글이 며칠 안에 몰려 올라가면 서로 검색어를 잡아먹고, '
           + '그 블로그가 광고 블로그로 보입니다. 그래서 날짜를 벌려 두었습니다.<br>'
           + '<b>그날 센터에 들어오시면 이 칸이 열립니다.</b> '
           + '미리 예약 발행을 걸어두셔도 됩니다.</div>'
@@ -924,7 +924,7 @@
       + '</div>'
       + (up || canPub
         ? '<div class="note warn" style="margin-top:14px"><b>올린 글은 1년 동안 지우지 말아 주세요.</b> '
-          + '학원이 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>'
+          + '업체가 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>'
         : '');
 
     var act = '<div class="sec">여기까지 오면 끝납니다</div>' + s1 + s2 + s3;
@@ -1047,7 +1047,7 @@
   function topicBlock(p) {
     if (!p.topic_title) return '';
     return '<div class="topicbox"><div class="tb-h">✍️ 이 글에서 다룰 이야기'
-      + '<span>학원이 알려준 내용입니다</span></div>'
+      + '<span>업체가 알려준 내용입니다</span></div>'
       + '<b>' + esc(p.topic_title) + '</b>'
       + '<pre>' + esc(p.topic_body || '') + '</pre>'
       + '<div class="tb-w"><b>그대로 붙여넣지 마세요.</b> 읽고 이해한 다음 '
@@ -1280,7 +1280,7 @@
     var mine = myPhotos(p);
     if (!mine.length) {
       return p.photo_note
-        ? '<div class="note" style="margin:12px 0"><b>사진</b> — 학원이 링크로 주셨습니다.<br>'
+        ? '<div class="note" style="margin:12px 0"><b>사진</b> — 업체가 링크로 주셨습니다.<br>'
         + '<a href="' + esc(p.photo_note) + '" target="_blank" rel="noopener">' + esc(p.photo_note) + ' ↗</a></div>'
         /* 🔴 블로거는 의뢰처에 가지 않습니다 (10/1 확인). 사진은 고객이 보내 주신 것을 나눠 드립니다.
            「직접 찍으신 사진을 5장 이상」은 가서 찍으라는 말이라 사실과 맞지 않았습니다. */
@@ -1294,7 +1294,7 @@
       + '다른 분과 같은 사진을 쓰면 검색에 안 걸릴 수 있으니 받으신 것만 쓰세요.</div>'
       + '<div class="note warn" style="margin-bottom:8px"><b>학생 얼굴이 나온 사진은 '
       + '올리시기 전에 모자이크(흐리게) 처리해 주세요.</b> 네이버 블로그 사진 편집에 '
-      + '「모자이크」가 있습니다. 얼굴이 그대로 올라가면 학원이 곤란해집니다.</div>'
+      + '「모자이크」가 있습니다. 얼굴이 그대로 올라가면 업체가 곤란해집니다.</div>'
       + '<div class="row">'
       + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 ' + mine.length + '장 보기</button>'
       + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '">⬇ ' + mine.length + '장 한번에 받기</button>'

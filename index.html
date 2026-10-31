@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261030b">
+<link rel="stylesheet" href="app.css?v=261031a">
 </head>
 <body>
 
@@ -354,7 +354,7 @@
       <div class="grid g4" id="dashStats"></div>
       <div class="sec">지금 손대야 할 것</div>
       <div id="dashTodo"></div>
-      <div class="sec">학원별 진행</div>
+      <div class="sec">업체별 진행</div>
       <div id="dashOrders"></div>
     </section>
 
@@ -384,7 +384,7 @@
         <div class="note" style="margin-bottom:16px">
           <b>글 수·활동 기간은 따지지 않고 받습니다.</b> 블로그는 쓰면서 키우면 됩니다.
           다만 <b>이미 저품질로 찍힌 블로그</b>는 글을 올려도 검색에 아예 안 나오니,
-          그때만 <b>[저품질로 표시]</b>로 걸러 주세요. 우리는 돈을 주는데 학원은 아무것도 못 받게 됩니다.<br>
+          그때만 <b>[저품질로 표시]</b>로 걸러 주세요. 우리는 돈을 주는데 업체는 아무것도 못 받게 됩니다.<br>
           <span class="mono">이웃 수는 본인이 고른 구간일 뿐입니다. 열어보시고 실제 숫자를 적어두시면 나중에 단계 올릴 때 참고가 됩니다.</span>
         </div>
         <div id="applyList"></div>
@@ -606,7 +606,7 @@
     <section class="screen" data-screen="orders">
       <div class="head"><div class="step-of">3단계 · 주문이 들어오면</div>
         <div id="ordHead"><h1>주문 · 입금</h1>
-        <p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p></div></div>
+        <p>업체가 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p></div></div>
       <div id="ordIntro"></div>
 
       <div class="sec">주문 목록</div>
@@ -717,7 +717,7 @@
 
       <div class="sec" style="margin-top:34px">태그 정하기 <small>글마다 태그 조합이 달라야 서로 안 묶입니다</small></div>
       <div class="note" style="margin-bottom:14px">
-        태그는 <b>제목·본문만큼 세지는 않지만</b>, 학원이 강조하는 말을 계속 물고 가는 역할을 합니다.
+        태그는 <b>제목·본문만큼 세지는 않지만</b>, 업체가 강조하는 말을 계속 물고 가는 역할을 합니다.
         <b>50편이 전부 같은 태그를 달면</b> 네이버가 한 덩어리로 보기 쉬우니
         <b>고정 몇 개 + 나머지는 돌려쓰기</b>로 갑니다.
       </div>
@@ -728,7 +728,7 @@
           <button class="btn btn-s" id="tgSuggest">글감에서 태그 뽑기</button>
         </div>
         <div>
-          <label class="f">모든 글에 넣을 태그 <small>학원 이름·지역처럼 꼭 물고 가야 할 것 · 2~4개</small></label>
+          <label class="f">모든 글에 넣을 태그 <small>업체 이름·지역처럼 꼭 물고 가야 할 것 · 2~4개</small></label>
           <input class="inp" id="tgFixed" placeholder="혼공기적학원, 이매동학원, 분당학원">
         </div>
         <div style="margin-top:12px">
@@ -814,8 +814,8 @@
           <div class="note warn" style="margin-top:10px">
             <b>이 숫자를 올려도 같은 업체 글은 하루 1편으로 두시길 권합니다.</b>
             한 블로그에 같은 업체 글이 하루에 여러 개 올라가면,
-            그 블로그가 그 학원 <b>광고 채널로 보이고</b> 글끼리도 서로 잡아먹습니다.
-            하루 편수를 늘리는 것이 실제로 벌이가 되려면 <b>맡을 학원이 여러 곳이어야</b> 합니다.<br>
+            그 블로그가 그 업체 <b>광고 채널로 보이고</b> 글끼리도 서로 잡아먹습니다.
+            하루 편수를 늘리는 것이 실제로 벌이가 되려면 <b>맡을 업체가 여러 곳이어야</b> 합니다.<br>
             그리고 이건 <b>안내 문구일 뿐 시스템이 막지는 않습니다</b> —
             글은 블로거 본인 블로그에 올리는 것이라 우리가 막을 수 있는 지점이 없습니다.
           </div>
@@ -1043,7 +1043,7 @@
     <!-- 6 검수하기 -->
     <section class="screen" data-screen="review">
       <div class="head"><div class="step-of" data-adminonly>6단계 · 일이 돌아가면</div>
-        <h1>검수하기</h1><p>학원별 또는 공동체별로 묶어서 봅니다. 이름을 누르면 그 안의 글들이 열립니다.</p></div>
+        <h1>검수하기</h1><p>업체별 또는 공동체별로 묶어서 봅니다. 이름을 누르면 그 안의 글들이 열립니다.</p></div>
       <div class="tabs" data-tabs="rv">
         <button class="on" data-pane="rv-draft">① 원고 검수 <span class="mono" id="rcDraft">0</span></button>
         <button data-pane="rv-live">② 올라간 글 확인 <span class="mono" id="rcLive">0</span></button>
@@ -1052,7 +1052,7 @@
         <div class="dv on" data-view="acad-list">
           <div class="row" style="margin-bottom:12px">
             <div class="chips">
-              <button data-rvby="acad" class="on">학원별로 보기</button>
+              <button data-rvby="acad" class="on">업체별로 보기</button>
               <button data-rvby="comm">공동체별로 보기</button>
             </div>
             <span class="mono" id="rvByHint"></span>
@@ -1064,7 +1064,7 @@
           <div id="rvAcadList"></div>
         </div>
         <div class="dv" data-view="acad-posts">
-          <div class="crumb"><button data-back="acad-list" id="rvCrumb">← 학원 목록</button><span>/</span>
+          <div class="crumb"><button data-back="acad-list" id="rvCrumb">← 업체 목록</button><span>/</span>
             <b style="color:var(--ink)" id="rvAcadName"></b><span class="mono" id="rvAcadMeta"></span></div>
           <div id="rvAcadPics"></div>
           <div class="note warn" style="margin-bottom:14px">
@@ -1205,7 +1205,7 @@
       </div>
       <div class="tabs" id="notiTabs" style="margin-bottom:14px">
         <button class="on" data-noti="blogger">블로거에게</button>
-        <button data-noti="academy">학원에게</button>
+        <button data-noti="academy">업체에게</button>
         <button data-noti="staff">우리끼리 챙길 것</button>
       </div>
       <details id="notiSendBox" style="margin-bottom:16px" data-adminonly>
@@ -1247,7 +1247,7 @@
             <div class="fld"><label class="f">블로거에게 가는 서명</label>
               <input class="inp" id="notiSign" placeholder="ESC 학원지원 이은총 드림">
               <div class="mono" style="margin-top:4px">승인된 알림톡 17종과 글자가 같아야 합니다</div></div>
-            <div class="fld"><label class="f">학원 · 업체에게 가는 서명</label>
+            <div class="fld"><label class="f">업체에게 가는 서명</label>
               <input class="inp" id="notiSignCustomer" placeholder="인투마케팅 이은총 드림">
               <div class="mono" style="margin-top:4px">고객용 16~19번은 인투마케팅 채널로 나갑니다</div></div>
           </div>
@@ -1326,9 +1326,9 @@
       <div class="sec">자주 쓰는 주소</div>
       <div id="linkFixed"></div>
 
-      <div class="sec">학원별 진행현황 주소 <small>학원마다 다릅니다 · 같은 학원은 여러 번 주문해도 주소가 하나</small></div>
+      <div class="sec">업체별 진행현황 주소 <small>업체마다 다릅니다 · 같은 업체는 여러 번 주문해도 주소가 하나</small></div>
       <div class="row" style="margin-bottom:12px">
-        <input class="inp" id="linkQ" style="width:auto;flex:1;min-width:180px" placeholder="학원 이름으로 찾기">
+        <input class="inp" id="linkQ" style="width:auto;flex:1;min-width:180px" placeholder="업체 이름으로 찾기">
       </div>
       <div id="linkOrders"></div>
     </section>
@@ -1451,10 +1451,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261030b"></script>
-<script src="js/gate.js?v=261030b"></script>
-<script src="js/admin.js?v=261030b"></script>
-<script src="js/blogger.js?v=261030b"></script>
+<script src="js/core.js?v=261031a"></script>
+<script src="js/gate.js?v=261031a"></script>
+<script src="js/admin.js?v=261031a"></script>
+<script src="js/blogger.js?v=261031a"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

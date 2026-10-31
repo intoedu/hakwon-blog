@@ -46,11 +46,11 @@
     }).join('');
   }
   function splitBox() {
-    return '<details class="outbox" style="margin-top:18px"><summary>💰 학원이 낸 돈이 어떻게 나뉘는지'
+    return '<details class="outbox" style="margin-top:18px"><summary>💰 업체가 낸 돈이 어떻게 나뉘는지'
       + '<span class="mono">— 일반 ' + won(sale().normal) + '원 · 파트너 ' + won(sale().premium) + '원</span></summary>'
       + '<div class="obody">'
       + '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>주문 갈래 · 단계</th><th>학원이 냄</th><th>블로거</th>'
+      + '<thead><tr><th>주문 갈래 · 단계</th><th>업체가 냄</th><th>블로거</th>'
       + '<th>검수자</th><th>공동체</th><th>블로그센터</th></tr></thead><tbody>'
       + splitRows('normal') + splitRows('premium') + '</tbody></table></div>'
       + '<div class="note" style="margin-top:12px"><b>판매가는 부가세가 포함된 금액입니다.</b> '
@@ -289,7 +289,7 @@
     });
 
     $('dashOrders').innerHTML = ords.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>학원</th><th>주문</th><th>올라간 글</th><th>검수 대기</th><th>입금</th><th>마감일</th>'
+      + '<thead><tr><th>업체</th><th>주문</th><th>올라간 글</th><th>검수 대기</th><th>입금</th><th>마감일</th>'
       + (A.IS_OWNER ? '<th></th>' : '') + '</tr></thead><tbody>'
       + ords.map(function (o) {
         var p = prog(o.id), done = Number(p.done || 0), pct = o.total_qty ? Math.round(done / o.total_qty * 100) : 0;
@@ -1226,7 +1226,7 @@
       + '</div>'
       + '<div class="row" style="margin-top:14px">'
       + '<button class="btn btn-p" id="btnSaveKw">검색어 변경 요금 저장</button>'
-      + '<span class="mono">학원에 받는 금액 = 두 칸 합계 <b id="kwFeeSum">' + won(kwFeeTotal()) + '원</b>'
+      + '<span class="mono">업체에 받는 금액 = 두 칸 합계 <b id="kwFeeSum">' + won(kwFeeTotal()) + '원</b>'
       + ' · 바꿔도 <b>이미 바꾼 글의 금액은 안 변합니다</b></span></div></div>';
 
     $('btnSaveLevels').onclick = saveLevels;
@@ -1794,7 +1794,7 @@
     var oh = $('ordHead');
     if (oh) oh.innerHTML = RV
       ? '<h1>주문 · 입금</h1><p>업체가 어떤 리뷰를 몇 편 원하는지, 돈이 들어왔는지를 봅니다.</p>'
-      : '<h1>주문 · 입금</h1><p>학원이 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p>';
+      : '<h1>주문 · 입금</h1><p>업체가 몇 편을 언제까지 원하는지, 돈이 들어왔는지를 봅니다.</p>';
 
     var oi = $('ordIntro');
     if (oi) oi.innerHTML = RV
@@ -1805,7 +1805,7 @@
         + '사진은 업체에서 받아 넣어 주시면 됩니다.</div>'
       : '<div class="note ok" style="margin-bottom:18px">'
         + '<b>주문은 보통 홈페이지에서 저절로 들어옵니다.</b> '
-        + '학원이 신청하면 관리자페이지 의뢰 상세에 <b>[🖊 블로그 주문 만들기]</b> 버튼이 생기고, '
+        + '업체가 신청하면 관리자페이지 의뢰 상세에 <b>[🖊 블로그 주문 만들기]</b> 버튼이 생기고, '
         + '그걸 누르면 지역·과목·대상·목적·정보팩·사진까지 여기로 그대로 넘어옵니다. '
         + '<b>손으로 만드실 일은 거의 없습니다.</b></div>';
 
@@ -1818,8 +1818,8 @@
     if (om) om.innerHTML = RV
       ? '<b>리뷰 주문은 여기서 만듭니다.</b> 업체 이름·편수·마감일을 넣고 만드시면 '
         + '아래 목록에 뜹니다. 만든 뒤 그 카드에서 <b>지도 주소·리뷰 구성·사진</b>을 채워 주세요.'
-      : '<b>이럴 때만 쓰세요.</b> 학원이 전화·카톡으로 바로 주문했을 때, '
-        + '이미 거래하던 학원이 신청서 없이 재주문할 때, 우리가 먼저 제안해서 성사됐을 때.<br>'
+      : '<b>이럴 때만 쓰세요.</b> 업체가 전화·카톡으로 바로 주문했을 때, '
+        + '이미 거래하던 업체가 신청서 없이 재주문할 때, 우리가 먼저 제안해서 성사됐을 때.<br>'
         + '<b>손으로 만들면 글감(지역·과목·대상·목적)과 사진이 비어 있습니다.</b> '
         + '아래 주문 카드에서 직접 채워 넣으셔야 합니다.';
     $('orderList').innerHTML = list.length ? list.map(function (o) {
@@ -1873,10 +1873,10 @@
           : o.photo_note
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
               + '" target="_blank" rel="noopener">' + esc(o.photo_note.slice(0, 40)) + ' ↗</a>'
-            : '<span class="chip c-bad">사진 없음</span><span class="mono">학원에 요청하세요</span>') + '</div>')
+            : '<span class="chip c-bad">사진 없음</span><span class="mono">업체에 요청하세요</span>') + '</div>')
         + (RV ? rvOrderBox(o) : outBox(o))
-        + '<div class="sec" style="margin-top:16px">' + (RV ? '업체' : '학원') + '에 보낼 진행현황 주소 '
-        + '<small>로그인 없이 열립니다 · 이 ' + (RV ? '업체' : '학원') + ' 것만 보입니다 · '
+        + '<div class="sec" style="margin-top:16px">업체에 보낼 진행현황 주소 '
+        + '<small>로그인 없이 열립니다 · 이 업체 것만 보입니다 · '
         + (RV ? '리뷰어' : '블로거') + ' 이름·단가는 안 보입니다</small></div>'
         + '<div class="row">'
         + '<input class="inp" style="flex:1;min-width:240px;font-family:var(--mono);font-size:12px" readonly '
@@ -1891,7 +1891,7 @@
         + (RV ? '' : '<button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>')
         + '<button class="btn btn-s" data-gokw="' + o.id + '">'
         + (RV ? '4 리뷰 만들기 →' : '4 키워드 만들기 →') + '</button>'
-        + '<button class="btn btn-s" data-copyorder="' + o.id + '" title="이어서 하는 학원 — 편수 · 단가 · 학원 정보 · 사진을 그대로 복사한 새 주문">같은 조건으로 새 주문</button>'
+        + '<button class="btn btn-s" data-copyorder="' + o.id + '" title="이어서 하는 업체 — 편수 · 단가 · 업체 정보 · 사진을 그대로 복사한 새 주문">같은 조건으로 새 주문</button>'
         + '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
         + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-ostatus="' + o.id + '">'
         + ['active', 'paused', 'done', 'ended'].map(function (s) {
@@ -2267,7 +2267,7 @@
       + '따로 다시 보낼 필요가 없습니다. 다만 <b>바뀐 줄 모르고 예전 내용으로 쓰고 있을 수</b> 있어, '
       + '아래로 한 번 알려 주세요. 아직 안 올린 글을 맡은 분들에게만 갑니다.</div>'
       + '<textarea class="inp" data-chgwhat="' + o.id + '" style="min-height:70px"'
-      + ' placeholder="예) 학원에서 수학 담당 원장님 성함과 3.14 학원 MOU 내용을 새로 보내주셨습니다. '
+      + ' placeholder="예) 업체에서 수학 담당 원장님 성함과 3.14 학원 MOU 내용을 새로 보내주셨습니다. '
       + '소재 6번을 확인해 주세요."></textarea>'
       + '<div class="row" style="margin-top:9px">'
       + '<button class="btn btn-a btn-s" data-chgnoti="' + o.id + '">바뀐 내용 알리기</button>'
@@ -2374,7 +2374,7 @@
     PICTAGS = Object.assign({}, o.photo_tags || {});
     PSHOWN = 0;
     $('picTitle').textContent = orderLabel(o) + ' — '
-      + (PICRV ? '업체' : '학원') + '가 보낸 사진 ' + PICS.length + '장';
+      + '업체가 보낸 사진 ' + PICS.length + '장';
     $('picBody').innerHTML = '';
     morePics();
     paintTagBar();
@@ -2613,16 +2613,16 @@
     }
     if (!s.made) {
       box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">'
-        + '<b>이 학원은 아직 키워드를 안 만들었습니다.</b> 처음 만드시는 것이 맞습니다.</div>';
+        + '<b>이 업체는 아직 키워드를 안 만들었습니다.</b> 처음 만드시는 것이 맞습니다.</div>';
       return;
     }
     var done = s.up >= s.made && s.made > 0;
     box.innerHTML = '<div class="msg ' + (done ? 'err' : 'warn') + '" style="margin:0 0 12px">'
-      + '<b>⚠️ 이 학원은 이미 키워드를 ' + s.made + '편 만들었습니다.</b> '
+      + '<b>⚠️ 이 업체는 이미 키워드를 ' + s.made + '편 만들었습니다.</b> '
       + '(주문 ' + o.total_qty + '편 · 맡긴 글 ' + s.given + '편 · 올라간 글 ' + s.up + '편'
       + (s.idle ? ' · <b>아직 안 맡긴 글 ' + s.idle + '편</b>' : '') + ')<br>'
       + (done
-        ? '<b>이 주문은 이미 다 썼습니다.</b> 여기서 또 만들면 학원이 시킨 것보다 많이 쓰게 됩니다. '
+        ? '<b>이 주문은 이미 다 썼습니다.</b> 여기서 또 만들면 업체가 시킨 것보다 많이 쓰게 됩니다. '
         + '정말 더 만드시는 것이 맞습니까?'
         : s.idle
           ? '<b>먼저 「5 글 나눠주기」에서 남은 ' + s.idle + '편을 맡기세요.</b> '
@@ -2688,7 +2688,7 @@
             + '편 — 예) ' + esc(bad[k][0]);
         }).join('<br>')
       + '<br><br>이대로 만들면 <b>제목은 고등인데 내용은 중학생 이야기</b>인 글이 나옵니다. '
-      + '학원에 그 소재를 더 받으시거나, <b>지역·학년·과목 칸에서 그것을 빼고</b> 다시 만드세요.<br>'
+      + '업체에 그 소재를 더 받으시거나, <b>지역·학년·과목 칸에서 그것을 빼고</b> 다시 만드세요.<br>'
       + '<span class="mono">「공통」 소재로 때울 수는 있지만, 공통 소재는 몇 개 안 되니 '
       + '그 소재만 여러 번 쓰이게 됩니다 (유사문서 위험).</span></div>';
   }
@@ -3024,7 +3024,7 @@
       var st = kwMade(oid);
       if (st.up >= st.made && st.made > 0
         && !confirm('⚠️ 「' + nm + '」은 이미 ' + st.made + '편을 다 써서 올렸습니다.\n\n'
-          + '여기서 또 만들면 학원이 주문한 ' + (ord.total_qty || '?') + '편보다 많이 쓰게 됩니다.\n'
+          + '여기서 또 만들면 업체가 주문한 ' + (ord.total_qty || '?') + '편보다 많이 쓰게 됩니다.\n'
           + '정말 더 만드시겠습니까?')) { A.toast('취소했습니다'); return; }
       var ans = window.prompt(
         '「' + nm + '」에는 이미 글이 ' + already + '편 있습니다'
@@ -3900,7 +3900,7 @@
       box.innerHTML = (o && over > 0)
         ? '<div class="msg err" style="margin:0 0 12px">'
         + '<b>⚠️ 주문은 ' + o.total_qty + '편인데 글이 ' + made + '편 만들어져 있습니다 (' + over + '편 초과).</b><br>'
-        + '키워드를 두 번 만드신 것 같습니다. 이대로 나눠주면 학원이 시킨 것보다 많이 쓰게 됩니다. '
+        + '키워드를 두 번 만드신 것 같습니다. 이대로 나눠주면 업체가 시킨 것보다 많이 쓰게 됩니다. '
         + '아래에서 <b>남는 ' + over + '편은 빼고</b> 맡기시거나, 「4 키워드 만들기」에서 '
         + '<b>안 맡긴 글을 지우고 새로</b> 만들어 주세요.</div>'
         : '';
@@ -3976,7 +3976,7 @@
           + '</div>';
       }
       if (wk) return '<div class="empty">이 주차에는 맡길 글이 없습니다. 위에서 「전체 주차」로 바꿔 보세요.</div>';
-      return '<div class="empty">이 학원 글은 모두 맡겼습니다. 👍</div>';
+      return '<div class="empty">이 업체 글은 모두 맡겼습니다. 👍</div>';
     }
 
     $('postList').innerHTML = mine.length ? mine.map(function (p, i) {
@@ -4027,7 +4027,7 @@
           + practiceDone(p.id) + '/' + practiceNeed() + '</span>' : '')
         + ' <span class="mono">' + esc(A.commName(p.community_id))
         + ' · ' + p.level + '단계</span></span>'
-        + '<span class="sub">이번 달 <b>' + x.m + '편</b> · 이 학원 ' + here + '편</span></label>';
+        + '<span class="sub">이번 달 <b>' + x.m + '편</b> · 이 업체 ' + here + '편</span></label>';
     }).join('') : '<div class="empty">승인된 블로거가 없습니다.</div>';
 
     $('allPosts').checked = false; $('allPeople').checked = false;
@@ -4266,7 +4266,7 @@
 
     function tbl(rows, midHead, mid) {
       return '<div class="tblbox tblscroll" style="margin-top:10px"><table>'
-        + '<thead><tr><th>학원</th><th>누가</th><th>지금 제목</th><th>' + midHead + '</th>'
+        + '<thead><tr><th>업체</th><th>누가</th><th>지금 제목</th><th>' + midHead + '</th>'
         + '<th>어디까지</th><th></th></tr></thead><tbody>'
         + rows.map(function (r) {
           var p = r.p || r;
@@ -4475,7 +4475,7 @@
 
     var bOrders = A.ORDERS.filter(function (o) { return (o.track || 'blog') === 'blog'; });
     $('rvAcadList').innerHTML = bOrders.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>학원</th><th>주문한 글</th><th>원고 상황</th><th>올라간 글</th><th>마감일</th><th>남은 기간</th></tr></thead><tbody>'
+      + '<thead><tr><th>업체</th><th>주문한 글</th><th>원고 상황</th><th>올라간 글</th><th>마감일</th><th>남은 기간</th></tr></thead><tbody>'
       + bOrders.map(function (o) {
         var todo = draft.filter(function (p) { return p.order_id === o.id; }).length;
         var doneR = POSTS.filter(function (p) {
@@ -4563,7 +4563,7 @@
 
   /* 원고 표 — 학원별·공동체별 둘 다 같은 모양을 씁니다 */
   function rvHead(byComm) {
-    return '<thead><tr><th>' + (byComm ? '학원' : '공동체') + '</th><th>누가</th>'
+    return '<thead><tr><th>' + (byComm ? '업체' : '공동체') + '</th><th>누가</th>'
       + '<th>블로그 제목</th><th style="min-width:150px">어디까지</th>'
       + '<th>원고 낸 날</th><th style="min-width:180px">검수 기록</th>'
       + '<th>처리</th></tr></thead>';
@@ -4708,7 +4708,7 @@
     var rest = all.filter(function (p) { return p.status !== 'submitted'; });
     var d = A.dday(o.deadline);
 
-    $('rvCrumb').textContent = '← 학원 목록';
+    $('rvCrumb').textContent = '← 업체 목록';
     $('rvAcadName').textContent = o.academy_name || '';
     $('rvAcadMeta').innerHTML = o.total_qty + '편 주문 · <b style="color:var(--amber)">마감 '
       + (o.deadline || '-') + (d == null ? '' : d >= 0 ? ' (' + d + '일 남음)' : ' (지났습니다)')
@@ -4722,7 +4722,7 @@
       var np = (o.photo_paths || []).length;
       pbox.innerHTML = !np ? ''
         : '<div class="note' + (tn ? '' : ' warn') + '" style="margin-bottom:14px">'
-        + '<b>학원이 보낸 사진 ' + np + '장</b> — '
+        + '<b>업체가 보낸 사진 ' + np + '장</b> — '
         + (tn ? '그중 ' + tn + '장에 꼬리표가 달려 있습니다. '
               : '<b>꼬리표가 없어 사진이 글 내용과 상관없이 나가고 있습니다.</b> ')
         + '꼬리표를 달면 영어 글에는 영어 사진이, 맨 앞에는 간판 사진이 갑니다.'
@@ -4754,7 +4754,7 @@
 
     var doneHtml = done.length
       ? '<div class="sec">이미 확인한 글 <small>' + done.length + '편 — 회색은 다 끝났다는 뜻입니다</small></div>'
-        + '<div class="tblbox tblscroll"><table><thead><tr><th>학원</th><th>누가</th>'
+        + '<div class="tblbox tblscroll"><table><thead><tr><th>업체</th><th>누가</th>'
         + '<th>노리는 검색어</th><th>순위</th><th>올린 날</th><th></th></tr></thead><tbody>'
         + done.map(function (p) {
           var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
@@ -5057,7 +5057,7 @@
       + st(c('verified') + c('paid'), '확인 끝');
 
     $('pgList').innerHTML = rows.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>#</th><th>노리는 검색어</th><th>학원</th><th>공동체</th><th>누가</th>'
+      + '<thead><tr><th>#</th><th>노리는 검색어</th><th>업체</th><th>공동체</th><th>누가</th>'
       + '<th>어디까지</th><th>마감</th><th></th></tr></thead><tbody>'
       + rows.slice(0, 300).map(function (p) {
         var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
@@ -5102,7 +5102,7 @@
     box.innerHTML = '<div class="msg warn" style="margin:0 0 12px">'
       + '<b>올릴 날이 지난 글이 ' + late.length + '편 있습니다.</b>'
       + (appr ? ' 그중 <b>' + appr + '편은 이미 통과</b>해서 블로거가 지금 올리면 됩니다.' : '')
-      + '<br><b>날짜는 옮기지 않습니다.</b> 주문 마감일 안에만 올라가면 됩니다 — 넘기면 학원에 환불하고 그 글 원고료는 없습니다. '
+      + '<br><b>날짜는 옮기지 않습니다.</b> 주문 마감일 안에만 올라가면 됩니다 — 넘기면 업체에 환불하고 그 글 원고료는 없습니다. '
       + '늦어지는 분께는 직접 연락해 주세요. 알림은 올릴 날 다음 날과 주문 마감 3일 전에 한 번씩만 갑니다. '
       + '같은 업체 글이 한 블로그에 같은 날 몰리는 것은 링크를 넣을 때 막습니다.</div>';
   }
@@ -5140,7 +5140,7 @@
             + (g.fee ? ' <span class="mono">' + A.won(g.fee) + '원</span>' : '') + '</td>'
             + '<td>' + g.free + '건</td><td>' + g.ours + '건</td><td class="mono">' + g.old + '건</td></tr>';
         }).join('') + '</tbody></table></div>'
-      + '<div class="tblbox tblscroll" style="margin-top:10px"><table><thead><tr><th>언제</th><th>학원</th>'
+      + '<div class="tblbox tblscroll" style="margin-top:10px"><table><thead><tr><th>언제</th><th>업체</th>'
       + '<th>예전 → 새로</th><th>바꿀 때</th><th>사유</th></tr></thead><tbody>'
       + list.slice(0, 200).map(function (c) {
           return '<tr><td class="mono">' + A.fdate(c.changed_at) + '</td>'
@@ -5192,7 +5192,7 @@
   /* 지금 보이는 목록을 파일로 */
   $('btnExport').onclick = function () {
     if (!PG_ROWS.length) { A.toast('내보낼 글이 없습니다'); return; }
-    var head = ['학원', '번호', '노리는 검색어', '주차', '공동체', '담당', '상태',
+    var head = ['업체', '번호', '노리는 검색어', '주차', '공동체', '담당', '상태',
       '마감일', '올린 날', '올린 글 주소', '검색 노출'];
     var body = PG_ROWS.map(function (p) {
       var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
@@ -5727,8 +5727,8 @@
     unassigned: '미배정 남음', academy_note: '학원 전달사항', custom: '직접 쓴 알림',
     order_paid: '입금 확인', first_post: '첫 글 올라감', half: '절반 진행', order_done: '전부 완료',
     approved_post: '원고 통과', edu_summary: '교육 요약 올라옴', edu_ok: '교육 이수 확인',
-    edu_no: '교육 요약 다시쓰기', photos_added: '학원이 사진 보냄', published: '올라간 글 확인',
-    info_changed: '학원 내용 바뀜', keyword_changed: '검색어 바뀜',
+    edu_no: '교육 요약 다시쓰기', photos_added: '업체가 사진 보냄', published: '올라간 글 확인',
+    info_changed: '업체 내용 바뀜', keyword_changed: '검색어 바뀜',
     taken_back: '글 회수됨', taken_back_admin: '관리자가 회수함',
     review_late: '우리가 늦은 검수', pub_late: '올릴 날 지남',
     deadline_passed: '주문 마감 지남', late_refund: '마감 넘김 환불', deadline_soon: '주문 마감 임박'
@@ -5961,7 +5961,7 @@
     $('notiSignCustomer').value = NOTI_SET.sign_customer || '';
     var on = NOTI_SET.noti || {};
     $('notiToggles').innerHTML = Object.keys(KIND_OF).map(function (aud) {
-      var label = aud === 'blogger' ? '블로거에게' : aud === 'academy' ? '학원에게' : '우리끼리';
+      var label = aud === 'blogger' ? '블로거에게' : aud === 'academy' ? '업체에게' : '우리끼리';
       return '<div><label class="f">' + label + '</label>'
         + KIND_OF[aud].map(function (k) {
           return '<label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:3px 0">'
@@ -6221,7 +6221,7 @@
     rows.sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); });
 
     $('rpList').innerHTML = rows.length ? '<div class="tblbox tblscroll"><table>'
-      + '<thead><tr><th>한 일</th><th>학원</th><th>검색어</th><th>언제</th><th>상태</th><th>수당</th></tr></thead><tbody>'
+      + '<thead><tr><th>한 일</th><th>업체</th><th>검색어</th><th>언제</th><th>상태</th><th>수당</th></tr></thead><tbody>'
       + rows.map(function (r) {
         return '<tr><td>' + (r.kind === '원고 통과' ? '<span class="chip c-info">원고 통과</span>'
           : r.kind === '검색어 변경' ? '<span class="chip c-wait">검색어 변경</span>'
@@ -6328,7 +6328,7 @@
     /* ⚠️ 아래 둘은 **법으로 걸어 둬야 하는 고지**입니다 (2026-09-08 게시 · 시행 09-10).
        카카오 비즈니스 심사 3차 반려 사유가 「약관·개인정보처리방침에 사업자 정보 없음」이었습니다.
        두 페이지 안의 사업자 정보 블록을 지우면 다시 반려됩니다. */
-    { t: '개인정보처리방침', d: '블로거·학원이 물어보면 이 주소를 보내시면 됩니다. 개인정보보호법상 공개 의무입니다.',
+    { t: '개인정보처리방침', d: '블로거·업체가 물어보면 이 주소를 보내시면 됩니다. 개인정보보호법상 공개 의무입니다.',
       u: function () { return 'https://intomarketing.co.kr/privacy/'; }, who: '법적 고지' },
     { t: '이용약관', d: '광고 표기·게시물 12개월 유지·원고료 지급 방식이 여기에 적혀 있습니다.',
       u: function () { return 'https://intomarketing.co.kr/terms/'; }, who: '법적 고지' }
@@ -6368,8 +6368,8 @@
     $('linkOrders').innerHTML = uniq.length ? uniq.map(function (g) {
       return linkRow(g.o.academy_name,
         g.n + '건 주문 · 모두 ' + g.qty + '편' + (g.o.region ? ' · ' + g.o.region : ''),
-        statusUrl(g.o), '이 학원에게', '');
-    }).join('') : A.empty(q ? '찾는 학원이 없습니다.' : '아직 주문이 없습니다.');
+        statusUrl(g.o), '이 업체에게', '');
+    }).join('') : A.empty(q ? '찾는 업체가 없습니다.' : '아직 주문이 없습니다.');
   }
   $('linkQ').oninput = renderLinks;
 
@@ -6944,7 +6944,7 @@
         var cnt = await A.rpc('notify_order_changed', {
           p_order: t.dataset.chgnoti, p_what: what
         });
-        A.toast(cnt ? cnt + '명에게 알렸습니다' : '지금 이 학원 글을 맡고 있는 분이 없습니다');
+        A.toast(cnt ? cnt + '명에게 알렸습니다' : '지금 이 업체 글을 맡고 있는 분이 없습니다');
         if (cnt) wbox.value = '';
         await loadNoti(false);
       } catch (err) { A.toast('실패: ' + err.message); }
@@ -7028,7 +7028,7 @@
       var src = A.ORDERS.filter(function (x) { return x.id === t.dataset.copyorder; })[0];
       if (!src) return;
       var qv = window.prompt(src.academy_name + ' — 같은 조건으로 새 주문을 만듭니다.\n\n'
-        + '· 복사하는 것 : 단가 · 학원 정보 · 글감 · 사진' + (src.is_practice ? ' · 연습 주문 원고료' : '') + '\n'
+        + '· 복사하는 것 : 단가 · 업체 정보 · 글감 · 사진' + (src.is_practice ? ' · 연습 주문 원고료' : '') + '\n'
         + '· 새로 하는 것 : 입금 확인 → 자료 확인 → [의뢰 시작] → 30일\n'
         + '· 키워드는 복사하지 않습니다 — 같은 검색어로 또 쓰면 글끼리 겹칩니다\n\n'
         + '몇 편으로 할까요?', String(src.total_qty || ''));
@@ -7113,7 +7113,7 @@
       t.disabled = true;
       try {
         await A.rpc('refund_mark_sent', { p_refund: Number(t.dataset.refundsent), p_date: dt.trim() });
-        A.toast('돌려준 날을 찍었습니다. 학원 진행 현황에도 한 줄 보입니다'); await A.loadAdmin();
+        A.toast('돌려준 날을 찍었습니다. 업체 진행 현황에도 한 줄 보입니다'); await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
@@ -7125,7 +7125,7 @@
       if (!confirm(so.academy_name + ' — 오늘(' + mdKo(A.today()) + ')부터 시작합니다.\n'
         + '주문 마감은 ' + mdKo(sdl) + '(30일 뒤)로 정해집니다.\n\n'
         + '· 담당자가 자료 확인을 마쳤을 때만 누르세요\n'
-        + '· 누르면 학원에 「오늘부터 글 작성을 시작합니다」 알림이 만들어집니다\n'
+        + '· 누르면 업체에 「오늘부터 글 작성을 시작합니다」 알림이 만들어집니다\n'
         + '· 되돌리기는 오늘 안에, 블로거에게 맡기기 전까지만 됩니다')) return;
       t.disabled = true;
       try {
@@ -7133,7 +7133,7 @@
         await A.loadAdmin();
         var so2 = A.ORDERS.filter(function (x) { return x.id === so.id; })[0] || so;
         await copyText(startMsg(so2), '시작했습니다. 주문 마감 ' + mdKo(so2.deadline)
-          + ' — 학원에 보낼 시작 안내 문구를 복사했습니다');
+          + ' — 업체에 보낼 시작 안내 문구를 복사했습니다');
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
@@ -7143,7 +7143,7 @@
       return;
     }
     if ((t = e.target.closest('[data-startundo]'))) {
-      if (!confirm('의뢰 시작을 되돌릴까요?\n\n마감일도 지워집니다. 학원에 이미 시작을 알렸다면 따로 말씀해 주세요.')) return;
+      if (!confirm('의뢰 시작을 되돌릴까요?\n\n마감일도 지워집니다. 업체에 이미 시작을 알렸다면 따로 말씀해 주세요.')) return;
       t.disabled = true;
       try {
         await A.rpc('order_start_undo', { p_order: t.dataset.startundo });
@@ -7405,7 +7405,7 @@
     if ((t = e.target.closest('[data-pexempt]'))) {
       var pxOn = t.dataset.on !== '1';
       var pxName = (A.PEOPLE.filter(function (x) { return x.id === t.dataset.pexempt; })[0] || {}).name || '이 블로거';
-      if (pxOn && !confirm(pxName + ' 님의 연습글을 면제합니다.\n\n연습글을 올리지 않아도 학원이 돈을 낸 진짜 주문을 맡게 됩니다. 계속할까요?')) return;
+      if (pxOn && !confirm(pxName + ' 님의 연습글을 면제합니다.\n\n연습글을 올리지 않아도 업체가 돈을 낸 진짜 주문을 맡게 됩니다. 계속할까요?')) return;
       t.disabled = true;
       try {
         await A.rpc('blogger_set_practice_exempt', { p_blogger: t.dataset.pexempt, p_on: pxOn });
@@ -7434,8 +7434,8 @@
 
     if ((t = e.target.closest('[data-copystatus]'))) {
       var url0 = t.dataset.copystatus;
-      try { await navigator.clipboard.writeText(url0); A.toast('주소를 복사했습니다. 학원에 보내주세요'); }
-      catch (err) { window.prompt('아래 주소를 복사해 학원에 보내주세요', url0); }
+      try { await navigator.clipboard.writeText(url0); A.toast('주소를 복사했습니다. 업체에 보내주세요'); }
+      catch (err) { window.prompt('아래 주소를 복사해 업체에 보내주세요', url0); }
       return;
     }
 
@@ -7616,7 +7616,7 @@
   };
   $('btnAddOrder').onclick = async function () {
     var name = $('no_name').value.trim(), qty = Number($('no_qty').value);
-    if (!name || !qty) { A.toast('학원 이름과 편수를 넣어 주세요'); return; }
+    if (!name || !qty) { A.toast('업체 이름과 편수를 넣어 주세요'); return; }
     this.disabled = true;
     try {
       await A.rpc('order_create', {
