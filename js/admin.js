@@ -1320,24 +1320,45 @@
   }
 
   function renderComms() {
-    $('commBox').innerHTML = A.COMMS.length ? '<div class="tblbox tblscroll"><table>'
+    /* 🔴 칸 너비는 아래 <colgroup> 이 정합니다 (app.css 의 .commtbl 이 table-layout:fixed).
+         예전에는 칸마다 min-width:100px 이라 13칸이 가로로 넘쳐 옆으로 넘겨야 했습니다.
+         🔴 칸을 더하거나 빼면 <col> 도 같은 수로 맞춰 주세요. */
+    $('commBox').innerHTML = A.COMMS.length ? '<div class="tblbox tblscroll"><table class="commtbl">'
+      + '<colgroup>'
+      + '<col style="width:100px">'  /* 이름 */
+      + '<col style="width:76px">'   /* 리더 */
+      + '<col style="width:120px">'  /* 연락처 — 숫자가 다 보여야 합니다 */
+      + '<col style="width:76px">'   /* 공동체 은행 */
+      + '<col style="width:143px">'  /* 공동체 계좌번호 — 다 보여야 합니다 */
+      + '<col style="width:70px">'   /* 공동체 예금주 */
+      + '<col style="width:76px">'   /* 개인 은행 */
+      + '<col style="width:143px">'  /* 개인 계좌번호 — 다 보여야 합니다 */
+      + '<col style="width:64px">'   /* 개인 예금주 */
+      + '<col style="width:42px">'   /* 인원 */
+      + '<col style="width:88px">'   /* 저장 · 멤버 보기 */
+      + '<col style="width:120px">'  /* 담당자 · 연락처 */
+      + '</colgroup>'
       /* 🔴 대표(리더)와 담당자는 다를 수 있습니다 — 대표는 바빠서 못 하는 곳이 있고,
          블로거를 실제로 챙기며 센터와 이야기하는 사람은 따로인 경우가 많습니다.
          그래서 [저장] 뒤에서 한 번 끊고, 담당자는 오른쪽에 따로 둡니다. */
       + '<thead><tr><th>이름</th><th>리더</th><th>연락처</th>'
-      + '<th style="border-left:2px solid var(--line)">공동체 계좌 은행</th><th>계좌번호</th><th>예금주</th>'
+      + '<th style="border-left:2px solid var(--line)">공동체 은행</th><th>계좌번호</th><th>예금주</th>'
       /* 공동체 계좌가 없거나 쓸 수 없는 곳이 있어 개인 계좌도 같이 받습니다 (2026-10-15) */
-      + '<th style="border-left:2px solid var(--line)">개인 계좌 은행</th><th>계좌번호</th><th>예금주</th>'
+      + '<th style="border-left:2px solid var(--line)">개인 은행</th><th>계좌번호</th><th>예금주</th>'
       + '<th style="border-left:2px solid var(--line)">인원</th><th></th>'
-      + '<th style="border-left:2px solid var(--line)">담당자</th><th>담당자 연락처</th></tr></thead><tbody>'
+      + '<th style="border-left:2px solid var(--line)">담당자 · 연락처</th></tr></thead><tbody>'
       + A.COMMS.map(function (c) {
         var n = A.PEOPLE.filter(function (p) {
           return p.community_id === c.id && (p.status === 'approved' || p.status === 'paused');
         }).length;
+        /* 입력칸 하나 — 담당자 칸은 이것을 둘 포개어 씁니다.
+           🔴 크기는 app.css 의 .commtbl .inp 가 정합니다. 여기에 다시 적지 마세요. */
+        function inpc(f, ph) {
+          return '<input class="inp" data-cf="' + f + '" data-cid="' + c.id + '" value="'
+            + esc(c[f] || '') + '" placeholder="' + ph + '">';
+        }
         function cell(f, ph, tdStyle) {
-          return '<td' + (tdStyle ? ' style="' + tdStyle + '"' : '') + '>'
-            + '<input class="inp" style="padding:5px 8px;font-size:13px;min-width:100px" '
-            + 'data-cf="' + f + '" data-cid="' + c.id + '" value="' + esc(c[f] || '') + '" placeholder="' + ph + '"></td>';
+          return '<td' + (tdStyle ? ' style="' + tdStyle + '"' : '') + '>' + inpc(f, ph) + '</td>';
         }
         var mem = A.PEOPLE.filter(function (p) {
           return p.community_id === c.id && ['approved', 'paused', 'pending', 'hold'].indexOf(p.status) >= 0;
@@ -1348,14 +1369,17 @@
           + cell('pbank_name', '국민', 'border-left:2px solid var(--line)')
           + cell('pbank_no', '000-00-0000') + cell('pbank_holder', '예금주')
           + '<td class="num" style="border-left:2px solid var(--line)">' + n + '명</td>'
-          + '<td><div class="row"><button class="btn btn-s" data-savec="' + c.id + '">저장</button>'
+          + '<td><div class="btncol"><button class="btn btn-s" data-savec="' + c.id + '">저장</button>'
           + (mem.length ? '<button class="btn btn-s" data-mem="' + c.id + '">멤버 보기</button>' : '') + '</div></td>'
           /* 담당자 — [저장] 뒤에서 끊고 따로 둡니다. 저장은 위 [저장] 단추가 같이 합니다
-             (data-cid 가 붙은 칸을 전부 모아 보냅니다) */
-          + cell('manager_name', '대표와 같으면 비워 두세요', 'border-left:2px solid var(--line)')
-          + cell('manager_phone', '010-0000-0000')
+             (data-cid 가 붙은 칸을 전부 모아 보냅니다).
+             🔴 이름과 연락처를 «한 칸에 위아래로» 넣습니다 (11/1). 비어 있는 곳이 많은 칸이라
+                가로로 둘을 벌려 두면 계좌번호 쪽 폭이 모자랐습니다. 저장은 달라지지 않습니다. */
+          + '<td style="border-left:2px solid var(--line)">'
+          + inpc('manager_name', '대표와 같으면 비움')
+          + inpc('manager_phone', '010-0000-0000') + '</td>'
           + '</tr>'
-          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="13"><div class="memlist">'
+          + (mem.length ? '<tr class="hide" data-memrow="' + c.id + '"><td colspan="12"><div class="memlist">'
             + mem.map(function (p) {
               var s2 = stat(p.id);
               return '<span class="m">' + A.lvBadge(p.level) + ' <b>' + esc(p.name) + '</b>'
