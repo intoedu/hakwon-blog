@@ -2876,6 +2876,64 @@
 
   A.badCombo = badCombo;   /* 화면에서 골라낸 것만 저장할 때도 씁니다 */
 
+  /* ── 검색어 표 그리기 ──────────────────────────────────────────────
+     조합으로 만들 때([키워드 만들기])와 손으로 넣을 때([이대로 쓰기])가 같은 표를 씁니다.
+     rows = [{ kw, brief, subject }] · 돌려주는 값은 주당 편수입니다.
+     🔴 KWDRAFT 를 여기서 갈아 끼웁니다 — [이대로 글 만들기]가 이것을 저장합니다. */
+  function kwDraw(rows, weeks) {
+    var per = Math.ceil(rows.length / Math.max(1, weeks));
+    KWDRAFT = rows.map(function (p, i) {
+      return { keyword: p.kw, brief: p.brief || '', subject: p.subject || '',
+               week: Math.floor(i / per) + 1 };
+    });
+    $('kwOut').className = 'tblbox tblscroll';
+    $('kwOut').innerHTML = '<table><thead><tr>'
+      + '<th style="width:34px"><input type="checkbox" id="kwAll" checked></th>'
+      + '<th>#</th><th>주차</th>'
+      + '<th>이 글이 노릴 검색어 — 제목에 그대로 들어갑니다</th><th>과목</th><th>다룰 내용</th></tr></thead><tbody>'
+      + KWDRAFT.map(function (p, i) {
+        return '<tr><td><input type="checkbox" class="kw-pick" value="' + i + '" checked></td>'
+          + '<td class="mono">' + (i + 1) + '</td><td class="mono">' + p.week + '주차</td>'
+          + '<td><b>' + esc(p.keyword) + '</b></td>'
+          + '<td class="mono">' + esc(p.subject || '-') + '</td>'
+          + '<td class="mono">' + esc(p.brief || '-') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+    $('kwAll').onclick = function () {
+      var on = this.checked;
+      document.querySelectorAll('.kw-pick').forEach(function (c) { c.checked = on; });
+    };
+    $('kwSave').disabled = false;
+    return per;
+  }
+
+  /* ── 검색어를 손으로 넣기 (2026-11-07) ──────────────────────────────
+     네 칸을 곱해 만드는 방식은 학원을 보고 만든 것이라, 과목도 학년도 없는 주문
+     (영화 · 공연 · 행사 같은 것)에는 맞지 않습니다. 그럴 때 줄마다 하나씩 붙여넣습니다.
+     🔴 넣은 뒤 하는 일은 조합으로 만들었을 때와 똑같습니다 — 표에서 체크를 풀어 빼고,
+        [이대로 글 만들기]를 누르면 저장됩니다. */
+  if ($('kwManualGo')) $('kwManualGo').onclick = function () {
+    var raw = ($('kwManual').value || '').split('\n');
+    var seen = {}, rows = [], dup = 0;
+    raw.forEach(function (ln) {
+      /* 「검색어 | 다룰 내용」 으로 적으면 뒤쪽이 「다룰 내용」 칸에 들어갑니다 */
+      var bar = ln.indexOf('|');
+      var kw = (bar >= 0 ? ln.slice(0, bar) : ln).trim();
+      var br = bar >= 0 ? ln.slice(bar + 1).trim() : '';
+      if (!kw) return;
+      if (seen[kw]) { dup++; return; }       /* 같은 검색어가 두 번 들어오면 글이 겹칩니다 */
+      seen[kw] = 1;
+      rows.push({ kw: kw, brief: br, subject: '' });
+    });
+    if (!rows.length) { A.toast('검색어를 한 줄에 하나씩 넣어 주세요'); return; }
+    var weeks = Math.max(1, Number($('kwW').value) || 4);
+    var per = kwDraw(rows, weeks);
+    $('kwBal').innerHTML = '';               /* 과목별 개수는 조합으로 만들 때만 뜻이 있습니다 */
+    $('kwInfo').innerHTML = '손으로 넣은 검색어 <b>' + rows.length + '개</b>를 '
+      + weeks + '주로 나눴습니다 (주당 약 ' + per + '편)'
+      + (dup ? ' · <b style="color:var(--bad)">똑같은 줄 ' + dup + '개는 뺐습니다</b>' : '');
+    A.toast(rows.length + '개를 넣었습니다' + (dup ? ' (겹친 것 ' + dup + '개 제외)' : ''));
+  };
+
   $('kwGo').onclick = function () {
     var a = splitv('k1'), b = splitv('k2'), c = splitv('k3'), d = splitv('k4');
     if (!a.length || !b.length) { A.toast('지역과 과목은 채워 주세요'); return; }
@@ -2993,30 +3051,10 @@
         + stageWarn(picked);
     })();
 
-    var per = Math.ceil(picked.length / weeks);
-    KWDRAFT = picked.map(function (p, i) {
-      return { keyword: p.kw, brief: p.brief, subject: p.subject, week: Math.floor(i / per) + 1 };
-    });
+    var per = kwDraw(picked, weeks);
     $('kwInfo').innerHTML = '쓸 만한 조합 ' + all.length + '개 중 <b>' + picked.length
       + '개</b>를 뽑아 ' + weeks + '주로 나눴습니다 (주당 약 ' + per + '편)'
       + (dropped ? ' · <b style="color:var(--bad)">말이 안 되는 조합 ' + dropped + '개는 뺐습니다</b>' : '');
-    $('kwOut').className = 'tblbox tblscroll';
-    $('kwOut').innerHTML = '<table><thead><tr>'
-      + '<th style="width:34px"><input type="checkbox" id="kwAll" checked></th>'
-      + '<th>#</th><th>주차</th>'
-      + '<th>이 글이 노릴 검색어 — 제목에 그대로 들어갑니다</th><th>과목</th><th>다룰 내용</th></tr></thead><tbody>'
-      + KWDRAFT.map(function (p, i) {
-        return '<tr><td><input type="checkbox" class="kw-pick" value="' + i + '" checked></td>'
-          + '<td class="mono">' + (i + 1) + '</td><td class="mono">' + p.week + '주차</td>'
-          + '<td><b>' + esc(p.keyword) + '</b></td>'
-          + '<td class="mono">' + esc(p.subject || '-') + '</td>'
-          + '<td class="mono">' + esc(p.brief) + '</td></tr>';
-      }).join('') + '</tbody></table>';
-    $('kwAll').onclick = function () {
-      var on = this.checked;
-      document.querySelectorAll('.kw-pick').forEach(function (c) { c.checked = on; });
-    };
-    $('kwSave').disabled = false;
     A.toast(picked.length + '개를 만들었습니다'
       + (dropped ? ' (이상한 것 ' + dropped + '개 제외)' : ''));
   };

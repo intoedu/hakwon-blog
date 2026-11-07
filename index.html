@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261101a">
+<link rel="stylesheet" href="app.css?v=261107a">
 </head>
 <body>
 
@@ -699,6 +699,29 @@
         <b>다 걸러내지는 못합니다.</b> 아래 표를 한 번 훑어보시고 이상한 줄은
         <b>왼쪽 체크를 풀어</b> 빼주세요. 체크된 것만 글로 만들어집니다.
       </div>
+      <!-- ✍️ 검색어를 손으로 넣기 (11/7)
+           네 칸을 곱해 만드는 방식은 학원을 보고 만든 것이라, 과목도 학년도 없는 주문
+           (영화 · 공연 · 행사 같은 것)에는 맞지 않습니다. 그럴 때 여기에 붙여넣습니다.
+           🔴 넣은 뒤는 조합으로 만들었을 때와 똑같습니다 — 아래 표에서 체크를 풀어 빼고,
+              [이대로 글 만들기]로 저장합니다. -->
+      <details class="card" style="margin-top:18px">
+        <summary style="cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)">
+          ✍️ 검색어를 직접 넣기
+          <span class="mono">— 영화 · 공연처럼 과목 · 학년이 없는 주문일 때</span></summary>
+        <div class="note" style="margin-top:12px">
+          위 네 칸(지역 · 과목 · 학년 · 목적)을 곱해 만드는 방식이 <b>안 맞는 주문</b>이 있습니다.
+          영화나 공연에는 과목도 학년도 없으니까요. 그럴 때 <b>한 줄에 검색어 하나씩</b> 붙여넣으세요.<br>
+          <span class="mono">「다룰 내용」을 같이 주시려면 <b>검색어 | 다룰 내용</b> 꼴로 적으시면 됩니다.</span><br>
+          <span class="mono">주차는 위 <b>[몇 주에 나눠서]</b> 칸을 그대로 씁니다.</span>
+        </div>
+        <textarea class="inp" id="kwManual" style="min-height:170px;font-size:13px"
+          placeholder="5월의 침묵 후기&#10;5월의 침묵 러닝타임&#10;AI 애니메이션 추천&#10;5월의 침묵 보는 방법 | 온라인 시청 방법 안내"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-a" id="kwManualGo">이대로 쓰기</button>
+          <span class="mono">아래 표에 뜹니다 · 똑같은 줄은 뺍니다(글이 겹칩니다)</span>
+        </div>
+      </details>
+
       <div class="sec">만들어진 키워드 <small>체크된 것만 글이 됩니다</small></div>
       <div id="kwOut" class="empty">위에서 [키워드 만들기]를 눌러 보세요.</div>
       <div class="row" style="margin-top:14px">
@@ -1468,10 +1491,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261101a"></script>
-<script src="js/gate.js?v=261101a"></script>
-<script src="js/admin.js?v=261101a"></script>
-<script src="js/blogger.js?v=261101a"></script>
+<script src="js/core.js?v=261107a"></script>
+<script src="js/gate.js?v=261107a"></script>
+<script src="js/admin.js?v=261107a"></script>
+<script src="js/blogger.js?v=261107a"></script>
 <script>ESC.boot();</script>
 </body>
 </html>
