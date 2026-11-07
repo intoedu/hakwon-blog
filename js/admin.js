@@ -3198,11 +3198,36 @@
       this.disabled = false;
     };
     $('tpSpread').onclick = async function () {
+      var oid = $('tpOrder').value;
+      /* 🔴 소재는 «이미 만들어진 글»에만 붙습니다 (2026-11-07).
+         글이 없을 때 눌러도 예전에는 「0편에 소재를 배정했습니다」만 떠서,
+         누른 줄 알고 넘어가게 됐습니다. 실제로 20편이 내용 없이 블로거에게
+         나갔고, 받은 분들이 「쓸 내용이 없다」고 연락해 오셨습니다.
+         글이 없으면 아예 막고, 무엇을 먼저 해야 하는지 알려 드립니다. */
+      var mine = POSTS.filter(function (p) { return p.order_id === oid; });
+      if (!mine.length) {
+        alert('아직 이 주문에 글이 없습니다.\n\n'
+          + '소재는 «이미 만들어진 글»에만 붙습니다.\n'
+          + '위에서 검색어를 넣고 [이대로 글 만들기]를 먼저 눌러 주세요.\n'
+          + '글을 만든 뒤에 이 단추를 누르시면 됩니다.');
+        return;
+      }
       var all = confirm('아직 소재가 없는 글에만 배정할까요?\n\n[확인] 안 붙은 글만\n[취소] 전부 다시 배정');
       this.disabled = true;
       try {
-        var n = await A.rpc('topics_spread', { p_order: $('tpOrder').value, p_all: !all });
-        A.toast(n + '편에 소재를 배정했습니다');
+        var n = await A.rpc('topics_spread', { p_order: oid, p_all: !all });
+        /* 🔴 0편이면 조용히 넘어가지 않습니다 — 블로거는 내용 없는 글을 받게 됩니다 */
+        if (!n) {
+          var left = mine.filter(function (p) { return !p.topic_id; }).length;
+          alert('소재가 붙은 글이 0편입니다.\n\n'
+            + (left
+                ? '소재가 없는 글이 아직 ' + left + '편 있는데 하나도 붙지 않았습니다.\n'
+                  + '소재의 과목 · 학년이 글의 검색어와 맞는지 봐주세요.'
+                : '이 주문의 글에는 이미 소재가 다 붙어 있습니다.\n'
+                  + '다시 붙이시려면 [취소](전부 다시 배정)를 고르세요.'));
+        } else {
+          A.toast(n + '편에 소재를 배정했습니다');
+        }
         await A.loadAdmin(); await tpLoad();
       } catch (e) { A.toast('실패: ' + e.message); }
       this.disabled = false;
