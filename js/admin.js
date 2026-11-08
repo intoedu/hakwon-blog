@@ -954,6 +954,11 @@
     try { await navigator.clipboard.writeText(txt); A.toast(okMsg); }
     catch (e) { window.prompt('아래 문구를 복사해 주세요', txt); }
   }
+  /* 창을 띄우지 않고 복사만 해 봅니다 — 됐으면 true (2026-11-08)
+     단추를 누른 그 자리에서만 부르세요. 서버를 다녀온 뒤에 부르면 늘 false 입니다. */
+  async function copyQuiet(txt) {
+    try { await navigator.clipboard.writeText(txt); return true; } catch (e) { return false; }
+  }
 
   function staffName(id) {
     if (!id) return null;
@@ -7275,12 +7280,24 @@
         + '· 누르면 업체에 「오늘부터 글 작성을 시작합니다」 알림이 만들어집니다\n'
         + '· 되돌리기는 오늘 안에, 블로거에게 맡기기 전까지만 됩니다')) return;
       t.disabled = true;
+      /* 🔴 복사는 «단추를 누른 그 자리»에서 해야 합니다 (2026-11-08).
+         서버를 한 번이라도 다녀온 뒤에 복사하면 사파리가 「사람이 누른 것이 아니다」로 보고
+         막습니다. 그러면 대신 「아래 문구를 복사해 주세요」 창이 떠서, 누르신 분은
+         무엇을 하라는 것인지 알 수 없게 됩니다. 실제로 트루스코리아 때 그랬습니다.
+         그래서 시작 뒤에 정해질 값(오늘 · 30일 뒤 마감 · 누른 분)을 미리 채워 먼저 복사합니다.
+         🔴 이 복사를 다시 await 아래로 내리지 마세요. */
+      var pre = {};
+      Object.keys(so).forEach(function (k) { pre[k] = so[k]; });
+      pre.started_at = new Date().toISOString();
+      pre.deadline = sdl;
+      pre.started_by = (A.SESSION && A.SESSION.user) ? A.SESSION.user.id : null;
+      var copied = await copyQuiet(startMsg(pre));
       try {
         await A.rpc('order_start', { p_order: so.id });
         await A.loadAdmin();
-        var so2 = A.ORDERS.filter(function (x) { return x.id === so.id; })[0] || so;
-        await copyText(startMsg(so2), '시작했습니다. 주문 마감 ' + mdKo(so2.deadline)
-          + ' — 업체에 보낼 시작 안내 문구를 복사했습니다');
+        A.toast('시작했습니다. 주문 마감 ' + mdKo(sdl)
+          + (copied ? ' — 업체에 보낼 시작 안내 문구를 복사했습니다'
+                    : ' — 안내 문구는 [📋 시작 안내 문구 복사]로 꺼내실 수 있습니다'));
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
