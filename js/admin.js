@@ -2300,7 +2300,7 @@
       + '소재 6번을 확인해 주세요."></textarea>'
       + '<div class="row" style="margin-top:9px">'
       + '<button class="btn btn-a btn-s" data-chgnoti="' + o.id + '">바뀐 내용 알리기</button>'
-      + '<span class="mono">알림만 만듭니다 — 카톡으로 보내시려면 🔔 알림 보내기에서 복사하세요</span></div>'
+      + '<span class="mono">센터 알림과 알림톡이 함께 나갑니다 — 따로 카톡을 보내지 않으셔도 됩니다</span></div>'
       + '</div></details>';
   }
 
@@ -2625,7 +2625,7 @@
     if (!o) { box.innerHTML = ''; return; }
     var s = kwMade(o.id);
     /* 🔴 연습 주문은 끝나지 않는 주문입니다 (2026-10-27).
-       편수를 넘기는 것이 정상이므로 「더 만드시겠습니까」로 겵주지 않고,
+       편수를 넘기는 것이 정상이므로 「더 만드시겠습니까」로 겁주지 않고,
        지금 상황만 알려 줍니다. 다만 「안 맡긴 글」은 집어 줍니다 —
        그걸 두고 또 만들면 나눠줄 글만 쌓입니다. */
     if (o.is_practice) {
@@ -4592,7 +4592,8 @@
     inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
   }
 
-  /* 바꾼 뒤 블로거에게 보낼 문구 — 우리는 카톡 자동발송을 못 하므로 복사만 해 드립니다 */
+  /* 바꾼 뒤 블로거에게 보낼 문구 — 알림톡은 저절로 나갑니다.
+     이 문구는 «연락이 안 닿을 때»만 쓰는 예비용입니다 (2026-11-08) */
   function kwMsg(r) {
     return (r.blogger || '') + '님, 안녕하세요. ESC 학원지원센터입니다.\n'
       + (r.academy || '') + ' 글의 검색어(제목에 넣을 말)를 바꿨습니다.\n\n'
@@ -6124,7 +6125,7 @@
     renderAtTest();
   }
   /* ── 📤 알림톡 시험 발송 ──
-     자동 발송을 붙이기 전에, 진짜로 나가는지를 한 건씩 보며 확인하는 칸입니다.
+     알림톡은 2026-10-21부터 저절로 나갑니다. 이 칸은 템플릿·변수를 시험해 보는 곳입니다.
      🔴 돈이 나가므로 한 번 더 물어봅니다. 템플릿·발신프로필·채널 가르기는
         모두 서버 함수(send-alimtalk)가 합니다 — 화면은 골라 주기만 합니다. */
   function atTemplates() {
@@ -6707,8 +6708,8 @@
             : ' <span class="chip c-off">무료</span>')
           + (kr.topic_moved ? '<br>이 글이 다룰 내용(소재)도 새 과목에 맞춰 다시 붙였습니다.' : '')
           + (kr.notified
-              ? '<br><b>블로거에게 알림이 만들어졌습니다.</b> 아직 자동으로 보내지지는 않습니다 — '
-                + '아래 문구를 복사해 카톡으로 전해 주세요.'
+              ? '<br><b>블로거에게 알림톡이 나갔습니다.</b> 따로 카톡을 보내지 않으셔도 됩니다. '
+                + '연락이 안 닿을 때만 아래 문구를 쓰세요.'
                 + '<div class="row" style="margin-top:10px">'
                 + '<button class="btn btn-p btn-s" data-kwcopy="1">📋 보낼 문구 복사</button></div>'
               : '<br>아직 맡은 사람이 없어 알릴 곳은 없습니다.')
