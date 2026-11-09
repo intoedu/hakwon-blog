@@ -1263,8 +1263,14 @@
       }
     }
     take(signs, 1);                            /* 간판 한 장은 반드시 맨 앞 */
-    take(mine, per - out.length);
+    /* 🔴 과목 사진을 «다» 넣지 않습니다 (2026-11-09).
+       혼공기적은 영어 사진이 6장뿐인데 영어 글이 15편입니다. 다 넣으면 15편이
+       똑같은 6장을 쓰게 됩니다 — 과목은 맞지만 그림이 전부 같아집니다.
+       그래서 과목 사진은 «최대 세 장»만 넣고 나머지는 공통으로 채웁니다.
+       공통이 모자랄 때만 과목 사진을 더 가져옵니다. */
+    take(mine, Math.min(3, per - out.length));
     take(common, per - out.length);
+    take(mine, per - out.length);
     take(other, per - out.length);
     take(all, per - out.length);               /* 그래도 모자라면 아무거나 */
     return out;
