@@ -1255,24 +1255,33 @@
       return s && s !== '공통' && s !== subj;
     }));
 
-    var out = [], seen = {};
-    function take(list, n) {
+    var out = [], seen = {}, byType = {};
+    /* 🔴 같은 «종류»가 한 글에 몰리지 않게 합니다 (2026-11-09).
+       혼공기적은 사진 55장 중 성적표가 25장입니다. 과목만 맞추면 성적표가
+       일곱 장씩 가는 글이 생겨, 글이 성적표만 늘어선 모양이 됩니다.
+       cap 을 주면 그 종류는 한 글에 그만큼까지만 넣습니다 (0 이면 상한 없음). */
+    var TCAP = 3;
+    function take(list, n, cap) {
       for (var i = 0; i < list.length && n > 0; i++) {
-        if (seen[list[i]]) continue;
-        seen[list[i]] = 1; out.push(list[i]); n--;
+        var x = list[i];
+        if (seen[x]) continue;
+        var ty = (tags[x] || {}).t || '';
+        if (cap && ty && (byType[ty] || 0) >= cap) continue;
+        seen[x] = 1; byType[ty] = (byType[ty] || 0) + 1;
+        out.push(x); n--;
       }
     }
-    take(signs, 1);                            /* 간판 한 장은 반드시 맨 앞 */
-    /* 🔴 과목 사진을 «다» 넣지 않습니다 (2026-11-09).
+    take(signs, 1, 0);                         /* 간판 한 장은 반드시 맨 앞 */
+    /* 🔴 과목 사진도 «다» 넣지 않습니다 (2026-11-09).
        혼공기적은 영어 사진이 6장뿐인데 영어 글이 15편입니다. 다 넣으면 15편이
-       똑같은 6장을 쓰게 됩니다 — 과목은 맞지만 그림이 전부 같아집니다.
-       그래서 과목 사진은 «최대 세 장»만 넣고 나머지는 공통으로 채웁니다.
-       공통이 모자랄 때만 과목 사진을 더 가져옵니다. */
-    take(mine, Math.min(3, per - out.length));
-    take(common, per - out.length);
-    take(mine, per - out.length);
-    take(other, per - out.length);
-    take(all, per - out.length);               /* 그래도 모자라면 아무거나 */
+       똑같은 6장을 쓰게 됩니다 — 과목은 맞지만 그림이 전부 같아집니다. */
+    take(mine, Math.min(3, per - out.length), TCAP);
+    take(common, per - out.length, TCAP);
+    take(mine, per - out.length, TCAP);
+    take(other, per - out.length, TCAP);
+    /* 상한 때문에 다 못 채웠으면 상한을 풀고 채웁니다 — 빈자리로 두는 것보다 낫습니다 */
+    take(common, per - out.length, 0);
+    take(all, per - out.length, 0);
     return out;
   }
   /* ── 다시 내야 하는 날 (2026-10-05 결정) ──
