@@ -1221,10 +1221,21 @@
       return list.slice(s).concat(list.slice(0, s));
     }
     var tagged = all.filter(function (x) { return tags[x] && tags[x].t; });
-    if (!tagged.length) {                      /* 꼬리표가 없으면 예전 방식 그대로 */
-      var out0 = [], start = seq * per % all.length;
-      for (var i = 0; i < per; i++) out0.push(all[(start + i) % all.length]);
-      return out0;
+    if (!tagged.length) {
+      /* 🔴 꼬리표가 없을 때 (2026-11-09 고침)
+         예전에는 «붙어 있는 몇 장»을 통째로 집었습니다. 그래서 업체가 비슷한 사진을
+         몰아서 올리면 한 글에 그 묶음이 다 갔습니다 — 혼공기적에서 8장이 전부 같은
+         「성적 향상 포스터」로 나간 까닭입니다.
+         게다가 사진 48장에 한 글 8장이면 6편마다 똑같은 8장이 돌아왔습니다.
+         이제 글마다 다른 차례로 섞어 앞에서 집습니다.
+         · 같은 글은 언제 열어도 같은 사진입니다 (글 id 로 섞으므로)
+         · 옆 순번 글과 묶음이 겹치지 않습니다
+         🔴 그래도 «과목까지» 맞춰 주지는 못합니다. 그건 꼬리표를 달아야 합니다. */
+      return all.map(function (x) {
+        return { x: x, k: A.adIndex(String(p.id || '') + '|' + x, 1073741824) };
+      }).sort(function (a, b) {
+        return a.k - b.k || (a.x < b.x ? -1 : a.x > b.x ? 1 : 0);
+      }).slice(0, per).map(function (o) { return o.x; });
     }
 
     /* ⭐ 사진은 **그 글의 과목**을 따라야 합니다.

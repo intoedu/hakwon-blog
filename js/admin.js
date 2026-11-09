@@ -4230,9 +4230,40 @@
     } catch (err) { A.toast('실패: ' + err.message); }
   });
 
+  /* ── 사진 꼬리표를 안 달고 맡기는 것을 막습니다 (2026-11-09) ──
+     꼬리표가 없으면 블로거 화면이 사진을 «글 내용과 상관없이» 나눠 줍니다.
+     혼공기적에서 한 글에 8장이 전부 같은 「성적 향상 포스터」로 간 까닭입니다.
+     사진이 5장 이하인 주문은 어차피 전부 나가므로 묻지 않습니다.
+     🔴 막기만 하고 끝내지 않습니다 — 어디서 달면 되는지까지 적어 줍니다. */
+  function photoTagStop(postIds) {
+    var oids = {}, bad = [];
+    (postIds || []).forEach(function (id) {
+      var p = POSTS.filter(function (x) { return x.id === id; })[0];
+      if (p && p.order_id) oids[p.order_id] = 1;
+    });
+    Object.keys(oids).forEach(function (oid) {
+      var o = (A.ORDERS || []).filter(function (x) { return x.id === oid; })[0];
+      if (!o) return;
+      var n = (o.photo_paths || []).length;
+      if (n <= 5) return;
+      var t = o.photo_tags || {};
+      var on = Object.keys(t).filter(function (k) { return t[k] && (t[k].t || t[k].s); }).length;
+      if (!on) bad.push((o.academy_name || '이름 없음') + ' — 사진 ' + n + '장에 꼬리표 0개');
+    });
+    if (!bad.length) return false;
+    return !confirm('🔴 사진에 꼬리표가 하나도 없습니다.\n\n· '
+      + bad.join('\n· ')
+      + '\n\n이대로 맡기면 사진이 글 내용과 상관없이 나갑니다.\n'
+      + '한 글에 비슷한 사진만 몰리고, 여러 글이 같은 사진을 쓰게 됩니다.\n\n'
+      + '먼저 「6 검수하기」에서 그 업체를 열고\n'
+      + '[🖼 사진 보기 · 꼬리표 · 내려받기] 에서 꼬리표를 달아 주세요.\n\n'
+      + '그래도 지금 맡기시겠습니까?');
+  }
+
   $('asOrder').onchange = function () { $('asWeek').value = ''; renderAssign(); };
   $('asWeek').onchange = renderAssign;
   $('doAssign').onclick = async function () {
+    if (photoTagStop(picked('pk-post'))) return;
     this.disabled = true;
     try {
       var n = await A.rpc('posts_assign', { p_posts: picked('pk-post'), p_bloggers: picked('pk-ppl') });
@@ -4246,6 +4277,7 @@
   $('doAuto').onclick = async function () {
     var posts = picked('pk-post'), pool = picked('pk-ppl');
     if (!posts.length) { A.toast('나눠줄 글을 고르세요'); return; }
+    if (photoTagStop(posts)) return;
     if (!confirm(posts.length + '편을 고르게 나눠줄까요?\n\n'
       + (pool.length ? '고르신 ' + pool.length + '명 안에서만 나눕니다.'
         : '「많이 쓰고 싶어요」를 켠 사람부터, 이번 달 적게 받은 순으로 나눕니다.'))) return;
