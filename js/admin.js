@@ -6640,7 +6640,13 @@
       if (!tp) { A.toast('글을 찾을 수 없습니다'); return; }
       var tb = A.PEOPLE.filter(function (x) { return x.id === tp.blogger_id; })[0] || {};
       var wrote = TAKEBACK_WROTE.indexOf(tp.status) >= 0;
-      var payIt = wrote && newTerms(tp.order_id);
+      /* 🔴 약관 제13조⑨ 단서 — 2026-11-04 시행 (부칙② 「시행일 이후 회수하는 게시물부터」)
+         수정 요청을 받고 «다시 낼 날»까지 원고가 오지 않아 회수하는 글은 원고료가 없습니다.
+         ⚠️ 서버 post_unassign 과 «같은 셈법»입니다 — 한쪽만 고치지 마세요.
+            기한은 그날 22:00 까지(A.duePast · A.DUE_HOUR). */
+      var noPayRework = tp.status === 'rework' && A.duePast(tp.rework_due)
+        && A.kstNow().toISOString().slice(0, 10) >= '2026-11-04';
+      var payIt = wrote && newTerms(tp.order_id) && !noPayRework;
       var msg = (tb.name || '이분') + ' 님에게서 이 글을 회수할까요?\n\n'
         + '· ' + (tp.keyword || '') + '\n'
         + '· ' + orderName(tp.order_id) + '\n\n'
@@ -6652,12 +6658,17 @@
               + (payIt
                   ? '회수해도 이 글의 원고료' + (tp.payout_rate ? '(' + won(tp.payout_rate) + '원)' : '')
                     + '는 지급됩니다 (제13조⑨ · 회수한 달 정산에 붙습니다).\n'
-                  : '이 주문은 9월 25일 약관 시행 전에 성립해 (부칙②)\n'
-                    + '이 글의 원고료는 지급되지 않습니다.\n')
+                  : noPayRework
+                    ? '수정 요청에 응하지 않아 «다시 낼 날»이 지난 글입니다.\n'
+                      + '이 글의 원고료는 지급되지 않습니다 (제13조⑨ 단서 · 2026-11-04 시행).\n'
+                    : '이 주문은 9월 25일 약관 시행 전에 성립해 (부칙②)\n'
+                      + '이 글의 원고료는 지급되지 않습니다.\n')
               + '따로 연락도 해 주세요.\n\n'
               /* 🔴 10/4 이은총 님 결정 — 수정 요청에 답이 없으면 회수해 재배정합니다.
                  마감까지 두면 원고료는 안 나가지만 고객에게 그 편을 환불해야 해서(제6조②)
-                 손해가 더 큽니다. 2차 약관 개정이 시행되면 회수해도 원고료가 안 나갑니다. */
+                 손해가 더 큽니다.
+                 🔑 2026-11-04 부터는 «다시 낼 날»이 지난 뒤 회수하면 원고료가 안 나갑니다
+                    (제13조⑨ 단서). 아래 경고는 «아직 기한 전»일 때만 뜹니다. */
               + (tp.status === 'rework' && payIt
                   ? '⚠️ 지금 회수하면 원래 블로거에게 원고료가 지급됩니다(제13조⑨).\n'
                     + '주문 마감까지 다시 쓸 시간이 있으면 회수해 재배정하세요.\n'
@@ -6679,6 +6690,7 @@
         await A.loadAdmin();
         A.toast((tr.blogger || '') + ' 님에게서 회수했습니다'
           + (tr.paid_anyway ? ' · 원고료 ' + won(tr.pay_amount || 0) + '원은 정산에 붙습니다'
+             : tr.no_pay_rework ? ' · 수정 불응이라 원고료는 없습니다 (제13조⑨ 단서)'
              : tr.wrote ? ' · 이 주문은 약관 시행 전이라 원고료는 없습니다' : '')
           + (tr.by_owner ? '' : ' · 최고관리자에게 알림이 갑니다'));
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
