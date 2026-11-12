@@ -4108,6 +4108,11 @@
         p_to: $('schTo').value, p_all: $('schAll').checked
       });
       A.toast((r.scheduled || 0) + '편에 날짜를 깔았습니다 (하루 약 ' + (r.per_day || 0) + '편)');
+      /* 맡긴 글이 앞 날짜를 받았다는 것을 알려 줍니다 — 안 알려 주면 왜 순서가 바뀌었는지 모릅니다 */
+      if (r.assigned_first) {
+        A.toast('이미 맡긴 ' + r.assigned_first + '편이 앞 날짜를 받았습니다'
+          + (r.not_assigned ? ' · 아직 안 맡긴 ' + r.not_assigned + '편은 뒤로' : ''));
+      }
       await A.loadAdmin(); A.show('assign'); schPaint();
     } catch (e) { A.toast('실패: ' + e.message); }
     this.disabled = false;
@@ -4230,6 +4235,24 @@
     } catch (err) { A.toast('실패: ' + err.message); }
   });
 
+  /* ── 발행 날짜를 안 깔고 나눠주려 할 때 한 번 묻습니다 (2026-11-12) ──
+     날짜가 없으면 블로거가 «아무 때나» 올립니다. 그러면 같은 업체 글이 며칠 안에
+     몰려 올라가 네이버가 광고 묶음으로 보기 쉽습니다.
+     🔴 막지는 않습니다 — 급히 맡겨야 할 때가 있습니다. */
+  function noDateStop(postIds) {
+    var no = (postIds || []).filter(function (id) {
+      var p = POSTS.filter(function (x) { return x.id === id; })[0];
+      return p && !p.publish_on;
+    });
+    if (!no.length) return false;
+    return !confirm('🗓 발행 날짜가 없는 글이 ' + no.length + '편 있습니다.\n\n'
+      + '날짜를 안 깔면 블로거가 아무 때나 올립니다.\n'
+      + '같은 업체 글이 며칠 안에 몰려 올라가면 네이버가 광고로 보기 쉽습니다.\n\n'
+      + '위 「🗓 발행 일정 짜기」를 펼쳐 날짜를 먼저 깔아 주세요.\n'
+      + '먼저 나눠주고 날짜를 나중에 깔아도 됩니다 — 그때는 맡긴 글이 앞 날짜를 받습니다.\n\n'
+      + '그래도 지금 나눠주시겠습니까?');
+  }
+
   /* ── 사진 꼬리표를 안 달고 맡기는 것을 막습니다 (2026-11-09) ──
      꼬리표가 없으면 블로거 화면이 사진을 «글 내용과 상관없이» 나눠 줍니다.
      혼공기적에서 한 글에 8장이 전부 같은 「성적 향상 포스터」로 간 까닭입니다.
@@ -4263,6 +4286,7 @@
   $('asOrder').onchange = function () { $('asWeek').value = ''; renderAssign(); };
   $('asWeek').onchange = renderAssign;
   $('doAssign').onclick = async function () {
+    if (noDateStop(picked('pk-post'))) return;
     if (photoTagStop(picked('pk-post'))) return;
     this.disabled = true;
     try {
@@ -4277,6 +4301,7 @@
   $('doAuto').onclick = async function () {
     var posts = picked('pk-post'), pool = picked('pk-ppl');
     if (!posts.length) { A.toast('나눠줄 글을 고르세요'); return; }
+    if (noDateStop(posts)) return;
     if (photoTagStop(posts)) return;
     if (!confirm(posts.length + '편을 고르게 나눠줄까요?\n\n'
       + (pool.length ? '고르신 ' + pool.length + '명 안에서만 나눕니다.'
