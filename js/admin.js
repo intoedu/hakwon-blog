@@ -753,7 +753,10 @@
           + '<td class="num">' + pass + '</td>'
           + '<td class="num">' + rankAvgCell(s) + '</td>'
           + '<td class="num">' + (s.done_month || 0) + '</td><td class="num">' + (s.done_total || 0) + '</td>'
-          + '<td>' + (s.ready ? '<span class="chip c-ok">완료</span>'
+          + '<td>' + (s.ready ? '<span class="chip c-ok">'
+              /* 교육 면제로 풀린 사람은 「완료」가 아니라 그렇게 적습니다 — 안 들은 것을 들은 것처럼
+                 보이면 나중에 누가 뭘 들었는지 알 수 없습니다 (2026-11-12) */
+              + (p.edu_exempt ? '교육 면제' : '완료') + '</span>'
               + (needsPractice(p.id)
                   ? ' <span class="chip c-info" title="교육은 끝났고 연습글이 남았습니다. 2026-11-04 부터는 진짜 주문을 맡을 수 없습니다">연습 필요 '
                     + practiceDone(p.id) + '/' + practiceNeed() + '</span>'
@@ -772,6 +775,14 @@
             ? '<button class="btn btn-s" data-pexempt="' + p.id + '" data-on="' + (practiceExempt(p.id) ? 1 : 0)
               + '" title="켜면 연습글을 안 마쳐도 진짜 주문을 맡을 수 있습니다">'
               + (practiceExempt(p.id) ? '연습 면제 끄기' : '연습 면제') + '</button>'
+            : '')
+          /* 교육 면제 — 이미 일을 아는 사람(대표·실무자 등)이 블로거로 쓸 때 필수 영상·1차 줌을
+             다시 듣지 않아도 되게 풉니다 (이은총 님 2026-11-12).
+             🔴 교육을 실제로 마친 사람에게는 단추를 안 보입니다 — 쓸 데가 없고 헷갈리기만 합니다. */
+          + ((!s.ready || p.edu_exempt)
+            ? '<button class="btn btn-s" data-eexempt="' + p.id + '" data-on="' + (p.edu_exempt ? 1 : 0)
+              + '" title="켜면 필수 교육 영상·1차 줌을 안 들어도 글을 받습니다">'
+              + (p.edu_exempt ? '교육 면제 끄기' : '교육 면제') + '</button>'
             : '')
           + '<button class="btn btn-s" data-act="' + (p.status === 'approved' ? 'paused' : 'approved')
           + '" data-id="' + p.id + '">' + (p.status === 'approved' ? '쉬게 하기' : '다시 활동') + '</button>'
@@ -1634,7 +1645,10 @@
               : '<span class="chip c-bad">' + x.mine + '/' + x.reqN + '</span>')
           + (x.wt ? ' <span class="chip c-wait">요약 ' + x.wt + '건 대기</span>' : '') + '</td>'
           + '<td>' + (x.a2 ? '<span class="chip c-ok">참석</span>' : '<span class="chip c-off">—</span>') + '</td>'
-          + '<td>' + (x.ok ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
+          /* 🔴 교육 면제로 풀린 사람은 「가능」만 적으면 교육을 들은 것처럼 보입니다.
+             왜 가능한지 적어 둡니다 (2026-11-12) */
+          + '<td>' + (p.edu_exempt ? '<span class="chip c-wait" title="관리자가 교육을 면제한 사람입니다">가능 · 교육 면제</span>'
+            : x.ok ? '<span class="chip c-ok">가능</span>' : '<span class="chip c-bad">아직</span>') + '</td></tr>';
       }).join('') + '</tbody></table></div>' : A.empty('해당하는 사람이 없습니다.'));
   }
 
@@ -7645,6 +7659,28 @@
         await A.rpc('blogger_set_practice_exempt', { p_blogger: t.dataset.pexempt, p_on: pxOn });
         await A.loadAdmin();
         A.toast(pxOn ? '연습 면제를 켰습니다' : '연습 면제를 껐습니다');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
+    /* ── 교육 면제 (이은총 님 2026-11-12) ──
+       이미 일을 아는 사람(대표·실무자 등)이 블로거로 글을 쓸 때, 필수 교육 영상과
+       1차 줌을 다시 듣지 않아도 글을 받게 풀어 줍니다.
+       🔴 승인 상태·품질 검사는 그대로입니다 — 교육 부분만 건너뜁니다.
+       🔴 「완료」로 바꾸지 않고 「교육 면제」로 적습니다. 안 들은 것을 들은 것처럼
+          적어 두면 나중에 누가 무엇을 들었는지 알 수 없습니다. */
+    if ((t = e.target.closest('[data-eexempt]'))) {
+      var exOn = t.dataset.on !== '1';
+      var exName = (A.PEOPLE.filter(function (x) { return x.id === t.dataset.eexempt; })[0] || {}).name || '이 블로거';
+      if (exOn && !confirm(exName + ' 님의 교육을 면제합니다.\n\n'
+        + '필수 교육 영상과 1차 줌을 듣지 않아도 글을 받게 됩니다.\n'
+        + '이미 일을 잘 아는 분에게만 켜 주세요. 계속할까요?')) return;
+      t.disabled = true;
+      try {
+        await A.rpc('blogger_set_edu_exempt', { p_blogger: t.dataset.eexempt, p_on: exOn });
+        await A.loadAdmin();
+        A.toast(exOn ? exName + ' 님 교육을 면제했습니다 — 이제 글을 받을 수 있습니다'
+          : exName + ' 님 교육 면제를 껐습니다');
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }

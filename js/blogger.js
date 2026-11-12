@@ -221,10 +221,14 @@
     /* ⚠️ 1차 줌을 배정 조건에서 뺄 수 있습니다 (관리자 설정).
        서버 blogger_ready 와 같은 규칙이어야 화면과 실제가 어긋나지 않습니다. */
     var needT1 = (A.FORM || {}).require_t1 !== false;
+    /* 🔴 교육 면제 (2026-11-12) — 관리자가 풀어 준 분께는 교육을 다 마친 것으로 봅니다.
+       서버 blogger_ready 도 같게 봅니다. 여기만 빼면 서버는 글을 주는데 화면은
+       「교육이 안 끝났습니다」라고 해서 블로거가 헷갈립니다. */
+    var exempt = !!(A.ME && A.ME.edu_exempt);
     return {
       videoDone: done, videoWait: wait, videoNeed: req.length,
-      t1: att1, needT1: needT1,
-      ok: done >= req.length && (!needT1 || att1)
+      t1: att1, needT1: needT1, exempt: exempt,
+      ok: exempt || (done >= req.length && (!needT1 || att1))
     };
   }
 
@@ -442,7 +446,11 @@
       + '<div class="note" style="margin-top:15px">'
       + '<b>지금 보시는 것은 ' + (RV ? '⭐ 리뷰어 교육' : '📝 블로그 교육') + '입니다.</b> '
       + '위 작업함에서 갈래를 바꾸시면 다른 교육이 나옵니다.<br><br>'
-      + (r.ok ? '<b>' + A.josa(W.edu, '을') + ' 마치셨습니다.</b> 이제 ' + A.josa(W.what, '이') + ' 배정됩니다.'
+      /* 🔴 면제받은 분께 「마치셨습니다」라고 하면 거짓말이 됩니다. 그렇게 적지 않습니다 (2026-11-12) */
+      + (r.exempt ? '<b>담당자가 ' + A.josa(W.edu, '을') + ' 면제해 드렸습니다.</b> '
+        + '영상을 보지 않으셔도 ' + A.josa(W.what, '이') + ' 배정됩니다. '
+        + '아래 영상은 보고 싶으실 때 보시면 됩니다.'
+        : r.ok ? '<b>' + A.josa(W.edu, '을') + ' 마치셨습니다.</b> 이제 ' + A.josa(W.what, '이') + ' 배정됩니다.'
         + (RV ? ' 리뷰는 저희가 본문까지 써서 드립니다. 그대로 올리시면 됩니다.'
               : '')
         : '<b>' + (r.needT1 ? '1차 줌 참석과 필수 영상 요약' : '필수 영상 요약')
