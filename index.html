@@ -13,7 +13,7 @@
 <!-- 🔴 주소 끝의 ?v= 는 브라우저가 옛 파일을 붙잡지 않게 하는 판 번호입니다.
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
-<link rel="stylesheet" href="app.css?v=261112b">
+<link rel="stylesheet" href="app.css?v=261113a">
 </head>
 <body>
 
@@ -1236,14 +1236,16 @@
       <div class="head"><div class="step-of">챙길 것</div>
         <h1>알림 보내기</h1>
         <p><b>센터 안 알림도, 카카오 알림톡도 자동으로 나갑니다.</b> 손대실 것이 없습니다.
-          알림톡이 나가지 않은 것만 <b>빨간 딱지</b>가 붙습니다 — 그런 건만
-          <b>[복사]</b>해서 카톡으로 보내 주시면 됩니다.</p></div>
+          저절로 나간 것은 <b>✅ 알림톡 나감</b>이 붙고 이 목록에서 빠집니다.
+          여기 남는 것은 <b>직접 보내셔야 하는 것</b>과 <b>⚠️ 보내려다 막힌 것</b>뿐입니다 —
+          막힌 건은 딱지에 손을 올리시면 사유가 보입니다.
+          옆 <b>[복사]</b>로 카톡에 붙여 보내실 수 있습니다.</p></div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn btn-p" id="notiScan">🔄 지금 챙길 것 찾기</button>
         <button class="btn" id="notiCopyAll">📋 보이는 것 전부 복사</button>
         <button class="btn" id="notiSentAll">✅ 보이는 것 전부 보냄 표시</button>
         <label class="row" style="gap:6px;margin-left:auto;font-size:13px">
-          <input type="checkbox" id="notiShowSent"> 이미 보낸 것도 보기</label>
+          <input type="checkbox" id="notiShowSent"> 이미 나간 것도 보기</label>
       </div>
       <div class="tabs" id="notiTabs" style="margin-bottom:14px">
         <button class="on" data-noti="blogger">블로거에게</button>
@@ -1493,10 +1495,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261112b"></script>
-<script src="js/gate.js?v=261112b"></script>
-<script src="js/admin.js?v=261112b"></script>
-<script src="js/blogger.js?v=261112b"></script>
+<script src="js/core.js?v=261113a"></script>
+<script src="js/gate.js?v=261113a"></script>
+<script src="js/admin.js?v=261113a"></script>
+<script src="js/blogger.js?v=261113a"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

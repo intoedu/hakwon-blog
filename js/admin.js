@@ -5942,6 +5942,12 @@
 
   /* ═══ 🔔 알림 보내기 ═══ */
   var NOTI = [], NOTI_TAB = 'blogger', NOTI_KIND = '', NOTI_SET = {};
+  /* 🔴 알림톡이 «실제로» 나갔는지는 발송 기록(alimtalk_log)에만 있습니다 (2026-11-13).
+     저절로 나간 건은 알림에 「보냄」 표시가 찍히지 않습니다 — 보내는 일을 DB가 하고,
+     표시를 찍는 일은 화면이 하기 때문입니다. 그래서 11/8~11/12 에 실제로 나간 211건이
+     화면에서는 전부 「안 보냄」으로 쌓여 있었습니다.
+     이제 기록을 같이 읽어서 «나간 것»과 «손봐야 할 것»을 가릅니다. */
+  var ATLOG = {};  /* 알림 id → { ok:true } 또는 { bad:'사유' } */
 
   /* 알림 종류 이름 — 화면에 보이는 말 */
   var KIND_KO = {
@@ -5975,15 +5981,51 @@
       } catch (e) { A.toast('실패: ' + e.message); }
     }
     NOTI = await A.sel('notifications', { order: 'created_at', asc: false });
+    /* 발송 기록 — 관리자만 읽을 수 있습니다. 검수자 화면에서는 빈 채로 둡니다(오류 아님) */
+    ATLOG = {};
+    if (A.IS_ADMIN) {
+      var lg = await A.sel('alimtalk_log', { select: 'ref,status,error,created_at', order: 'created_at' });
+      lg.forEach(function (x) {
+        if (!x.ref || x.ref.indexOf('noti:') !== 0) return;
+        var id = x.ref.slice(5);
+        /* 같은 알림에 기록이 여러 줄이면 «나갔다»가 이깁니다 */
+        if (ATLOG[id] && ATLOG[id].ok) return;
+        ATLOG[id] = x.status === 'sent'
+          ? { ok: true, at: x.created_at }
+          : { bad: x.error || (x.status === 'skipped' ? '보내지 않았습니다' : '실패했습니다') };
+      });
+    }
     if (A.IS_ADMIN) {
       var s = await A.sb.from('settings').select('value').eq('key', 'blog').maybeSingle();
       NOTI_SET = (s.data && s.data.value) || {};
       renderNotiSet();
     }
     renderNoti();
-    var un = NOTI.filter(function (n) { return !n.sent_at; }).length;
+    var un = NOTI.filter(notiNeedsHand).length;
     var b = $('cNoti');
     if (b) { b.textContent = un; b.classList.toggle('hide', !un); }
+  }
+
+  /* ── 알림 한 건이 지금 어떤 상태인가 (2026-11-13) ──
+     'sent'  알림톡이 저절로 나갔습니다 — 더 하실 일이 없습니다
+     'hand'  담당자가 「보냄」·「확인함」을 눌러 끝낸 것입니다
+     'bad'   보내려다 막혔습니다 — 사유를 보셔야 합니다
+     'todo'  아직 아무 일도 안 일어났습니다 */
+  function notiState(n) {
+    var g = ATLOG[n.id];
+    if (g && g.ok) return 'sent';
+    if (n.sent_at) return 'hand';
+    if (g && g.bad) return 'bad';
+    return 'todo';
+  }
+  /* 🔴 빨간 숫자에 셀 것 — 「손봐야 할 것」만 셉니다 (이은총 님 2026-11-13).
+     저절로 나간 것까지 세면 숫자가 끝없이 올라가 아무도 안 보게 됩니다.
+     세는 것 = ⑴ 보내려다 막힌 것 ⑵ 아직 아무 일도 안 일어난 것.
+     🔴 「우리끼리」 알림은 알림톡이 아예 없으니 늘 'todo' 입니다 —
+        「확인함」을 누르시면 빠집니다. 그게 우리 할 일 목록 구실을 합니다. */
+  function notiNeedsHand(n) {
+    var st = notiState(n);
+    return st === 'bad' || st === 'todo';
   }
 
   /* 누구에게 보내는지 — 이름과 연락처를 같이 보여줘야 카톡에서 찾습니다 */
@@ -6015,7 +6057,8 @@
   function notiRows() {
     var showSent = $('notiShowSent').checked;
     return NOTI.filter(function (n) {
-      return n.audience === NOTI_TAB && (showSent || !n.sent_at)
+      /* 🔴 「보낸 것도 보기」를 끄면 «끝난 것»을 숨깁니다 — 저절로 나간 것도 끝난 것입니다 */
+      return n.audience === NOTI_TAB && (showSent || notiNeedsHand(n))
         && (!NOTI_KIND || n.kind === NOTI_KIND);
     });
   }
@@ -6024,7 +6067,7 @@
   function renderKinds() {
     var showSent = $('notiShowSent').checked;
     var pool = NOTI.filter(function (n) {
-      return n.audience === NOTI_TAB && (showSent || !n.sent_at);
+      return n.audience === NOTI_TAB && (showSent || notiNeedsHand(n));
     });
     var counts = {};
     pool.forEach(function (n) { counts[n.kind] = (counts[n.kind] || 0) + 1; });
@@ -6059,6 +6102,10 @@
       && n.alimtalk_ok !== false
       && n.vars && Object.keys(n.vars).length > 0
       && !n.sent_at
+      /* 🔴 이미 저절로 나간 건은 또 누르실 일이 없습니다 (2026-11-13).
+         눌러도 서버가 「이미 보낸 건입니다」로 걸러 돈은 안 나가지만,
+         단추가 보이면 «안 나갔구나» 하고 오해하게 됩니다. */
+      && !(ATLOG[n.id] && ATLOG[n.id].ok)
       && !!notiPhone(n);
   }
   /* 한 건 보냅니다. 돌려주는 값 : {ok:true} / {skipped:'이유'} / {error:'사유'} */
@@ -6093,7 +6140,8 @@
     if (!rows.length) {
       $('notiList').innerHTML = A.empty(NOTI_TAB === 'staff'
         ? '지금 챙길 것이 없습니다.'
-        : '보낼 것이 없습니다. 위 [지금 챙길 것 찾기]를 눌러보세요.');
+        : '손보실 것이 없습니다 — 알림톡은 저절로 나갑니다. '
+          + '지나간 것을 보시려면 위 「이미 보낸 것도 보기」를 켜 주세요.');
       return;
     }
     var sendable = rows.filter(notiCanSend);
@@ -6110,7 +6158,7 @@
       + rows.map(function (n) {
       var w = notiWho(n);
       return '<div class="card" style="margin-bottom:10px"'
-        + (n.sent_at ? ' data-sentcard="1"' : '') + '>'
+        + (notiNeedsHand(n) ? '' : ' data-sentcard="1"') + '>'
         + '<div class="row" style="justify-content:space-between;align-items:flex-start">'
         + '<div><b style="font-size:14.5px">' + esc(w.name) + '</b> '
         + '<span class="chip c-info">' + esc(n.title) + '</span>'
@@ -6119,13 +6167,28 @@
         + (n.alimtalk_ok === false
             ? ' <span class="chip c-bad" title="' + esc(n.alimtalk_why || '')
               + '">알림톡 안 보냄 · 따로 연락</span>' : '')
-        + (n.sent_at ? ' <span class="chip c-ok">보냄 ' + A.fdate(n.sent_at) + '</span>' : '')
+        /* ── 지금 어떤 상태인지 (2026-11-13) ── */
+        + (function () {
+            var st = notiState(n), g = ATLOG[n.id];
+            if (st === 'sent') {
+              return ' <span class="chip c-ok" title="센터가 저절로 보냈습니다. 더 하실 일이 없습니다">'
+                + '✅ 알림톡 나감 ' + A.fdate(g.at) + '</span>';
+            }
+            if (st === 'hand') {
+              return ' <span class="chip c-ok">보냄 ' + A.fdate(n.sent_at) + '</span>';
+            }
+            if (st === 'bad') {
+              return ' <span class="chip c-bad" title="' + esc(g.bad)
+                + '">⚠️ 알림톡 막힘</span>';
+            }
+            return '';
+          })()
         + '<div class="mono" style="margin-top:3px">' + esc(w.sub || '') + '</div></div>'
         + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
         + (n.audience === 'staff' || rev ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '">📋 복사</button>')
         + (rev || !notiCanSend(n) ? ''
           : '<button class="btn btn-a btn-s" data-notisend="' + n.id + '">📤 알림톡</button>')
-        + (n.sent_at || rev ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
+        + (!notiNeedsHand(n) || rev ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
           + (n.audience === 'staff' ? '확인함' : '보냄') + '</button>')
         + '</span></div>'
         + '<pre style="white-space:pre-wrap;font:inherit;margin:11px 0 0;padding:11px 13px;'
@@ -6217,11 +6280,12 @@
     due1: ['이름', '마감일', '학원명', '검색어'],
     overdue: ['이름', '마감일', '학원명', '검색어', '주문마감일'],
     rework: ['이름', '학원명', '검색어', '사유', '메모'],
-    approved_post: ['이름'],
+    /* 🔴 2026-11-13 바로잡음 — 「이름」 하나만 적혀 있어 나머지 네 칸이 빈칸으로 나갔습니다 */
+    approved_post: ['이름', '학원명', '검색어', '올릴날', '안내'],
     pub_late: ['이름', '올릴날', '학원명', '검색어', '주문마감일'],
     keyword_changed: ['이름', '학원명', '예전검색어', '새검색어', '바꾼이유', '안내1', '안내2'],
     taken_back: ['이름', '학원명', '검색어', '사유', '안내'],
-    info_changed: ['이름', '학원명', '바뀜내용', '편수'],
+    info_changed: ['이름', '학원명', '바뀐내용', '편수'],   /* 🔴 「바뀜내용」 오타 고침 (2026-11-13) */
     edu_wait: ['이름'],
     edu_ok: ['자료제목', '메모'],
     edu_no: ['자료제목', '메모'],
@@ -6387,7 +6451,7 @@
   };
 
   $('notiSentAll').onclick = async function () {
-    var rows = notiRows().filter(function (n) { return !n.sent_at; });
+    var rows = notiRows().filter(notiNeedsHand);
     if (!rows.length) { A.toast('표시할 것이 없습니다'); return; }
     if (!confirm(rows.length + '건을 모두 보낸 것으로 표시할까요?')) return;
     try {
