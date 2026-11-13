@@ -8,8 +8,12 @@
   --bad:#A63A3A; --bad-bg:#F8E7E7;
   --info:#28497E; --info-bg:#E7EDF7;
   --radius:10px;
-  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
-  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+  /* 🔤 글꼴 — 프리텐다드를 사이트가 직접 내려줍니다 (fonts/pretendard · index/status/consent.html 의 <link>).
+     예전엔 목록에만 있고 파일을 안 줘서 윈도우는 맑은 고딕, 아이폰은 애플 기본 글꼴로 보였습니다.
+     가변(Variable) 판이라 650·680·750 같은 사이 굵기도 그대로 나옵니다.
+     .mono 의 한글도 프리텐다드로 — 영문·숫자는 고정폭 글꼴(Consolas 등)이 먼저 잡습니다 */
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Pretendard Variable",Pretendard,monospace;
+  --sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root{
