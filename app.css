@@ -317,6 +317,22 @@ select.inp{cursor:pointer}
   /* 아이폰 사파리는 16px 보다 작은 칸을 누르면 화면을 멋대로 확대합니다 → 폰에서는 16px.
      칸마다 style 로 글자 크기를 적어 둔 곳이 있어 !important 로 덮습니다 */
   .inp,textarea{font-size:16px !important}
+
+  /* 📱 표 — 폰 폭(약 360px)에 6~8칸을 억지로 끼우면 한 칸이 30px 남짓이 되어
+     「우리동네커피」가 한 글자씩 세로로 쌓였습니다.
+     → ① 한글 낱말은 중간에서 끊지 않고(keep-all) ② 칸이 많은 표는 최소 폭을 줘서
+       화면보다 넓으면 **옆으로 밀어서** 봅니다 (.tblscroll 이 이미 가로 스크롤을 합니다).
+     칸 수는 :has() 로 셉니다 — 4칸 이상 / 6칸 이상 / 8칸 이상. 공동체 표(.commtbl)는 따로 정해져 있습니다 */
+  .tblscroll td{word-break:keep-all}
+  .tblscroll td.num,.tblscroll td.mono{white-space:nowrap}
+  .tblscroll > table:not(.commtbl):has(tr > :nth-child(4)){min-width:540px}
+  .tblscroll > table:not(.commtbl):has(tr > :nth-child(6)){min-width:660px}
+  .tblscroll > table:not(.commtbl):has(tr > :nth-child(8)){min-width:800px}
+  .tblscroll th,.tblscroll td{padding:10px 11px}
+  .tblscroll{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  /* 옆에 더 있으면 오른쪽 끝을 흐리게 — 「여기서 끝」으로 오해하지 않게 (core.js 가 .more 를 붙입니다) */
+  .tblscroll.more{-webkit-mask-image:linear-gradient(to left,transparent 0,#000 40px);
+                  mask-image:linear-gradient(to left,transparent 0,#000 40px)}
 }
 
 /* ── v3 화면용 추가 ── */

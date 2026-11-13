@@ -549,6 +549,27 @@ window.ESC = (function () {
     if (window.innerWidth > 820 && document.body.classList.contains('navopen')) A.navOpen(false);
   });
 
+  /* 📱 옆으로 밀어 볼 표가 더 있는지 — 있으면 .tblscroll 에 .more (app.css 에서 오른쪽 끝을 흐리게) */
+  function tblMore(el) {
+    el.classList.toggle('more', el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }
+  var tblRaf = 0;
+  function tblMoreAll() {
+    if (tblRaf) return;
+    tblRaf = requestAnimationFrame(function () {
+      tblRaf = 0;
+      document.querySelectorAll('.tblscroll').forEach(tblMore);
+    });
+  }
+  document.addEventListener('scroll', function (e) {
+    var t = e.target;
+    if (t && t.classList && t.classList.contains('tblscroll')) tblMore(t);
+  }, true);
+  window.addEventListener('resize', tblMoreAll);
+  if (window.MutationObserver) {
+    new MutationObserver(tblMoreAll).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   /* ── 📖 지침 ──
      🔴 저장소(GitHub Pages)에 두면 주소만 알면 로그인 없이 열립니다.
      그래서 DB(guides 표)에 담고, 로그인한 사람의 역할만큼만 내어 줍니다.

@@ -6434,7 +6434,7 @@
     if (r.error) { box.innerHTML = '<div class="note bad">기록을 읽지 못했습니다: ' + esc(r.error.message) + '</div>'; return; }
     var rows = r.data || [];
     if (!rows.length) { box.innerHTML = '<div class="mono" style="margin-top:10px">아직 보낸 기록이 없습니다.</div>'; return; }
-    box.innerHTML = '<table class="tbl" style="margin-top:12px"><thead><tr>'
+    box.innerHTML = '<div class="tblbox tblscroll" style="margin-top:12px"><table class="tbl"><thead><tr>'
       + '<th>때</th><th>알림</th><th>채널</th><th>받는 번호</th><th>결과</th></tr></thead><tbody>'
       + rows.map(function (x) {
         var ko = x.status === 'sent' ? '<span class="chip c-ok">보냄</span>'
@@ -6445,7 +6445,7 @@
           + '<td class="mono">' + (x.channel === 'intomarketing' ? '인투마케팅' : 'ESC') + '</td>'
           + '<td class="mono">' + esc(fmtPhone(x.to_phone)) + '</td>'
           + '<td>' + ko + (x.error ? ' <span class="mono">' + esc(x.error) + '</span>' : '') + '</td></tr>';
-      }).join('') + '</tbody></table>';
+      }).join('') + '</tbody></table></div>';
   };
 
   $('notiSetSave').onclick = async function () {
