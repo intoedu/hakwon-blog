@@ -513,11 +513,41 @@ window.ESC = (function () {
       b.classList.toggle('on', b.dataset.go === name);
     });
     window.scrollTo(0, 0);
+    A.navOpen(false);
+    /* 📱 폰 윗줄에 지금 보는 화면 이름을 띄웁니다 (숫자·개수 표시는 빼고 글자만) */
+    var cur = document.querySelector('.nav.on[data-go]:not(.hide)')
+      || document.querySelector('.screen.on .head h1');
+    var mt = A.$('mbarTitle');
+    if (mt && cur) {
+      var t = cur.cloneNode(true);
+      t.querySelectorAll('.n,.cnt').forEach(function (x) { x.remove(); });
+      mt.textContent = t.textContent.replace(/\s+/g, ' ').trim() || '블로그 센터';
+    }
     /* 📖 지침은 관리자·검수자·블로거가 모두 보므로 여기서 불러 줍니다
        (admin.js 의 onShow 는 블로거를 막습니다) */
     if (name === 'guide') A.loadGuide();
     if (A.onShow) A.onShow(name);
   };
+
+  /* ── 📱 폰 메뉴 서랍 (820px 이하에서만 보입니다 — app.css .mbar / .sideback) ──
+     메뉴를 누르면 A.show 에서 닫힙니다. 갈래 전환·화면 바꾸기는 메뉴가 바뀌는 것이라 열어 둡니다. */
+  A.navOpen = function (open) {
+    var on = document.body.classList.toggle('navopen', !!open);
+    var b = A.$('navToggle');
+    if (b) { b.setAttribute('aria-expanded', on ? 'true' : 'false');
+             b.setAttribute('aria-label', on ? '메뉴 닫기' : '메뉴 열기'); }
+  };
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('#navToggle')) { A.navOpen(!document.body.classList.contains('navopen')); return; }
+    if (e.target.closest('#sideBack') || e.target.closest('[data-pwme]')) A.navOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && document.body.classList.contains('navopen')) A.navOpen(false);
+  });
+  /* 창을 넓히면 서랍 상태를 풉니다 (안 그러면 스크롤이 잠긴 채 남습니다) */
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 820 && document.body.classList.contains('navopen')) A.navOpen(false);
+  });
 
   /* ── 📖 지침 ──
      🔴 저장소(GitHub Pages)에 두면 주소만 알면 로그인 없이 열립니다.
