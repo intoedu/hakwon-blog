@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>보호자 동의 · ESC 학원지원</title>
 <link rel="stylesheet" href="fonts/pretendard/pretendard.css?v=1.3.9">
-<link rel="stylesheet" href="app.css?v=261113e">
+<link rel="stylesheet" href="app.css?v=261113f">
 <!-- ═══════════════════════════════════════════════════════════════
      보호자 동의 화면
      https://center.intomarketing.co.kr/consent.html?k=#{동의키}
@@ -67,7 +67,7 @@
   .say{font-size:13.5px;margin-top:10px;min-height:1.2em;color:var(--muted)}
 
   .done{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 20px;margin-top:18px;text-align:center}
-  .done .ic{font-size:34px;line-height:1}
+  .done .doneic{font-size:34px;line-height:1;color:var(--muted)}
   .done h2{font-size:19px;font-weight:750;margin:10px 0 6px}
   .done p{font-size:14px;color:var(--muted);line-height:1.7;word-break:keep-all}
   .done .meta{font-size:13px;margin-top:10px;color:var(--ink-2)}
@@ -136,7 +136,7 @@
     + '</div>';
 
   function fail(title, sub) {
-    PG.innerHTML = '<div class="done"><div class="ic">📄</div>'
+    PG.innerHTML = '<div class="done"><div class="doneic"><i class="ic i-file-text"></i></div>'
       + '<h2>' + esc(title) + '</h2>'
       + '<p>' + (sub || '받으신 카카오톡 메시지의 주소를 그대로 눌러 주세요.<br>'
         + '계속 안 열리면 아래로 연락 주시면 바로 도와드리겠습니다.') + '</p></div>' + FOOT;
@@ -224,7 +224,7 @@
     h += whoHtml(d);
 
     if (d.state === 'agreed' && !SHOW_FORM) {
-      h += '<div class="done"><div class="ic">✅</div><h2>동의해 주셔서 고맙습니다</h2>'
+      h += '<div class="done"><div class="doneic"><i class="ic i-circle-check"></i></div><h2>동의해 주셔서 고맙습니다</h2>'
         + '<p>' + esc(d.name) + ' 님은 이제 블로거 활동을 시작할 수 있습니다.</p>'
         + '<div class="meta">' + fdate(d.decided_at)
         + (d.guardian ? ' · ' + esc(d.guardian) + (d.relation ? '(' + esc(d.relation) + ')' : '') : '')
@@ -232,7 +232,7 @@
         + '<button class="link" type="button" id="btnWithdraw">동의를 철회하려면 여기를 누르세요</button></div>';
       h += infoHtml(d);
     } else if (d.state === 'refused' && !SHOW_FORM) {
-      h += '<div class="done"><div class="ic">📄</div><h2>동의하지 않으셨습니다</h2>'
+      h += '<div class="done"><div class="doneic"><i class="ic i-file-text"></i></div><h2>동의하지 않으셨습니다</h2>'
         + '<p>' + esc(d.name) + ' 님의 블로거 활동은 시작되지 않습니다.<br>'
         + '마음이 바뀌시면 언제든 다시 동의하실 수 있습니다.</p>'
         + '<div class="meta">' + fdate(d.decided_at) + '</div>'

@@ -46,7 +46,7 @@
     }).join('');
   }
   function splitBox() {
-    return '<details class="outbox" style="margin-top:18px"><summary>💰 업체가 낸 돈이 어떻게 나뉘는지'
+    return '<details class="outbox" style="margin-top:18px"><summary><i class="ic i-coins"></i> 업체가 낸 돈이 어떻게 나뉘는지'
       + '<span class="mono">— 일반 ' + won(sale().normal) + '원 · 파트너 ' + won(sale().premium) + '원</span></summary>'
       + '<div class="obody">'
       + '<div class="tblbox tblscroll"><table>'
@@ -305,7 +305,7 @@
           + '<td class="num">' + ((p.to_review || 0) + (p.to_verify || 0)) + '</td>'
           + '<td>' + (o.paid_at ? '<span class="chip c-ok">입금됨</span>' : '<span class="chip c-wait">입금 대기</span>') + '</td>'
           + '<td class="mono">' + (o.deadline || '-') + (d != null && d >= 0 ? ' (' + d + '일)' : d != null ? ' <b style="color:var(--bad)">지남</b>' : '') + '</td>'
-          + (A.IS_OWNER ? '<td><button class="btn btn-s" data-delorder="' + o.id + '">🗑</button></td>' : '')
+          + (A.IS_OWNER ? '<td><button class="btn btn-s" data-delorder="' + o.id + '"><i class="ic i-trash-2"></i></button></td>' : '')
           + '</tr>';
       }).join('') + '</tbody></table></div>' : A.empty('아직 주문이 없습니다. 3번에서 만드시면 됩니다.');
   }
@@ -449,9 +449,9 @@
           + '<b>알림톡은 자동으로 가지 않습니다.</b> 아래 문구를 복사해 보내 주세요.</div>' : '')
       + '<div class="row" style="margin-top:8px">'
       + '<button class="btn btn-s" data-gset="' + p.id + '">'
-      + (has ? '✏️ 보호자 정보 고치기' : '보호자 정보 넣기') + '</button>'
+      + (has ? '<i class="ic i-pencil"></i> 보호자 정보 고치기' : '보호자 정보 넣기') + '</button>'
       + (has
-        ? '<button class="btn btn-s" data-copyconsent="' + p.id + '">📋 보호자께 보낼 문구 복사</button>'
+        ? '<button class="btn btn-s" data-copyconsent="' + p.id + '"><i class="ic i-clipboard-copy"></i> 보호자께 보낼 문구 복사</button>'
           + '<a class="btn btn-s" href="' + esc(CONSENT_URL + (p.consent_key || ''))
           + '" target="_blank" rel="noopener">동의 화면 열기 ↗</a>'
         : '')
@@ -551,8 +551,8 @@
       /* ⚠️ 우리는 문자·카톡을 자동으로 못 보냅니다(사업자 발신프로필이 있어야 합니다).
          그래서 **보낼 문구를 만들어 드리고 복사만** 하시게 합니다. 알림 화면과 같은 방식입니다. */
       + '<div class="row" style="margin-top:6px">'
-      + '<button class="btn btn-s" data-askmsg="url:' + p.id + '">📋 주소 물어보기</button>'
-      + '<button class="btn btn-s" data-askmsg="nb:' + p.id + '">📋 이웃 수 물어보기</button>'
+      + '<button class="btn btn-s" data-askmsg="url:' + p.id + '"><i class="ic i-clipboard-copy"></i> 주소 물어보기</button>'
+      + '<button class="btn btn-s" data-askmsg="nb:' + p.id + '"><i class="ic i-clipboard-copy"></i> 이웃 수 물어보기</button>'
       + '</div></dd>'
       + '<dt>이메일</dt><dd class="mono">' + esc(p.email) + '</dd>'
       + (p.reject_reason ? '<dt>거절 사유</dt><dd>' + esc(p.reject_reason) + '</dd>' : '')
@@ -583,7 +583,7 @@
       + 'border:1px solid var(--line);user-select:all">' + esc(pw) + '</div>'
       + '<div class="mono" style="margin-top:10px">아이디(이메일) · ' + esc(who.email || '-') + '</div>'
       + '<div class="note" style="margin-top:10px">본인이 들어가서 '
-      + '<b>왼쪽 아래 [🔑 비밀번호 바꾸기]</b>로 바꿀 때까지, 이 비밀번호가 카톡 대화방에 남습니다. '
+      + '<b>왼쪽 아래 [<i class="ic i-key-round"></i> 비밀번호 바꾸기]</b>로 바꿀 때까지, 이 비밀번호가 카톡 대화방에 남습니다. '
       /* ⚠️ 「바꾸라는 안내」 띠는 블로거 화면에만 있습니다. 블로거를 겸하지 않는
          직원에게는 안 뜨므로, 안 뜬다고 적어야 관리자가 직접 말해 줍니다. */
       + (A.PEOPLE.some(function (x) { return x.id === who.id; })
@@ -591,7 +591,7 @@
           : '<b>직원 계정이라 안내 띠가 뜨지 않습니다</b> — 바꾸시라고 꼭 말씀해 주세요.')
       + '</div>'
       + '<div class="row" style="margin-top:16px">'
-      + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '">📋 보낼 문구 복사</button>'
+      + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '"><i class="ic i-clipboard-copy"></i> 보낼 문구 복사</button>'
       + '<button class="btn" data-pwclose="1">닫았습니다</button></div></div>';
     m.classList.remove('hide');
     m.dataset.who = who.id;
@@ -620,7 +620,7 @@
       + esc((p.blog_url || '').replace(/^https?:\/\//, '')) + ' ↗</a>'
       + (p.blog_alias ? ' <span class="mono">' + esc(p.blog_alias) + '</span>' : '')
       + ' <button class="btn btn-s" data-nidedit="' + p.id + '" '
-      + 'title="신청 때 잘못 적었으면 승인 전에도 여기서 고칩니다">✏️ 아이디 고치기</button></span>';
+      + 'title="신청 때 잘못 적었으면 승인 전에도 여기서 고칩니다"><i class="ic i-pencil"></i> 아이디 고치기</button></span>';
   }
 
   /* ── 블로거 목록의 이웃 수 칸 ──
@@ -745,7 +745,7 @@
         return '<tr data-brow="' + p.id + '"><td>'
           + '<button class="nmbtn" data-bopen="' + p.id + '" title="눌러서 신청 내용 보기">'
           + esc(p.name) + '</button>'
-          + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
+          + (p.wants_more ? ' <span class="chip c-ok"><i class="ic i-star-fill"></i> 많이 원함</span>' : '')
           + '<div class="mono">' + esc(p.phone || '') + '</div></td>'
           + '<td>' + esc(A.commName(p.community_id)) + '</td>'
           + '<td>' + A.lvBadge(p.level) + '</td><td class="num">' + won(lv.rate) + '</td>'
@@ -768,7 +768,7 @@
           + '<button class="btn btn-s" data-openpm="' + p.id + '">검수자·관리자로 ↑</button>'
           + '<button class="btn btn-s" data-wants="' + p.id + '" data-on="' + (p.wants_more ? 1 : 0)
           + '" title="글을 많이 받고 싶다는 표시. 켜면 배정에서 먼저 갑니다">'
-          + (p.wants_more ? '★ 많이' : '☆ 많이') + '</button>'
+          + (p.wants_more ? '<i class="ic i-star-fill"></i> 많이' : '<i class="ic i-star"></i> 많이') + '</button>'
           /* 연습글을 안 마친 사람에게도 진짜 주문을 주어야 할 때 풉니다 (이은총 님 2026-10-27)
              이미 진짜 글을 맡은 적 있는 사람은 저절로 면제라 단추가 필요 없습니다 */
           + ((needsPractice(p.id) || practiceExempt(p.id))
@@ -814,7 +814,7 @@
       + kvrow('블로그 주소', nidCell(p))
       + kvrow('로그인', '<span class="mono">' + esc(p.email || '-') + '</span> '
         + '<button class="btn btn-s" data-pwreset="' + p.id + '" '
-        + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다">🔑 비밀번호 초기화</button>'
+        + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다"><i class="ic i-key-round"></i> 비밀번호 초기화</button>'
         + '<div class="mono" style="margin-top:4px">비밀번호는 <b>블로그 센터 전용</b>입니다 — '
         + '메일 비밀번호가 아닙니다</div>')
       + kvrow('이웃 수', '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span>'
@@ -841,8 +841,8 @@
       + '<div class="row" style="margin-top:14px">'
       + (p.blog_url
         ? '<a class="btn btn-a btn-s" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
-          + '📝 블로그 열어보기 ↗</a>' : '')
-      + '<button class="btn btn-s" data-seeblog="' + p.id + '">👤 이 사람 화면으로 가기</button>'
+          + '<i class="ic i-notebook-pen"></i> 블로그 열어보기 ↗</a>' : '')
+      + '<button class="btn btn-s" data-seeblog="' + p.id + '"><i class="ic i-user"></i> 이 사람 화면으로 가기</button>'
       + '<span class="mono">이 사람이 보는 화면 그대로 열립니다 (보기 전용)</span>'
       + '</div>'
       + eraseBox(p)
@@ -874,7 +874,7 @@
       + '<div class="mono" style="margin-top:4px">글과 원고료 지급 내역은 남습니다. '
       + '먼저 <b>쉬게 하기</b>와 <b>맡은 글 회수</b>를 끝내 주세요.</div>'
       + '<div class="row" style="margin-top:8px">'
-      + '<button class="btn btn-s" data-erase="' + p.id + '">🗑 개인정보 지우기</button></div></div>';
+      + '<button class="btn btn-s" data-erase="' + p.id + '"><i class="ic i-trash-2"></i> 개인정보 지우기</button></div></div>';
   }
 
   /* ── 검수자 / 관리자 ── */
@@ -934,7 +934,7 @@
        입금도 마감도 업체 알림도 없습니다. 「연습 주문」을 켜는 순간 서버가 시작까지
        같이 해 주므로, 여기서는 그렇게 되었다고 알려 주기만 합니다. */
     if (o.is_practice) {
-      return '<div class="note" style="margin-top:14px"><b>🧪 연습 주문입니다.</b> '
+      return '<div class="note" style="margin-top:14px"><b><i class="ic i-flask-conical"></i> 연습 주문입니다.</b> '
         + '입금 확인도, 의뢰 시작도, 주문 마감도 없습니다. '
         + '<b>바로 블로거에게 맡기실 수 있습니다.</b>'
         + '<div class="mono" style="margin-top:7px">'
@@ -958,7 +958,7 @@
       + '<span class="chip c-info">시작 ' + mdKo(sd) + '</span>'
       + '<span class="mono">주문 마감 <b>' + mdKo(o.deadline) + '</b>'
       + (o.started_by ? ' · 누른 분 ' + esc(staffName(o.started_by) || '') : '') + '</span>'
-      + '<button class="btn btn-s" data-startcopy="' + o.id + '">📋 시작 안내 문구 복사</button>'
+      + '<button class="btn btn-s" data-startcopy="' + o.id + '"><i class="ic i-clipboard-copy"></i> 시작 안내 문구 복사</button>'
       + (sd === A.today() ? '<button class="btn btn-s" data-startundo="' + o.id + '">되돌리기</button>' : '')
       + '</div>';
   }
@@ -1050,7 +1050,7 @@
           + '<td><div class="row">'
           + '<button class="btn btn-s" data-seeas="' + s.id + '">이 사람 화면 보기</button>'
           + (canPw ? '<button class="btn btn-s" data-pwreset="' + s.id + '" '
-              + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다">🔑 비밀번호 초기화</button>' : '')
+              + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다"><i class="ic i-key-round"></i> 비밀번호 초기화</button>' : '')
           + (locked ? '' : '<button class="btn btn-s" data-openpm="' + s.id + '">직분 바꾸기</button>')
           + '</div></td></tr>';
       }).join('') + '</tbody></table></div>';
@@ -1547,7 +1547,7 @@
               return x.material_id === m.id && x.staff_id === st.id;
             });
             if (ok) n++;
-            return '<td>' + (ok ? '✔' : '<span class="mono">–</span>') + '</td>';
+            return '<td>' + (ok ? '<i class="ic i-check"></i>' : '<span class="mono">–</span>') + '</td>';
           }).join('');
           return '<tr><td><b>' + esc(st.name) + '</b></td>'
             + '<td class="mono">' + esc(st.blogRole) + '</td>' + tds
@@ -1725,7 +1725,7 @@
       + (zWait.length ? ' · 줌 녹화본 ' + zWait.length : '') + '</span></div>'
       + '<details style="margin-bottom:14px">'
       + '<summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">'
-      + '📖 확인 질문과 영상 내용 펼쳐 보기 <span class="mono">(답이 맞는지 여기서 대조하세요)</span></summary>'
+      + '<i class="ic i-book-open"></i> 확인 질문과 영상 내용 펼쳐 보기 <span class="mono">(답이 맞는지 여기서 대조하세요)</span></summary>'
       + '<div class="note" style="margin-top:10px">'
       + (MATS.length ? MATS.map(function (m) {
           return '<div style="margin-bottom:10px"><b>' + esc(m.title) + '</b>'
@@ -1762,16 +1762,16 @@
 
     /* 이미 본 것 — 둘을 한 표에 섞어서 최근 순으로 */
     var done = vDone.map(function (g) {
-      return { at: g.reviewed_at, who: g.blogger_id, kind: '📹 영상',
+      return { at: g.reviewed_at, who: g.blogger_id, kind: '<i class="ic i-video"></i> 영상',
                what: matTitle(g.material_id), ok: g.status === 'approved', by: g.reviewed_by };
     }).concat(zDone.map(function (a) {
       var x = sids[a.session_id] || {};
-      return { at: a.confirmed_at, who: a.blogger_id, kind: '🎥 줌 녹화본',
+      return { at: a.confirmed_at, who: a.blogger_id, kind: '<i class="ic i-monitor-play"></i> 줌 녹화본',
                what: (x.kind === 't1' ? '1차 교육' : '2차 교육'), ok: true, by: a.confirmed_by };
     })).sort(function (a, b) { return (a.at || '') > (b.at || '') ? -1 : 1; }).slice(0, 20);
 
     box.innerHTML = head
-      + (waitHtml || '<div class="note ok">확인을 기다리는 것이 없습니다. 👍</div>')
+      + (waitHtml || '<div class="note ok">확인을 기다리는 것이 없습니다. <i class="ic i-thumbs-up"></i></div>')
       + (done.length ? '<div class="sec">이미 본 것</div>'
         + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th><th>종류</th>'
         + '<th>무엇</th><th>결과</th><th>누가 · 언제</th></tr></thead><tbody>'
@@ -1796,7 +1796,7 @@
       + '<span class="mono">' + esc(commOfBlogger(a.blogger_id)) + ' · '
       + (sess.kind === 't1' ? '1차 교육' : '2차 교육') + ' · ' + A.fdt(sess.held_at) + '</span></div>'
       + '<div class="row" style="gap:6px">'
-      + '<span class="chip c-info">🎥 줌 녹화본</span>'
+      + '<span class="chip c-info"><i class="ic i-monitor-play"></i> 줌 녹화본</span>'
       + '<span class="chip c-off">' + (a.note || '').length + '자</span></div></div>'
       + (sess.replay_url
         ? '<div class="mono" style="margin-bottom:8px">'
@@ -1826,7 +1826,7 @@
       + '<span class="mono">' + esc(commOfBlogger(g.blogger_id)) + ' · '
       + esc(m.title || '') + ' · ' + A.fdt(g.submitted_at) + '</span></div>'
       + '<div class="row" style="gap:6px">'
-      + '<span class="chip c-info">📹 영상</span>'
+      + '<span class="chip c-info"><i class="ic i-video"></i> 영상</span>'
       + '<span class="chip ' + (short ? 'c-bad' : 'c-ok') + '">본 시간 '
       + Math.floor((g.watched_sec || 0) / 60) + '분'
       + (need ? ' / 최소 ' + Math.round(need / 60) + '분' : '') + '</span>'
@@ -1863,7 +1863,7 @@
         + '사진은 업체에서 받아 넣어 주시면 됩니다.</div>'
       : '<div class="note ok" style="margin-bottom:18px">'
         + '<b>주문은 보통 홈페이지에서 저절로 들어옵니다.</b> '
-        + '업체가 신청하면 관리자페이지 의뢰 상세에 <b>[🖊 블로그 주문 만들기]</b> 버튼이 생기고, '
+        + '업체가 신청하면 관리자페이지 의뢰 상세에 <b>[<i class="ic i-pen"></i> 블로그 주문 만들기]</b> 버튼이 생기고, '
         + '그걸 누르면 지역·과목·대상·목적·정보팩·사진까지 여기로 그대로 넘어옵니다. '
         + '<b>손으로 만드실 일은 거의 없습니다.</b></div>';
 
@@ -1931,7 +1931,7 @@
           ? '<span class="chip c-ok">사진 ' + o.photo_paths.length + '장 들어옴</span>'
             + (A.picLastDate(o.photo_paths)
               ? '<span class="chip c-info">마지막 ' + A.picLastDate(o.photo_paths) + ' 받음</span>' : '')
-            + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기</button>'
+            + '<button class="btn btn-s" data-seepics="' + o.id + '"><i class="ic i-image"></i> 사진 보기</button>'
             + '<span class="mono">글마다 다른 조합으로 5~8장씩 나눠 줍니다</span>'
           : o.photo_note
             ? '<span class="chip c-wait">사진을 링크로 받음</span><a class="mono" href="' + esc(o.photo_note)
@@ -1944,7 +1944,7 @@
         + '<div class="row">'
         + '<input class="inp" style="flex:1;min-width:240px;font-family:var(--mono);font-size:12px" readonly '
         + 'value="' + esc(statusUrl(o)) + '" onclick="this.select()">'
-        + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '">📋 주소 복사</button>'
+        + '<button class="btn btn-p btn-s" data-copystatus="' + esc(statusUrl(o)) + '"><i class="ic i-clipboard-copy"></i> 주소 복사</button>'
         + '<a class="btn btn-s" href="' + esc(statusUrl(o)) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
         + '</div>'
         + soonBox(o)
@@ -1962,7 +1962,7 @@
           return '<option value="' + s + '"' + (o.status === s ? ' selected' : '') + '>' + ko + '</option>';
         }).join('') + '</select>'
         + '<button class="btn btn-s" data-delorder="' + o.id + '" '
-        + 'title="최고관리자만 지울 수 있습니다">🗑 주문 삭제</button>'
+        + 'title="최고관리자만 지울 수 있습니다"><i class="ic i-trash-2"></i> 주문 삭제</button>'
         + '</span></div>'
         + '</div>';
     }).join('') : A.empty(TK === 'review'
@@ -2107,7 +2107,7 @@
     var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
 
     return '<details class="outbox" open>'
-      + '<summary>⭐ 리뷰 구성 <span class="mono">— 어떤 리뷰를 몇 편 · 무엇을 짚을지</span></summary>'
+      + '<summary><i class="ic i-star"></i> 리뷰 구성 <span class="mono">— 어떤 리뷰를 몇 편 · 무엇을 짚을지</span></summary>'
       + '<div class="obody">'
 
       + '<div class="osec" style="margin-top:0">1 · 네이버 지도 주소</div>'
@@ -2159,15 +2159,15 @@
       + '<div class="osec">4 · 사진</div>'
       + ((o.photo_paths || []).length
         ? '<div class="row"><span class="chip c-ok">' + o.photo_paths.length + '장</span>'
-          + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button>'
+          + '<button class="btn btn-s" data-seepics="' + o.id + '"><i class="ic i-image"></i> 사진 보기 · 꼬리표 · 내려받기</button>'
           + (photoDonors(o).length
-            ? '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>' : '')
+            ? '<button class="btn btn-s" data-pullpics="' + o.id + '"><i class="ic i-download"></i> 이전 주문 사진 가져오기</button>' : '')
           + '</div>'
           + '<div class="mono" style="margin-top:7px">받은 때 — ' + A.picGroupText(o.photo_paths) + '</div>'
         : '<div class="note warn">사진이 없습니다. 리뷰는 사진이 생명이라 업체에 꼭 받으셔야 합니다.'
           + (photoDonors(o).length
             ? '<div class="row" style="margin-top:9px">'
-              + '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>'
+              + '<button class="btn btn-s" data-pullpics="' + o.id + '"><i class="ic i-download"></i> 이전 주문 사진 가져오기</button>'
               + '</div>' : '') + '</div>')
 
       + '<div class="osec">5 · 만들어진 리뷰</div>'
@@ -2255,7 +2255,7 @@
           + '키워드로 글을 먼저 만든 다음 <b>[글에 나눠 배정하기]</b>를 누르시면 붙습니다</div>';
 
     return '<details class="outbox">'
-      + '<summary>📦 블로거에게 나가는 정보 한눈에 보기'
+      + '<summary><i class="ic i-package"></i> 블로거에게 나가는 정보 한눈에 보기'
       + '<span class="mono">— ' + esc(sum) + '</span></summary>'
       + '<div class="obody">'
       + '<div class="note">블로거 한 사람이 글쓰기 화면에서 보는 것은 <b>자기 글 몫 하나뿐</b>입니다. '
@@ -2290,19 +2290,19 @@
             + '<span class="chip c-info">받은 때 ' + A.picGroupText(o.photo_paths) + '</span>'
             + (n ? '<span class="chip c-info">꼬리표 ' + n + '장</span>'
                  : '<span class="chip c-bad">꼬리표 없음</span>')
-            + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button>'
+            + '<button class="btn btn-s" data-seepics="' + o.id + '"><i class="ic i-image"></i> 사진 보기 · 꼬리표 · 내려받기</button>'
             + (photoDonors(o).length
-              ? '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>' : '')
+              ? '<button class="btn btn-s" data-pullpics="' + o.id + '"><i class="ic i-download"></i> 이전 주문 사진 가져오기</button>' : '')
             + '</div>'
             + (n
               ? '<div class="mono" style="margin-top:7px">'
                 + (sign ? '간판·외부 ' + sign + '장이 글마다 맨 앞에 한 장씩 들어갑니다. '
-                        : '⚠️ 간판·외부로 표시한 사진이 없습니다. ')
+                        : '<i class="ic i-triangle-alert"></i> 간판·외부로 표시한 사진이 없습니다. ')
                 + '나머지는 그 글 소재의 과목에 맞춰 골라 나갑니다.</div>'
               : '<div class="note warn" style="margin-top:9px">'
                 + '<b>꼬리표가 없으면 사진이 내용과 상관없이 순서대로 나눠집니다.</b> '
                 + '영어 이야기를 쓰는 글에 수학 사진이 가고, 간판 사진이 한 장도 없는 글이 생깁니다. '
-                + '<b>[🖼 사진 보기]</b> → <b>[🏷 꼬리표 달기]</b> 에서 달아 주세요.</div>');
+                + '<b>[<i class="ic i-image"></i> 사진 보기]</b> → <b>[<i class="ic i-tag"></i> 꼬리표 달기]</b> 에서 달아 주세요.</div>');
         })()
         : '<div class="mono">받은 사진이 없습니다.</div>'
           + (photoDonors(o).length
@@ -2310,7 +2310,7 @@
               + '<b>사진이 없으면 블로거에게 줄 것이 없습니다.</b> 고객에게 새 사진을 받는 것이 '
               + '원칙이지만, 급하시면 이전 주문 사진을 끌어올 수 있습니다.'
               + '<div class="row" style="margin-top:9px">'
-              + '<button class="btn btn-s" data-pullpics="' + o.id + '">⬇ 이전 주문 사진 가져오기</button>'
+              + '<button class="btn btn-s" data-pullpics="' + o.id + '"><i class="ic i-download"></i> 이전 주문 사진 가져오기</button>'
               + '</div></div>' : ''))
 
       + '<div class="osec">5 · 광고 표시 문구 <small>법으로 정해진 표시 · 글마다 다른 문장이 뜹니다</small></div>'
@@ -2320,7 +2320,7 @@
           }).join('') + '</div>'
           + '<div class="mono" style="margin-top:7px">' + ads.length + '개를 글 단위로 섞어 나눠 줍니다. '
           + '한 블로그의 글이 전부 같은 문구를 달면 그 블로그가 광고 채널로 분류될 수 있어 흩뜨립니다. '
-          + '고치시려면 <b>4 키워드 만들기</b> 맨 아래 <b>⚙️ 글에 같이 나가는 규칙</b>에서요.</div>'
+          + '고치시려면 <b>4 키워드 만들기</b> 맨 아래 <b><i class="ic i-settings"></i> 글에 같이 나가는 규칙</b>에서요.</div>'
         : '<div class="note warn">광고 표시 문구가 하나도 없습니다. 대가성 광고 표기는 '
           + '표시광고법상 의무입니다.</div>')
 
@@ -2489,7 +2489,7 @@
         return '<option value="' + esc(s) + '"' + (t.s === s ? ' selected' : '') + '>' + esc(s) + '</option>';
       }).join('') + '</select>') + '</div>'
       + '<div class="pictag">'
-      + '<button class="btn btn-s" data-ptrot="' + esc(path) + '" title="90도씩 돌립니다">↻ '
+      + '<button class="btn btn-s" data-ptrot="' + esc(path) + '" title="90도씩 돌립니다"><i class="ic i-rotate-cw"></i> '
       + (t.r ? t.r + '°' : '돌리기') + '</button>'
       + '<label class="pcx' + (t.x ? ' on' : '') + '">'
       + '<input type="checkbox" data-ptx="' + esc(path) + '"' + (t.x ? ' checked' : '') + '>'
@@ -2583,7 +2583,7 @@
       });
       A.toast(n + '장을 ZIP 으로 받았습니다');
     } catch (e) { A.toast('실패: ' + e.message); }
-    btn.textContent = '⬇ 전부 받기 (ZIP)'; btn.disabled = false;
+    btn.innerHTML = '<i class="ic i-download"></i> 전부 받기 (ZIP)'; btn.disabled = false;
   }
   if ($('picZip')) $('picZip').onclick = downloadAllPics;
   if ($('picTagMode')) $('picTagMode').onclick = function () {
@@ -2623,7 +2623,7 @@
     var path = b.dataset.ptrot, cur = PICTAGS[path] || {};
     cur.r = (((cur.r || 0) + 90) % 360) || undefined;
     if (!cur.t && !cur.s && !cur.r && !cur.x) delete PICTAGS[path]; else PICTAGS[path] = cur;
-    b.textContent = '↻ ' + (cur.r ? cur.r + '°' : '돌리기');
+    b.innerHTML = '<i class="ic i-rotate-cw"></i> ' + (cur.r ? cur.r + '°' : '돌리기');
     var cell = document.querySelector('[data-pcell="' + path.replace(/"/g, '\\"') + '"] img');
     if (cell) cell.style.transform = cur.r ? 'rotate(' + cur.r + 'deg)' : '';
     paintTagBar();
@@ -2681,7 +2681,7 @@
     }
     var done = s.up >= s.made && s.made > 0;
     box.innerHTML = '<div class="msg ' + (done ? 'err' : 'warn') + '" style="margin:0 0 12px">'
-      + '<b>⚠️ 이 업체는 이미 키워드를 ' + s.made + '편 만들었습니다.</b> '
+      + '<b><i class="ic i-triangle-alert"></i> 이 업체는 이미 키워드를 ' + s.made + '편 만들었습니다.</b> '
       + '(주문 ' + o.total_qty + '편 · 맡긴 글 ' + s.given + '편 · 올라간 글 ' + s.up + '편'
       + (s.idle ? ' · <b>아직 안 맡긴 글 ' + s.idle + '편</b>' : '') + ')<br>'
       + (done
@@ -2741,7 +2741,7 @@
       grid[k] = (grid[k] || 0) + 1;
     });
     return '<div class="msg err" style="margin-top:10px">'
-      + '<b>⚠️ 지금 있는 소재로는 쓸 수 없는 제목이 ' + nBad + '편 있습니다.</b><br>'
+      + '<b><i class="ic i-triangle-alert"></i> 지금 있는 소재로는 쓸 수 없는 제목이 ' + nBad + '편 있습니다.</b><br>'
       + '<b>가진 소재</b> — ' + Object.keys(grid).sort().map(function (k) {
           return esc(k) + ' ' + grid[k] + '개';
         }).join(' · ') + '<br>'
@@ -2763,7 +2763,7 @@
     if (!o) { box.innerHTML = ''; return true; }
     /* 🔴 연습 주문은 입금을 보지 않습니다 (2026-11-13) */
     if (o.is_practice) {
-      box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">🧪 <b>연습 주문입니다</b> · '
+      box.innerHTML = '<div class="msg ok" style="margin:0 0 12px"><i class="ic i-flask-conical"></i> <b>연습 주문입니다</b> · '
         + '입금 확인 없이 글을 만드실 수 있습니다</div>';
       return true;
     }
@@ -3130,7 +3130,7 @@
       var nm = ord.academy_name || '';
       var st = kwMade(oid);
       if (st.up >= st.made && st.made > 0
-        && !confirm('⚠️ 「' + nm + '」은 이미 ' + st.made + '편을 다 써서 올렸습니다.\n\n'
+        && !confirm('「' + nm + '」은 이미 ' + st.made + '편을 다 써서 올렸습니다.\n\n'
           + '여기서 또 만들면 업체가 주문한 ' + (ord.total_qty || '?') + '편보다 많이 쓰게 됩니다.\n'
           + '정말 더 만드시겠습니까?')) { A.toast('취소했습니다'); return; }
       var ans = window.prompt(
@@ -3611,7 +3611,7 @@
     var usd = ((u.in || 0) / 1e6) * 5 + ((u.out || 0) / 1e6) * 25;
     box.innerHTML = '<details class="rvseen" style="margin-top:12px">'
       + '<summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">'
-      + '🔍 방금 무엇을 주고받았는지 보기 <span class="mono">(토큰 '
+      + '<i class="ic i-search"></i> 방금 무엇을 주고받았는지 보기 <span class="mono">(토큰 '
       + won(u.in || 0) + ' + ' + won(u.out || 0) + ' · 약 ' + usd.toFixed(3) + ' 달러)</span></summary>'
       + '<div class="note" style="margin-top:10px"><b>이건 기록일 뿐입니다.</b> '
       + '아래 내용은 저장되지 않고, 화면을 새로 고치면 사라집니다.</div>'
@@ -3670,7 +3670,7 @@
           + '<b>만들지 못했습니다.</b><br>' + esc(e.message) + '</div>';
         A.toast('실패: ' + e.message.slice(0, 60));
       }
-      btn.disabled = false; btn.textContent = '✨ 여기서 바로 만들기';
+      btn.disabled = false; btn.innerHTML = '<i class="ic i-sparkles"></i> 여기서 바로 만들기';
     };
     $('rmCopy').onclick = function () {
       var t = rmBrief();
@@ -3861,14 +3861,14 @@
         + (p.memo ? ' · 닉네임 ' + esc(p.memo) : '') + '</div></div>'
         + (o.map_url
           ? '<a class="btn btn-a btn-s" href="' + esc(o.map_url) + '" target="_blank" rel="noopener">'
-            + '📍 네이버 지도에서 보기 ↗</a>'
+            + '<i class="ic i-map-pin"></i> 네이버 지도에서 보기 ↗</a>'
           : '<span class="chip c-bad">지도 주소 없음</span>') + '</div>'
         + '<div class="grid g2" style="gap:14px;margin-top:12px">'
         + '<div><label class="f">우리가 준 본문</label>'
         + '<pre class="tpnote" style="margin-top:0">' + esc(p.body || '') + '</pre></div>'
         + '<div><label class="f">리뷰어가 올린 화면</label>'
         + (p.proof_path
-          ? '<button class="btn btn-s" data-rvproof="' + esc(p.proof_path) + '">🖼 캡처 보기</button>'
+          ? '<button class="btn btn-s" data-rvproof="' + esc(p.proof_path) + '"><i class="ic i-image"></i> 캡처 보기</button>'
           : '<div class="note warn" style="margin:0">캡처가 없습니다.</div>') + '</div>'
         + '</div>'
         + '<div class="row" style="margin-top:14px">'
@@ -3969,7 +3969,7 @@
     var wm = rows.filter(function (r) { return r.p.wants_more; });
     var wmSum = wm.reduce(function (t, r) { return t + r.m; }, 0);
 
-    box.innerHTML = '<details class="outbox" style="margin-top:14px"><summary>📊 이번 달 받은 편수'
+    box.innerHTML = '<details class="outbox" style="margin-top:14px"><summary><i class="ic i-chart-column"></i> 이번 달 받은 편수'
       + ' — 가장 많은 분 <b>' + top + '편</b> / 상한 ' + cap + '편'
       + (zero ? ' · 아직 0편인 분 <b>' + zero + '명</b>' : '')
       + '</summary>'
@@ -3978,7 +3978,7 @@
       + '이 달에 모두 <b>' + sum + '편</b>이 나갔고 <b>' + got + '명</b>이 받았습니다. '
       + '한 사람 상한은 <b>' + cap + '편</b>입니다.</div>'
       + (wm.length ? '<div class="note' + (top >= cap * 0.8 ? ' warn' : '') + '">'
-        + '★ <b>「많이 원함」을 켠 분이 ' + wm.length + '명</b>이고, 이 달 받은 글 가운데 <b>' + wmSum + '편</b>'
+        + '<i class="ic i-star-fill"></i> <b>「많이 원함」을 켠 분이 ' + wm.length + '명</b>이고, 이 달 받은 글 가운데 <b>' + wmSum + '편</b>'
         + '(' + (sum ? Math.round(wmSum * 100 / sum) : 0) + '%)을 그분들이 받았습니다. '
         + '자동으로 나눠주면 이분들이 <b>먼저</b> 뽑힙니다 — 한쪽으로 몰리면 '
         + '[고른 사람에게만 나눠주기]로 다른 분께 돌려 주십시오.</div>' : '')
@@ -3988,7 +3988,7 @@
         var left = cap - r.m;
         return '<tr><td class="mono">' + (i + 1) + '</td>'
           + '<td><b>' + esc(r.p.name || '') + '</b>'
-          + (r.p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '') + '</td>'
+          + (r.p.wants_more ? ' <span class="chip c-ok"><i class="ic i-star-fill"></i> 많이 원함</span>' : '') + '</td>'
           + '<td class="mono">' + esc(A.commName(r.p.community_id)) + '</td>'
           + '<td><b' + (r.m >= cap ? ' style="color:var(--bad)"' : r.m >= cap * 0.8 ? ' style="color:var(--amber)"' : '')
           + '>' + r.m + '편</b></td>'
@@ -4095,7 +4095,7 @@
 
       box.innerHTML = (o && over > 0)
         ? '<div class="msg err" style="margin:0 0 12px">'
-        + '<b>⚠️ 주문은 ' + o.total_qty + '편인데 글이 ' + made + '편 만들어져 있습니다 (' + over + '편 초과).</b><br>'
+        + '<b><i class="ic i-triangle-alert"></i> 주문은 ' + o.total_qty + '편인데 글이 ' + made + '편 만들어져 있습니다 (' + over + '편 초과).</b><br>'
         + '키워드를 두 번 만드신 것 같습니다. 이대로 나눠주면 업체가 시킨 것보다 많이 쓰게 됩니다. '
         + '아래에서 <b>남는 ' + over + '편은 빼고</b> 맡기시거나, 「4 키워드 만들기」에서 '
         + '<b>안 맡긴 글을 지우고 새로</b> 만들어 주세요.</div>'
@@ -4177,7 +4177,7 @@
           + '</div>';
       }
       if (wk) return '<div class="empty">이 주차에는 맡길 글이 없습니다. 위에서 「전체 주차」로 바꿔 보세요.</div>';
-      return '<div class="empty">이 업체 글은 모두 맡겼습니다. 👍</div>';
+      return '<div class="empty">이 업체 글은 모두 맡겼습니다. <i class="ic i-thumbs-up"></i></div>';
     }
 
     $('postList').innerHTML = mine.length ? mine.map(function (p, i) {
@@ -4188,7 +4188,7 @@
         + '<span class="sub">#' + p.seq
         + (p.publish_on ? ' · <b style="color:var(--amber)">' + p.publish_on.slice(5) + ' 발행</b>'
                         : p.week ? ' · ' + p.week + '주차' : '') + '</span>'
-        + '<button class="xdel" data-delpost="' + p.id + '" title="이 글을 지웁니다">✕</button></label>';
+        + '<button class="xdel" data-delpost="' + p.id + '" title="이 글을 지웁니다"><i class="ic i-x"></i></button></label>';
     }).join('')
       + (mine.length > 1 ? '<div class="row" style="padding:8px 12px">'
         + '<button class="btn btn-s" id="delChecked">체크한 글 지우기</button>'
@@ -4218,7 +4218,7 @@
       return '<label class="pickrow drop" data-drop="' + p.id + '">'
         + '<input type="checkbox" class="pk-ppl" value="' + p.id + '"' + (needsPractice(p.id) ? ' data-practice="1"' : '') + '>'
         + '<span><b>' + esc(p.name) + '</b>'
-        + (p.wants_more ? ' <span class="chip c-ok">★ 많이 원함</span>' : '')
+        + (p.wants_more ? ' <span class="chip c-ok"><i class="ic i-star-fill"></i> 많이 원함</span>' : '')
         + (needsPractice(p.id) ? ' <span class="chip c-info" title="교육은 끝났고 연습글이 남았습니다">연습 필요 '
           + practiceDone(p.id) + '/' + practiceNeed() + '</span>' : '')
         + ' <span class="mono">' + esc(A.commName(p.community_id))
@@ -4239,7 +4239,7 @@
     $('doAssign').disabled = !(a && b);
     $('doAuto').disabled = !a;            /* 자동은 사람을 안 골라도 됩니다 */
     $('assignHint').textContent = !a ? '왼쪽에서 글을 고르세요'
-      : !b ? a + '편 — [⚖️ 고르게 자동으로]를 누르시면 알아서 나눠줍니다'
+      : !b ? a + '편 — [고르게 자동으로]를 누르시면 알아서 나눠줍니다'
         : a === b ? a + '편을 ' + b + '명에게 한 편씩 줍니다'
           : a > b ? a + '편을 ' + b + '명에게 골고루 나눕니다 (한 명당 최대 ' + Math.ceil(a / b) + '편)'
             : a + '편을 ' + b + '명 중 앞에서 ' + a + '명에게 한 편씩 줍니다';
@@ -4285,10 +4285,10 @@
       return p && !p.publish_on;
     });
     if (!no.length) return false;
-    return !confirm('🗓 발행 날짜가 없는 글이 ' + no.length + '편 있습니다.\n\n'
+    return !confirm('발행 날짜가 없는 글이 ' + no.length + '편 있습니다.\n\n'
       + '날짜를 안 깔면 블로거가 아무 때나 올립니다.\n'
       + '같은 업체 글이 며칠 안에 몰려 올라가면 네이버가 광고로 보기 쉽습니다.\n\n'
-      + '위 「🗓 발행 일정 짜기」를 펼쳐 날짜를 먼저 깔아 주세요.\n'
+      + '위 「발행 일정 짜기」를 펼쳐 날짜를 먼저 깔아 주세요.\n'
       + '먼저 나눠주고 날짜를 나중에 깔아도 됩니다 — 그때는 맡긴 글이 앞 날짜를 받습니다.\n\n'
       + '그래도 지금 나눠주시겠습니까?');
   }
@@ -4314,12 +4314,12 @@
       if (!on) bad.push((o.academy_name || '이름 없음') + ' — 사진 ' + n + '장에 꼬리표 0개');
     });
     if (!bad.length) return false;
-    return !confirm('🔴 사진에 꼬리표가 하나도 없습니다.\n\n· '
+    return !confirm('사진에 꼬리표가 하나도 없습니다.\n\n· '
       + bad.join('\n· ')
       + '\n\n이대로 맡기면 사진이 글 내용과 상관없이 나갑니다.\n'
       + '한 글에 비슷한 사진만 몰리고, 여러 글이 같은 사진을 쓰게 됩니다.\n\n'
       + '먼저 「6 검수하기」에서 그 업체를 열고\n'
-      + '[🖼 사진 보기 · 꼬리표 · 내려받기] 에서 꼬리표를 달아 주세요.\n\n'
+      + '[사진 보기 · 꼬리표 · 내려받기] 에서 꼬리표를 달아 주세요.\n\n'
       + '그래도 지금 맡기시겠습니까?');
   }
 
@@ -4484,15 +4484,15 @@
     var bad = subjBad(p);
     return (p.subject ? ' <span class="chip c-off">' + esc(p.subject) + '</span>' : '')
       + (kwLive(p) ? '' : ' <button class="btn btn-s" data-kwedit="' + p.id
-          + '" title="이 글의 검색어(제목에 넣을 말)를 고칩니다">✏️</button>')
+          + '" title="이 글의 검색어(제목에 넣을 말)를 고칩니다"><i class="ic i-pencil"></i></button>')
       + (p.keyword_was
           ? '<div class="mono" style="color:var(--wait)">제목 바꿈 · 예전 「'
             + esc(p.keyword_was) + '」' + kwWhyTag(p.id) + '</div>' : '')
       + (bad
-          ? '<div class="mono" style="color:var(--bad)">⚠️ 제목은 <b>' + esc(bad.post)
+          ? '<div class="mono" style="color:var(--bad)"><i class="ic i-triangle-alert"></i> 제목은 <b>' + esc(bad.post)
             + '</b>인데 이 글이 다루는 내용은 <b>' + esc(bad.topic) + '</b>입니다</div>' : '')
       + (function () { var gb = gradeBad(p);
-          return gb ? '<div class="mono" style="color:var(--bad)">⚠️ ' + esc(gb.why) + '</div>' : '';
+          return gb ? '<div class="mono" style="color:var(--bad)"><i class="ic i-triangle-alert"></i> ' + esc(gb.why) + '</div>' : '';
         })();
   }
 
@@ -4525,17 +4525,17 @@
             + '<td>' + esc(p.keyword || '') + '</td>'
             + '<td>' + mid(r) + '</td>'
             + '<td class="mono">' + (A.ST[p.status] ? A.ST[p.status][0] : esc(p.status)) + '</td>'
-            + '<td><button class="btn btn-p btn-s" data-kwedit="' + p.id + '">✏️ 제목 고치기</button></td>'
+            + '<td><button class="btn btn-p btn-s" data-kwedit="' + p.id + '"><i class="ic i-pencil"></i> 제목 고치기</button></td>'
             + '</tr>';
         }).join('') + '</tbody></table></div>';
     }
 
     box.innerHTML =
       (bad.length ? '<div class="msg err" style="margin:0 0 14px">'
-        + '<b>⚠️ 제목과 내용이 어긋난 글이 ' + bad.length + '편 있습니다.</b><br>'
+        + '<b><i class="ic i-triangle-alert"></i> 제목과 내용이 어긋난 글이 ' + bad.length + '편 있습니다.</b><br>'
         + '제목은 한 과목을 파는데 글 내용은 다른 과목입니다. '
         + '<b>다시 쓰게 하지 마세요</b> — 블로거는 우리가 준 대로 썼습니다. '
-        + '아래 <b>✏️</b> 를 눌러 <b>제목을 내용에 맞게</b> 바꿔 주시면 그 글이 그대로 살아납니다.'
+        + '아래 <b><i class="ic i-pencil"></i></b> 를 눌러 <b>제목을 내용에 맞게</b> 바꿔 주시면 그 글이 그대로 살아납니다.'
         + tbl(bad, '실제 내용', function (p) {
             var d = subjBad(p);
             return '<span class="chip c-off">' + esc(d.post) + '</span> → '
@@ -4544,7 +4544,7 @@
           })
         + '</div>' : '')
       + (grd.length ? '<div class="msg err" style="margin:0 0 14px">'
-        + '<b>⚠️ 제목의 학년이 글 내용과 안 맞는 글이 ' + grd.length + '편 있습니다.</b><br>'
+        + '<b><i class="ic i-triangle-alert"></i> 제목의 학년이 글 내용과 안 맞는 글이 ' + grd.length + '편 있습니다.</b><br>'
         + '과목은 맞는데 <b>누구에게 하는 이야기인지</b>가 다릅니다. 예) 제목은 '
         + '<b>「고등 수능영어」</b>인데 내용은 <b>「중1 첫 시험에서 무너지는 이유」</b>. '
         + '고등학생 학부모가 눌러 들어와서 중학생 이야기를 보면 바로 나갑니다.'
@@ -4554,7 +4554,7 @@
           })
         + '</div>' : '')
       + (odd.length ? '<div class="msg warn" style="margin:0 0 14px">'
-        + '<b>⚠️ 제목의 말 조합이 이상한 글이 ' + odd.length + '편 있습니다.</b><br>'
+        + '<b><i class="ic i-triangle-alert"></i> 제목의 말 조합이 이상한 글이 ' + odd.length + '편 있습니다.</b><br>'
         + '예) <b>예비고 중등수학내신</b> — 예비고(중3)는 <b>고등</b>을 준비하는 학년인데 '
         + '<b>중등</b> 과목을 팝니다. 학부모는 그렇게 검색하지 않습니다. '
         + '<b>제목이 이상하면 글을 아무리 잘 써도 아무도 안 읽습니다.</b>'
@@ -4679,9 +4679,9 @@
               + (t.stage && t.stage !== '공통' ? ' <b>' + esc(t.stage) + '등</b>' : '') : '')
           + (same ? ' <span style="color:var(--bad)">— 과목이 안 맞습니다</span>'
              : sj ? ' <span style="color:var(--ok)">— 과목은 맞습니다</span>' : '')
-          + (stg ? '<div style="color:var(--bad);margin-top:4px">⚠️ ' + esc(stg) + '</div>' : '')
+          + (stg ? '<div style="color:var(--bad);margin-top:4px"><i class="ic i-triangle-alert"></i> ' + esc(stg) + '</div>' : '')
           + (why ? '<div style="color:var(--bad);margin-top:4px">'
-                 + '⚠️ 말 조합이 이상합니다 — <b>' + esc(why) + '</b></div>'
+                 + '<i class="ic i-triangle-alert"></i> 말 조합이 이상합니다 — <b>' + esc(why) + '</b></div>'
                  : v.trim().split(/\s+/).length >= 3
                    ? '<div style="color:var(--ok);margin-top:4px">말 조합은 괜찮습니다</div>' : '');
     }
@@ -4862,7 +4862,7 @@
     if (hist.length) {
       out.push(hist.map(function (h, i) {
         var r = (h.reasons || []).join(', ');
-        return '<span style="color:var(--bad)">↩ ' + (i + 1) + '차 반려</span> '
+        return '<span style="color:var(--bad)"><i class="ic i-undo-2"></i> ' + (i + 1) + '차 반려</span> '
           + '<span class="mono">' + A.fdate(h.at)
           + (staffName(h.actor) ? ' · ' + esc(staffName(h.actor)) : '') + '</span>'
           + (r ? '<br><span class="mono">사유 · ' + esc(r) + '</span>' : '')
@@ -4920,7 +4920,7 @@
       + (dim ? '' : '<button class="btn btn-a btn-s" data-approve="' + p.id + '">승인</button>'
         + '<button class="btn btn-s" data-openrj="' + p.id + '">돌려보내기</button>')
       + (seen ? ' <button class="btn btn-s" data-unseen="' + p.id
-          + '" title="아직 안 본 것으로 되돌립니다">↺ 표시 지우기</button>' : '')
+          + '" title="아직 안 본 것으로 되돌립니다"><i class="ic i-rotate-ccw"></i> 표시 지우기</button>' : '')
       + '</div></td></tr>';
   }
 
@@ -4977,7 +4977,7 @@
               : '<b>꼬리표가 없어 사진이 글 내용과 상관없이 나가고 있습니다.</b> ')
         + '꼬리표를 달면 영어 글에는 영어 사진이, 맨 앞에는 간판 사진이 갑니다.'
         + '<div class="row" style="margin-top:10px">'
-        + '<button class="btn btn-s" data-seepics="' + o.id + '">🖼 사진 보기 · 꼬리표 · 내려받기</button>'
+        + '<button class="btn btn-s" data-seepics="' + o.id + '"><i class="ic i-image"></i> 사진 보기 · 꼬리표 · 내려받기</button>'
         + '</div></div>';
     }
 
@@ -5127,7 +5127,7 @@
     if (!p.blogger_id || TAKEBACK_OK.indexOf(p.status) < 0) return '';
     if (TAKEBACK_WROTE.indexOf(p.status) >= 0 && !A.IS_OWNER) return '';
     return '<button class="btn btn-s" data-takeback="' + p.id
-      + '" title="맡은 사람에게서 이 글을 되찾습니다. 글은 그대로 남습니다">↩ 회수</button>';
+      + '" title="맡은 사람에게서 이 글을 되찾습니다. 글은 그대로 남습니다"><i class="ic i-undo-2"></i> 회수</button>';
   }
 
   /* ══ 달력 — 며칠에 어떤 글이 올라갔나 ══
@@ -5533,8 +5533,8 @@
         ? '<div class="note warn"><b>마감 전 — 지금까지 한 일로 계산한 금액입니다.</b> '
           + '일이 생길 때마다 늘어나고, 저장된 것은 없습니다. '
           + '<b>[이 달 마감하기]</b>를 누르면 이 금액으로 확정되고, 그 뒤에 한 일은 다음 달로 넘어갑니다.'
-          + (mmP >= nowM ? '<br>⚠️ <b>' + mmP.replace('-', '년 ') + '월이 아직 안 끝났습니다.</b> 달이 끝난 뒤 마감하세요.' : '')
-          + (older.length ? '<br>⚠️ 이 중 <b>' + older.length + '건은 ' + Object.keys(olderM).sort().map(function (k) { return k.replace('-', '년 ') + '월'; }).join(' · ')
+          + (mmP >= nowM ? '<br><i class="ic i-triangle-alert"></i> <b>' + mmP.replace('-', '년 ') + '월이 아직 안 끝났습니다.</b> 달이 끝난 뒤 마감하세요.' : '')
+          + (older.length ? '<br><i class="ic i-triangle-alert"></i> 이 중 <b>' + older.length + '건은 ' + Object.keys(olderM).sort().map(function (k) { return k.replace('-', '년 ') + '월'; }).join(' · ')
             + '에 한 일</b>입니다. 그 달을 먼저 마감하면 그 달 몫으로 따로 잡힙니다 (세무 신고 달이 맞게).' : '')
           + '</div>'
         : '<div class="note"><b>' + mmP.replace('-', '년 ') + '월은 마감된 달입니다.</b> 아래 금액으로 확정되어 있습니다. '
@@ -5679,7 +5679,7 @@
         + '공동체 대표가 실장을 겸하면 <b>운영비와 커미션을 둘 다</b> 받습니다. '
         + '고객이 취소해 환불한 편수만 빠지고, <b>우리가 마감을 못 지켜 생긴 환불은 그대로 지급</b>합니다(계약서 제7조). '
         + '커미션을 매기는 금액은 <b>고객이 실제로 결제한 금액</b>입니다 — 정가와 견주어 깎지 않습니다.</div>'
-        + (etcRf.length ? '<div class="note warn">🔴 <b>사유가 「그 밖」인 환불 ' + etcRf.length + '건</b>이 실장 주문에 있어 <b>이 달은 마감되지 않습니다.</b> '
+        + (etcRf.length ? '<div class="note warn"><i class="ic i-circle-alert"></i> <b>사유가 「그 밖」인 환불 ' + etcRf.length + '건</b>이 실장 주문에 있어 <b>이 달은 마감되지 않습니다.</b> '
           + '우리 잘못인지 고객 취소인지 가릴 수 없는데 그대로 차감하면, 우리 잘못인데 실장 돈을 덜 주게 되어 계약서 제7조를 어기게 됩니다. '
           + '고객이 취소한 것이면 「중도 해지」로, 우리 쪽 사정이면 「우리 잘못」으로 사유를 고쳐 주십시오 — 고치면 마감됩니다.</div>' : '')
         + (ppOn.length ? '<div class="tblbox tblscroll"><table><thead><tr>'
@@ -5689,7 +5689,7 @@
           var det = PPITEMS.filter(function (i) { return i.partner_id === pp.partner_id && !i.void; });
           var lines = det.map(function (i) {
             var o = A.ORDERS.filter(function (x) { return x.id === i.order_id; })[0] || {};
-            return (i.kind === 'refund' ? '↩︎ 환불 ' : '') + esc(o.academy_name || '-')
+            return (i.kind === 'refund' ? '<i class="ic i-undo-2"></i> 환불 ' : '') + esc(o.academy_name || '-')
               + ' ' + Math.abs(i.qty || 0) + '편 · 기준 ' + won(Math.abs(i.base || 0)) + '원 → '
               + '<b>' + (i.amount < 0 ? '−' : '') + won(Math.abs(i.amount)) + '원</b>'
               + ' <span style="color:var(--muted)">(' + esc(i.earned_at || '') + ' 입금)</span>';
@@ -6177,7 +6177,7 @@
         + '<b>알림톡으로 보낼 수 있는 알림이 ' + sendable.length + '건</b> 있습니다. '
         + '변수는 이미 담겨 있어 따로 적으실 것이 없습니다.'
         + '<div class="row" style="margin-top:9px">'
-        + '<button class="btn btn-p btn-s" id="notiSendAll">📤 ' + sendable.length + '건 모두 보내기</button>'
+        + '<button class="btn btn-p btn-s" id="notiSendAll"><i class="ic i-send"></i> ' + sendable.length + '건 모두 보내기</button>'
         + '<span class="mono">한 통 14.3원 · 모두 보내면 약 '
         + Math.round(sendable.length * 14.3).toLocaleString() + '원</span></div>'
         + '<div id="notiSendMsg" style="margin-top:9px"></div></div>')
@@ -6198,22 +6198,22 @@
             var st = notiState(n), g = ATLOG[n.id];
             if (st === 'sent') {
               return ' <span class="chip c-ok" title="센터가 저절로 보냈습니다. 더 하실 일이 없습니다">'
-                + '✅ 알림톡 나감 ' + A.fdate(g.at) + '</span>';
+                + '<i class="ic i-circle-check"></i> 알림톡 나감 ' + A.fdate(g.at) + '</span>';
             }
             if (st === 'hand') {
               return ' <span class="chip c-ok">보냄 ' + A.fdate(n.sent_at) + '</span>';
             }
             if (st === 'bad') {
               return ' <span class="chip c-bad" title="' + esc(g.bad)
-                + '">⚠️ 알림톡 막힘</span>';
+                + '"><i class="ic i-triangle-alert"></i> 알림톡 막힘</span>';
             }
             return '';
           })()
         + '<div class="mono" style="margin-top:3px">' + esc(w.sub || '') + '</div></div>'
         + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
-        + (n.audience === 'staff' || rev ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '">📋 복사</button>')
+        + (n.audience === 'staff' || rev ? '' : '<button class="btn btn-p btn-s" data-noticopy="' + n.id + '"><i class="ic i-clipboard-copy"></i> 복사</button>')
         + (rev || !notiCanSend(n) ? ''
-          : '<button class="btn btn-a btn-s" data-notisend="' + n.id + '">📤 알림톡</button>')
+          : '<button class="btn btn-a btn-s" data-notisend="' + n.id + '"><i class="ic i-send"></i> 알림톡</button>')
         + (!notiNeedsHand(n) || rev ? '' : '<button class="btn btn-s" data-notisent="' + n.id + '">'
           + (n.audience === 'staff' ? '확인함' : '보냄') + '</button>')
         + '</span></div>'
@@ -6656,7 +6656,7 @@
       + (desc ? '<div class="mono" style="margin-top:3px">' + esc(desc) + '</div>' : '')
       + (extra || '') + '</div>'
       + '<span style="display:flex;gap:6px;flex-wrap:wrap">'
-      + '<button class="btn btn-p btn-s" data-copylink="' + esc(url) + '">📋 복사</button>'
+      + '<button class="btn btn-p btn-s" data-copylink="' + esc(url) + '"><i class="ic i-clipboard-copy"></i> 복사</button>'
       + '<a class="btn btn-s" href="' + esc(url) + '" target="_blank" rel="noopener">열어보기 ↗</a>'
       + '</span></div>'
       + '<div class="mono" style="margin-top:9px;padding:9px 11px;background:var(--surface-2);'
@@ -6781,8 +6781,8 @@
         + '· ' + orderName(tp.order_id) + '\n\n'
         + (wrote
             ? (tp.status === 'approved'
-                ? '⚠️ 이분은 원고를 다 써서 검수까지 통과했습니다.\n'
-                : '⚠️ 이분은 이미 원고를 냈습니다.\n')
+                ? '이분은 원고를 다 써서 검수까지 통과했습니다.\n'
+                : '이분은 이미 원고를 냈습니다.\n')
               + '약관 제10조③ — 원고를 낸 글은 최고관리자만 회수합니다.\n'
               + (payIt
                   ? '회수해도 이 글의 원고료' + (tp.payout_rate ? '(' + won(tp.payout_rate) + '원)' : '')
@@ -6799,7 +6799,7 @@
                  🔑 2026-11-04 부터는 «다시 낼 날»이 지난 뒤 회수하면 원고료가 안 나갑니다
                     (제13조⑨ 단서). 아래 경고는 «아직 기한 전»일 때만 뜹니다. */
               + (tp.status === 'rework' && payIt
-                  ? '⚠️ 지금 회수하면 원래 블로거에게 원고료가 지급됩니다(제13조⑨).\n'
+                  ? '지금 회수하면 원래 블로거에게 원고료가 지급됩니다(제13조⑨).\n'
                     + '주문 마감까지 다시 쓸 시간이 있으면 회수해 재배정하세요.\n'
                     + '마감을 넘기면 고객 환불이 생깁니다.\n\n'
                   : '')
@@ -6884,7 +6884,7 @@
               ? '<br><b>블로거에게 알림톡이 나갔습니다.</b> 따로 카톡을 보내지 않으셔도 됩니다. '
                 + '연락이 안 닿을 때만 아래 문구를 쓰세요.'
                 + '<div class="row" style="margin-top:10px">'
-                + '<button class="btn btn-p btn-s" data-kwcopy="1">📋 보낼 문구 복사</button></div>'
+                + '<button class="btn btn-p btn-s" data-kwcopy="1"><i class="ic i-clipboard-copy"></i> 보낼 문구 복사</button></div>'
               : '<br>아직 맡은 사람이 없어 알릴 곳은 없습니다.')
           + '</div>';
         var sv = document.querySelector('[data-kwsave]');
@@ -6922,7 +6922,7 @@
         await A.loadAdmin();
         A.toast('지웠습니다 — ' + (ed.tag || '') + ' · 알림 ' + (ed.notes_deleted || 0) + '건 지움');
       } catch (err) { A.toast('실패: ' + err.message); }
-      t.disabled = false; t.textContent = '🗑 개인정보 지우기';
+      t.disabled = false; t.innerHTML = '<i class="ic i-trash-2"></i> 개인정보 지우기';
       return;
     }
 
@@ -6966,7 +6966,7 @@
         + '아이디 : ' + (w2.email || '') + '\n'
         + '비밀번호 : ' + t.dataset.pwcopy + '\n\n'
         + '이 비밀번호는 블로그 센터에서만 씁니다. 메일 비밀번호가 아닙니다.\n\n'
-        + '⚠️ 들어가시면 왼쪽 아래 [🔑 비밀번호 바꾸기]로 본인만 아는 것으로 바꿔 주세요.\n'
+        + '들어가시면 왼쪽 아래 [비밀번호 바꾸기]로 본인만 아는 것으로 바꿔 주세요.\n'
         + '그다음 이 메시지를 지워 주세요. 여기 적힌 비밀번호가 대화방에 계속 남습니다.'
         + '\n\n' + (A.SIGN || 'ESC 이은총 드림');
       navigator.clipboard.writeText(msg2).then(function () {
@@ -7064,7 +7064,7 @@
         if (rr.error || dd.error) throw new Error(dd.error || rr.error.message);
         showPw(who, dd.password);
       } catch (err) { A.toast('실패: ' + err.message); }
-      t.disabled = false; t.textContent = '🔑 비밀번호 초기화';
+      t.disabled = false; t.innerHTML = '<i class="ic i-key-round"></i> 비밀번호 초기화';
       return;
     }
 
@@ -7484,7 +7484,7 @@
         await A.loadAdmin();
         A.toast('시작했습니다. 주문 마감 ' + mdKo(sdl)
           + (copied ? ' — 업체에 보낼 시작 안내 문구를 복사했습니다'
-                    : ' — 안내 문구는 [📋 시작 안내 문구 복사]로 꺼내실 수 있습니다'));
+                    : ' — 안내 문구는 [시작 안내 문구 복사]로 꺼내실 수 있습니다'));
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
@@ -7630,7 +7630,7 @@
       if (sr.ok) { A.toast('보냈습니다'); renderNoti(); }
       else {
         A.toast(sr.skipped ? '보내지 않았습니다: ' + sr.skipped : '실패: ' + sr.error);
-        t.disabled = false; t.textContent = '📤 알림톡';
+        t.disabled = false; t.innerHTML = '<i class="ic i-send"></i> 알림톡';
       }
       return;
     }
@@ -7650,7 +7650,7 @@
         else if (rr.skipped) { skip++; box.insertAdjacentHTML('beforeend',
           '<div class="mono">· ' + esc(notiWho(list[i]).name) + ' — 안 보냄: ' + esc(rr.skipped) + '</div>'); }
         else { bad++; box.insertAdjacentHTML('beforeend',
-          '<div class="mono">🔴 ' + esc(notiWho(list[i]).name) + ' — 실패: ' + esc(rr.error) + '</div>'); }
+          '<div class="mono"><i class="ic i-circle-alert"></i> ' + esc(notiWho(list[i]).name) + ' — 실패: ' + esc(rr.error) + '</div>'); }
       }
       box.insertAdjacentHTML('beforeend', '<div class="note" style="margin-top:9px"><b>끝났습니다.</b> '
         + '보냄 ' + ok + '건 · 안 보냄 ' + skip + '건 · 실패 ' + bad + '건</div>');

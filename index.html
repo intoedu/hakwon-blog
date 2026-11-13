@@ -14,7 +14,7 @@
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
 <link rel="stylesheet" href="fonts/pretendard/pretendard.css?v=1.3.9">
-<link rel="stylesheet" href="app.css?v=261113e">
+<link rel="stylesheet" href="app.css?v=261113f">
 </head>
 <body>
 
@@ -45,7 +45,7 @@
         네이버·구글 <b>메일 비밀번호가 아닙니다.</b><br><br>
         <b>담당자에게 연락해 주세요.</b> 새 비밀번호를 만들어 보내 드립니다.<br>
         <span class="mono">ESC 학원지원센터 · 010-7318-1790</span><br><br>
-        받으신 뒤에는 <b>들어와서 왼쪽 아래 [🔑 비밀번호 바꾸기]</b>로
+        받으신 뒤에는 <b>들어와서 왼쪽 아래 [<i class="ic i-key-round"></i> 비밀번호 바꾸기]</b>로
         본인만 아는 것으로 바꿔 주세요. 받은 비밀번호는 카톡에 그대로 남습니다.<br><br>
         <b>다시 신청하지 마세요.</b> 같은 이메일로는 새로 가입되지 않고,
         비밀번호만 바꾸면 쓰시던 계정 그대로 들어오실 수 있습니다.
@@ -290,8 +290,8 @@
 
     <!-- 어느 갈래 일을 하는지 — 여기서 고르면 아래 메뉴가 통째로 바뀝니다 -->
     <div class="tracksw hide" id="trackSw">
-      <button data-track="blog" class="on">📝 블로그</button>
-      <button data-track="review">⭐ 리뷰</button>
+      <button data-track="blog" class="on"><i class="ic i-notebook-pen"></i> 블로그</button>
+      <button data-track="review"><i class="ic i-star"></i> 리뷰</button>
     </div>
 
     <div id="navAdmin" class="hide">
@@ -311,12 +311,12 @@
       <button class="nav" data-tk="review" data-go="r-check"><span class="n">6</span>올라왔는지 확인 <span class="cnt hot hide" id="cRvCheck">0</span></button>
       <button class="nav" data-go="posts"><span class="n">7</span>진행 현황</button>
       <button class="nav" data-go="pay"><span class="n">8</span>정산하기</button>
-      <button class="nav" data-go="r-pay">💰 내 검수 수당</button>
+      <button class="nav" data-go="r-pay"><i class="ic i-wallet"></i> 내 검수 수당</button>
       <div class="navlbl">챙길 것</div>
-      <button class="nav" data-go="noti">🔔 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
-      <button class="nav" data-go="s-edu">📚 직원 교육</button>
-      <button class="nav" data-go="links">🔗 주소 모음</button>
-      <button class="nav" data-go="guide">📖 지침</button>
+      <button class="nav" data-go="noti"><i class="ic i-bell"></i> 알림 보내기 <span class="cnt hot hide" id="cNoti">0</span></button>
+      <button class="nav" data-go="s-edu"><i class="ic i-graduation-cap"></i> 직원 교육</button>
+      <button class="nav" data-go="links"><i class="ic i-link"></i> 주소 모음</button>
+      <button class="nav" data-go="guide"><i class="ic i-book-open"></i> 지침</button>
     </div>
 
     <!-- ESC 직원 중 '검수만' 권한을 가진 분 -->
@@ -325,9 +325,9 @@
       <button class="nav" data-tk="review" data-go="r-check">올라왔는지 확인</button>
       <button class="nav" data-go="posts">진행 현황 보기</button>
       <button class="nav" data-go="r-pay">내 검수 정산</button>
-      <button class="nav" data-go="s-edu">📚 직원 교육</button>
-      <button class="nav" data-go="noti">🔔 챙길 것</button>
-      <button class="nav" data-go="guide">📖 지침</button>
+      <button class="nav" data-go="s-edu"><i class="ic i-graduation-cap"></i> 직원 교육</button>
+      <button class="nav" data-go="noti"><i class="ic i-bell"></i> 챙길 것</button>
+      <button class="nav" data-go="guide"><i class="ic i-book-open"></i> 지침</button>
     </div>
 
     <div id="navBlogger" class="hide">
@@ -336,7 +336,7 @@
       <button class="nav" data-go="b-edu"><span class="n">1</span><span id="bnEdu">교육 받기</span></button>
       <button class="nav" data-go="b-work"><span class="n">2</span><span id="bnWork">글 쓰기</span></button>
       <button class="nav" data-go="b-pay"><span class="n">3</span><span id="bnPay">내 정산</span></button>
-      <button class="nav" data-go="guide">📖 지침</button>
+      <button class="nav" data-go="guide"><i class="ic i-book-open"></i> 지침</button>
     </div>
 
     <div class="sidefoot">
@@ -356,8 +356,8 @@
           검수자·블로거에게 보이는 화면을 그대로 볼 수 있습니다</div>
       </div>
       <b id="meName">-</b><span id="meRole">-</span>
-      <button class="nav" style="margin-top:8px" id="btnReload">↻ 새로고침</button>
-      <button class="nav" data-pwme="1">🔑 비밀번호 바꾸기</button>
+      <button class="nav" style="margin-top:8px" id="btnReload"><i class="ic i-refresh-cw"></i> 새로고침</button>
+      <button class="nav" data-pwme="1"><i class="ic i-key-round"></i> 비밀번호 바꾸기</button>
       <button class="nav" data-out="1">로그아웃</button>
     </div>
   </aside>
@@ -365,7 +365,7 @@
   <main class="main"><div class="wrap">
 
     <div class="msg ok hide" id="previewBar" style="margin-bottom:16px">
-      👀 <b id="previewName"></b> 님에게 보이는 화면입니다. <b>보기만 됩니다</b> — 버튼은 눌리지 않습니다.
+      <i class="ic i-eye"></i> <b id="previewName"></b> 님에게 보이는 화면입니다. <b>보기만 됩니다</b> — 버튼은 눌리지 않습니다.
       원래대로 돌아가시려면 왼쪽 아래에서 <b>[관리자]</b>를 누르세요.
     </div>
 
@@ -536,7 +536,7 @@
         <div class="note" style="margin-top:12px">
           <b>녹화본은 이 표의 「녹화본」 칸에 넣으세요.</b>
           유튜브 <b>일부공개</b> 또는 <b>다음모션</b> 주소를 붙여넣으시면 됩니다.
-          ⚠️ 다음모션은 재생 위치를 읽을 수 없어 <b>「분」을 꼭 채워 주세요</b> —
+          <i class="ic i-triangle-alert"></i> 다음모션은 재생 위치를 읽을 수 없어 <b>「분」을 꼭 채워 주세요</b> —
           그 시간만큼 화면을 열어두어야 요약 칸이 열립니다.
           <b>「자료 올리기」의 강의 영상과는 다른 자리</b>입니다 —
           거기에 넣으면 줌에 실제로 오신 분도 봐야 하는 필수 영상이 되고,
@@ -715,7 +715,7 @@
               [이대로 글 만들기]로 저장합니다. -->
       <details class="card" style="margin-top:18px">
         <summary style="cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)">
-          ✍️ 검색어를 직접 넣기
+          <i class="ic i-square-pen"></i> 검색어를 직접 넣기
           <span class="mono">— 영화 · 공연처럼 과목 · 학년이 없는 주문일 때</span></summary>
         <div class="note" style="margin-top:12px">
           위 네 칸(지역 · 과목 · 학년 · 목적)을 곱해 만드는 방식이 <b>안 맞는 주문</b>이 있습니다.
@@ -791,7 +791,7 @@
 
       <details id="ruleBox" style="margin-top:26px" data-adminonly>
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
-          ⚙️ 글에 같이 나가는 규칙 — 광고 표시 문구 · 하루 몇 편까지
+          <i class="ic i-settings"></i> 글에 같이 나가는 규칙 — 광고 표시 문구 · 하루 몇 편까지
           <span class="mono">— 평소엔 안 보셔도 됩니다</span></summary>
         <div class="card" style="margin-top:10px">
           <label class="f">광고 표시 문구 <small>한 줄에 하나씩 · 글마다 다른 문장이 돌아갑니다</small></label>
@@ -852,7 +852,7 @@
 
           <div class="note" style="margin-top:10px">
             <b>하루 편수만 올리면 실제로는 안 늘어납니다.</b>
-            <b>[⚖️ 고르게 자동으로 나눠주기]</b>는 이번 달 배정이 <b>월 상한</b>을 넘은 사람을
+            <b>[<i class="ic i-scale"></i> 고르게 자동으로 나눠주기]</b>는 이번 달 배정이 <b>월 상한</b>을 넘은 사람을
             맨 뒤로 미룹니다. 지금 상한은 <b id="capNow">30</b>편이라,
             하루 5편을 켜도 한 사람에게 한 달에 그 이상은 잘 안 갑니다.
             벌이를 늘리시려면 <b>이 숫자를 같이 올리셔야</b> 합니다.
@@ -885,8 +885,8 @@
         <div class="row" style="margin-bottom:12px">
           <label class="f" style="margin:0">주문</label>
           <select class="inp" id="rmOrder" style="width:auto;flex:1;min-width:200px"></select>
-          <button class="btn btn-a" id="rmAuto">✨ 여기서 바로 만들기</button>
-          <button class="btn btn-s" id="rmCopy">📋 주문 내용 복사</button>
+          <button class="btn btn-a" id="rmAuto"><i class="ic i-sparkles"></i> 여기서 바로 만들기</button>
+          <button class="btn btn-s" id="rmCopy"><i class="ic i-clipboard-copy"></i> 주문 내용 복사</button>
         </div>
         <div id="rmMsg"></div>
         <div id="rmInfo"></div>
@@ -894,7 +894,7 @@
         <!-- ⚙️ AI 에게 주는 지시문 — 규칙은 고칠 수 있고, 보내는 내용은 그대로 보여줍니다 -->
         <details class="rvprompt" style="margin-top:12px">
           <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
-            ⚙️ AI 에게 무엇을 주는지 보기 · 규칙 고치기</summary>
+            <i class="ic i-settings"></i> AI 에게 무엇을 주는지 보기 · 규칙 고치기</summary>
           <div class="note" style="margin-top:10px">
             AI 에게 보내는 것은 <b>두 덩어리</b>입니다.
             <b>①&nbsp;규칙</b>은 모든 업체에 똑같이 나가는 말이고(여기서 고치실 수 있습니다),
@@ -916,22 +916,22 @@
 
         <div id="rmSeenBox"></div>
         <div class="note" style="margin-top:12px">
-          <b>✨ 여기서 바로 만들기</b> — 한 번 누르면 아래 칸이 저절로 채워집니다.
+          <b><i class="ic i-sparkles"></i> 여기서 바로 만들기</b> — 한 번 누르면 아래 칸이 저절로 채워집니다.
           만들어진 것을 눈으로 확인하고 <b>[이대로 리뷰 만들기]</b>를 누르시면 저장됩니다.<br>
           <span class="mono">쓰려면 API 키를 한 번 넣어 두셔야 합니다. 아래 접힌 안내를 보세요.</span>
         </div>
         <details style="margin-top:10px">
           <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
-            ⚙️ 「여기서 바로 만들기」를 쓰려면 — 한 번만 하시면 됩니다</summary>
+            <i class="ic i-settings"></i> 「여기서 바로 만들기」를 쓰려면 — 한 번만 하시면 됩니다</summary>
           <div class="note" style="margin-top:10px">
             <b>1</b> <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>
             에서 <b>API 키</b>를 만드세요 (Create Key).<br>
             <b>2</b> <a href="https://supabase.com/dashboard/project/qkvebwxewttqtcryfycy/functions/secrets" target="_blank" rel="noopener">Supabase 대시보드 → Edge Functions → Secrets</a>
             에서 이름 <b>ANTHROPIC_API_KEY</b>, 값에 그 키를 넣고 저장하세요.<br>
-            <b>3</b> 끝입니다. 이 화면으로 돌아와 <b>[✨ 여기서 바로 만들기]</b>를 누르시면 됩니다.<br><br>
+            <b>3</b> 끝입니다. 이 화면으로 돌아와 <b>[<i class="ic i-sparkles"></i> 여기서 바로 만들기]</b>를 누르시면 됩니다.<br><br>
             <b>비용</b> — 리뷰 50편에 <b>백 원 안팎</b>입니다. 쓴 만큼만 나갑니다.<br>
             <b>키는 서버에만 있습니다.</b> 이 화면(브라우저)에는 절대 들어오지 않습니다.<br>
-            키를 안 넣으셔도 <b>[📋 주문 내용 복사]</b>로 예전처럼 쓰실 수 있습니다.
+            키를 안 넣으셔도 <b>[<i class="ic i-clipboard-copy"></i> 주문 내용 복사]</b>로 예전처럼 쓰실 수 있습니다.
           </div>
         </details>
         <label class="f" style="margin-top:14px">받은 리뷰 붙여넣기</label>
@@ -964,7 +964,7 @@
         <select class="inp" id="raOrder" style="width:auto;flex:1;min-width:200px"></select>
       </div>
       <details class="outbox" style="margin-bottom:14px">
-        <summary>🕒 올릴 시각 짜기 <span class="mono">— 날짜와 시간대를 고르게 짭니다</span></summary>
+        <summary><i class="ic i-clock"></i> 올릴 시각 짜기 <span class="mono">— 날짜와 시간대를 고르게 짭니다</span></summary>
         <div class="obody">
           <div class="row">
             <label class="f" style="margin:0">언제부터</label>
@@ -997,7 +997,7 @@
         <div><div class="sec">맡을 사람</div><div id="raPeople"></div></div>
       </div>
       <div class="row" style="margin-top:16px">
-        <button class="btn btn-a" id="raAuto">⚖️ 고르게 자동으로 나눠주기</button>
+        <button class="btn btn-a" id="raAuto"><i class="ic i-scale"></i> 고르게 자동으로 나눠주기</button>
         <button class="btn btn-p" id="raAssign">고른 사람에게 맡기기</button>
         <span class="mono" id="raSum"></span>
       </div>
@@ -1027,13 +1027,13 @@
         <select class="inp" id="asWeek" style="width:auto"><option value="">전체 주차</option></select>
       </div>
       <details id="schedBox" class="outbox" style="margin-bottom:14px" data-adminonly>
-        <summary>🗓 발행 일정 짜기 <span class="mono">— 글이 한꺼번에 안 올라가게 날짜를 짭니다</span></summary>
+        <summary><i class="ic i-calendar-days"></i> 발행 일정 짜기 <span class="mono">— 글이 한꺼번에 안 올라가게 날짜를 짭니다</span></summary>
         <div class="obody">
           <div class="note">
             <b>글마다 「올릴 날」을 정해 둡니다.</b> 그날이 되어야 블로거가 링크를 넣을 수 있습니다.
             원고 쓰기와 검수는 아무 때나 — <b>미리 할수록 좋습니다.</b><br>
             <b>원고 마감은 올릴 날 사흘 전</b>으로 자동으로 잡힙니다. 검수할 틈을 두려고요.<br>
-            <b>🗓 이미 맡긴 글이 앞 날짜를 받습니다.</b> 아직 아무도 안 맡은 글은 뒤로 갑니다 —
+            <b><i class="ic i-calendar-days"></i> 이미 맡긴 글이 앞 날짜를 받습니다.</b> 아직 아무도 안 맡은 글은 뒤로 갑니다 —
             맡은 분이 한참 기다리거나, 앞 날짜에 올릴 사람이 없는 일을 막으려고요.
           </div>
           <div class="row" style="margin-top:12px">
@@ -1075,12 +1075,12 @@
         </div>
       </div>
       <div class="pickbar">
-        <button class="btn btn-a" id="doAuto" disabled>⚖️ 고르게 자동으로 나눠주기</button>
+        <button class="btn btn-a" id="doAuto" disabled><i class="ic i-scale"></i> 고르게 자동으로 나눠주기</button>
         <button class="btn btn-p" id="doAssign" disabled>고른 사람에게만 나눠주기</button>
         <span class="mono" id="assignHint">왼쪽에서 글을 고르세요</span>
       </div>
       <div class="note" style="margin-top:14px">
-        <b>⚖️ 고르게 자동으로 나눠주기</b> — 사람을 안 고르셔도 됩니다. 글만 고르고 누르시면
+        <b><i class="ic i-scale"></i> 고르게 자동으로 나눠주기</b> — 사람을 안 고르셔도 됩니다. 글만 고르고 누르시면
         <b>①「많이 쓰고 싶어요」를 켠 블로거 먼저 ② 그 안에서 이번 달 적게 받은 사람 먼저</b>
         순서로 알아서 나눠줍니다. 같이 사는 블로거들끼리 편수가 벌어지지 않게 하는 장치입니다.<br>
         오른쪽에서 사람을 골라두고 누르시면 <b>고른 사람들 안에서만</b> 고르게 나눕니다.
@@ -1179,7 +1179,7 @@
       <div class="row" style="margin-bottom:10px">
         <select class="inp" id="pgOrder" style="width:auto;flex:1;min-width:180px"></select>
         <input class="inp" id="pgQ" style="width:auto;flex:1;min-width:140px" placeholder="검색어나 이름으로 찾기">
-        <button class="btn btn-a" id="btnExport">📄 자료로 내보내기</button>
+        <button class="btn btn-a" id="btnExport"><i class="ic i-file-text"></i> 자료로 내보내기</button>
       </div>
       <div class="chipbar" id="pgStatus"></div>
       <div class="note" style="margin-bottom:14px">
@@ -1213,9 +1213,9 @@
           확인이 늦게 끝난 글은 다음 마감 때 붙습니다. 돈을 보낸 공동체가 있는 달은 다시 마감할 수 없습니다</span>
       </div>
       <div class="row" style="margin-bottom:16px">
-        <button class="btn" id="btnPayPeople">📄 개인별 지급대장</button>
-        <button class="btn" id="btnPayComm">🏦 공동체 이체 목록</button>
-        <button class="btn" id="btnPayYear">📚 전체 기간 개인별 누계</button>
+        <button class="btn" id="btnPayPeople"><i class="ic i-file-text"></i> 개인별 지급대장</button>
+        <button class="btn" id="btnPayComm"><i class="ic i-landmark"></i> 공동체 이체 목록</button>
+        <button class="btn" id="btnPayYear"><i class="ic i-library"></i> 전체 기간 개인별 누계</button>
         <span class="mono">구글 시트·넘버스·엑셀에서 바로 열립니다</span>
       </div>
       <div id="payState" style="margin-bottom:12px"></div>
@@ -1229,10 +1229,10 @@
       <div id="payDetail" style="margin-top:14px"></div>
       <div class="note" style="margin-top:16px">
         <b>주민등록번호·개인 계좌는 여기에 넣지 않습니다.</b>
-        위 <b>[📄 개인별 지급대장]</b>을 받으시면 맨 뒤에 <b>주민등록번호 · 원천징수 · 실지급액 · 비고</b>
+        위 <b>[<i class="ic i-file-text"></i> 개인별 지급대장]</b>을 받으시면 맨 뒤에 <b>주민등록번호 · 원천징수 · 실지급액 · 비고</b>
         빈 칸이 붙어 있습니다. 시트에서 그 칸만 채워 세무사에게 넘기시면 됩니다.
         사람을 맞출 때는 <b>이메일(로그인 아이디)</b>을 열쇠로 쓰시면 이름이 같아도 안 섞입니다.
-        연말 지급명세서는 <b>[📚 전체 기간 개인별 누계]</b>로 한 사람당 한 줄을 뽑으시면 됩니다.
+        연말 지급명세서는 <b>[<i class="ic i-library"></i> 전체 기간 개인별 누계]</b>로 한 사람당 한 줄을 뽑으시면 됩니다.
       </div>
       <div class="note" style="margin-top:12px">
         <b>세무 주의</b> — 공동체에 한 번에 보내면 그 돈이 <b>누구 소득으로 잡히느냐</b>가 문제가 됩니다.
@@ -1245,14 +1245,14 @@
       <div class="head"><div class="step-of">챙길 것</div>
         <h1>알림 보내기</h1>
         <p><b>센터 안 알림도, 카카오 알림톡도 자동으로 나갑니다.</b> 손대실 것이 없습니다.
-          저절로 나간 것은 <b>✅ 알림톡 나감</b>이 붙고 이 목록에서 빠집니다.
-          여기 남는 것은 <b>직접 보내셔야 하는 것</b>과 <b>⚠️ 보내려다 막힌 것</b>뿐입니다 —
+          저절로 나간 것은 <b><i class="ic i-circle-check"></i> 알림톡 나감</b>이 붙고 이 목록에서 빠집니다.
+          여기 남는 것은 <b>직접 보내셔야 하는 것</b>과 <b><i class="ic i-triangle-alert"></i> 보내려다 막힌 것</b>뿐입니다 —
           막힌 건은 딱지에 손을 올리시면 사유가 보입니다.
           옆 <b>[복사]</b>로 카톡에 붙여 보내실 수 있습니다.</p></div>
       <div class="row" style="margin-bottom:16px">
-        <button class="btn btn-p" id="notiScan">🔄 지금 챙길 것 찾기</button>
-        <button class="btn" id="notiCopyAll">📋 보이는 것 전부 복사</button>
-        <button class="btn" id="notiSentAll">✅ 보이는 것 전부 보냄 표시</button>
+        <button class="btn btn-p" id="notiScan"><i class="ic i-refresh-cw"></i> 지금 챙길 것 찾기</button>
+        <button class="btn" id="notiCopyAll"><i class="ic i-clipboard-copy"></i> 보이는 것 전부 복사</button>
+        <button class="btn" id="notiSentAll"><i class="ic i-circle-check"></i> 보이는 것 전부 보냄 표시</button>
         <label class="row" style="gap:6px;margin-left:auto;font-size:13px">
           <input type="checkbox" id="notiShowSent"> 이미 나간 것도 보기</label>
       </div>
@@ -1263,7 +1263,7 @@
       </div>
       <details id="notiSendBox" style="margin-bottom:16px" data-adminonly>
         <summary style="cursor:pointer;font-size:13.5px;font-weight:700;color:var(--ink-2)">
-          ✍️ 직접 써서 보내기 — 블로거·검수자에게 하고 싶은 말</summary>
+          <i class="ic i-square-pen"></i> 직접 써서 보내기 — 블로거·검수자에게 하고 싶은 말</summary>
         <div class="card" style="margin-top:10px">
           <div class="row" style="margin-bottom:12px">
             <label class="f" style="margin:0">받는 사람</label>
@@ -1292,7 +1292,7 @@
       <div id="notiList"></div>
       <details id="notiSetBox" style="margin-top:20px" data-adminonly>
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
-          ⚙️ 어떤 알림을 만들지 · 문구 끝 서명 고치기</summary>
+          <i class="ic i-settings"></i> 어떤 알림을 만들지 · 문구 끝 서명 고치기</summary>
         <div class="card" style="margin-top:10px">
           <!-- 🔴 채널이 둘입니다 (2026-10-03) — 블로거용 17종은 ESC 학원지원 채널,
                고객용 16~19는 인투마케팅 채널. 서명이 다르고, 바꾸면 그 채널 템플릿이 전부 재심사입니다 -->
@@ -1316,7 +1316,7 @@
            2026-10-21부터 알림이 생기면 저절로 나갑니다 — 이 칸은 템플릿·변수를 시험해 보는 곳입니다. -->
       <details id="atTestBox" style="margin-top:20px" data-adminonly>
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
-          📤 알림톡 시험으로 한 건 보내기</summary>
+          <i class="ic i-send"></i> 알림톡 시험으로 한 건 보내기</summary>
         <div class="card" style="margin-top:10px">
           <div class="note warn">진짜로 나가고 <b>돈이 듭니다</b>(한 통 14.3원).
             처음엔 <b>비밀값이 없으니 「보내지 않았습니다」로 나오는 것이 정상</b>입니다.
@@ -1330,10 +1330,10 @@
           <div class="fld"><label class="f">변수 — 한 줄에 하나씩 「이름=값」</label>
             <textarea class="inp" id="atVars" style="min-height:76px"
               placeholder="상호=○○학원&#10;서비스명=홈페이지 제작"></textarea>
-            <div class="mono" style="margin-top:4px">🔴 이름은 템플릿 변수와 글자까지 같아야 합니다. 한 글자라도 다르면 발송이 막힙니다</div></div>
+            <div class="mono" style="margin-top:4px"><i class="ic i-circle-alert"></i> 이름은 템플릿 변수와 글자까지 같아야 합니다. 한 글자라도 다르면 발송이 막힙니다</div></div>
           <div class="row" style="margin-top:12px">
             <button class="btn btn-p btn-s" id="atGo">한 건 보내기</button>
-            <button class="btn btn-s" id="atCheck">🔑 키 · 잔액 확인</button>
+            <button class="btn btn-s" id="atCheck"><i class="ic i-key-round"></i> 키 · 잔액 확인</button>
             <button class="btn btn-s" id="atLogGo">보낸 기록 보기</button>
           </div>
           <div id="atMsg" style="margin-top:12px"></div>
@@ -1443,7 +1443,7 @@
       <div id="guideBody"></div>
       <details id="guideEditBox" class="hide" style="margin-top:22px">
         <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">
-          ✍️ 지침 올리기 · 고치기</summary>
+          <i class="ic i-square-pen"></i> 지침 올리기 · 고치기</summary>
         <div class="card" style="margin-top:10px">
           <div class="note">만들어 주신 HTML 을 그대로 붙여넣으시면 됩니다.
             「&lt;main class="guide"&gt;」 안쪽만 넣으셔도 되고, 통째로 넣으셔도 됩니다
@@ -1492,8 +1492,8 @@
   <div class="picbox">
     <div class="pichead"><b id="picTitle">사진</b>
       <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button class="btn btn-s" id="picTagMode">🏷 꼬리표 달기</button>
-        <button class="btn btn-p btn-s" id="picZip">⬇ 전부 받기 (ZIP)</button>
+        <button class="btn btn-s" id="picTagMode"><i class="ic i-tag"></i> 꼬리표 달기</button>
+        <button class="btn btn-p btn-s" id="picZip"><i class="ic i-download"></i> 전부 받기 (ZIP)</button>
         <button class="btn btn-s" id="picClose">닫기</button></span></div>
     <div id="picTagBar" class="hide" style="padding:0 16px 12px"></div>
     <div class="picgrid" id="picBody"></div>
@@ -1504,10 +1504,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261113e"></script>
-<script src="js/gate.js?v=261113e"></script>
-<script src="js/admin.js?v=261113e"></script>
-<script src="js/blogger.js?v=261113e"></script>
+<script src="js/core.js?v=261113f"></script>
+<script src="js/gate.js?v=261113f"></script>
+<script src="js/admin.js?v=261113f"></script>
+<script src="js/blogger.js?v=261113f"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

@@ -104,7 +104,7 @@
     $('su_comm').value = r.id;
     $('su_commText').value = r.name;
     commClose();
-    commHint('✅ <b>' + A.esc(r.name) + '</b> (으)로 신청합니다. '
+    commHint('<i class="ic i-circle-check"></i> <b>' + A.esc(r.name) + '</b> (으)로 신청합니다. '
       + '다른 곳이면 칸을 지우고 다시 적어 주세요.');
   }
 
