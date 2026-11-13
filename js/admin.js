@@ -930,6 +930,21 @@
   function mdKo(d) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (+m[2]) + '월 ' + (+m[3]) + '일' : ''; }
   function plusDays(d, n) { var t = new Date(d + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
   function startRow(o) {
+    /* ── 연습 주문 (이은총 님 2026-11-13) ──
+       입금도 마감도 업체 알림도 없습니다. 「연습 주문」을 켜는 순간 서버가 시작까지
+       같이 해 주므로, 여기서는 그렇게 되었다고 알려 주기만 합니다. */
+    if (o.is_practice) {
+      return '<div class="note" style="margin-top:14px"><b>🧪 연습 주문입니다.</b> '
+        + '입금 확인도, 의뢰 시작도, 주문 마감도 없습니다. '
+        + '<b>바로 블로거에게 맡기실 수 있습니다.</b>'
+        + '<div class="mono" style="margin-top:7px">'
+        + '· 편수를 맞추지 않아도 됩니다 — 글은 얼마든지 더 만드실 수 있습니다<br>'
+        + '· 마감이 없어 「마감 지남」으로 뜨지 않습니다<br>'
+        + '· 업체에는 아무 알림도 가지 않습니다<br>'
+        + '· 블로거 원고료는 주문 카드에서 정한 <b>편당 '
+        + (o.practice_rate == null ? '(아직 안 정함)' : won(o.practice_rate) + '원') + '</b>'
+        + '</div></div>';
+    }
     if (!o.started_at) {
       return '<div class="note warn" style="margin-top:14px"><b>의뢰 시작 전입니다.</b> '
         + '담당자가 카톡으로 자료를 받고 확인한 뒤 누르세요. <b>누른 날부터 30일</b>이 주문 마감이고, '
@@ -1880,6 +1895,7 @@
         + ' · 편당 ' + won(o.sale_price) + '원 받고 <b>' + won(basePay(o)) + '원</b> 지급'
         + '</div></div>'
         + (!o.amount_total ? '<span class="chip c-info">무상 진행</span>'
+          : o.is_practice ? '<span class="chip c-info" title="연습 주문은 돈을 받지 않습니다">입금 안 봄 · 연습</span>'
           : o.paid_at ? '<span class="chip c-ok">입금 확인됨</span>' : '<span class="chip c-wait">입금 기다리는 중</span>')
         + '</div>'
         + '<div class="grid g5" style="margin-top:15px;gap:10px">'
@@ -1889,7 +1905,11 @@
         + kv('마감일', o.paid_at && !o.started_at ? '의뢰 시작 뒤 정해짐' : (o.deadline || '-'))
         + '</div>'
         + (o.paid_at ? startRow(o) : '')
-        + (o.paid_at ? '<div class="row" style="margin-top:14px">'
+        /* 🔴 연습 주문은 입금도 편수도 없습니다 — 막대 대신 만든 글 수만 보여 줍니다 (2026-11-13) */
+        + (o.is_practice ? '<div class="row" style="margin-top:14px">'
+          + '<span class="mono">만든 글 <b>' + (p.made || 0) + '편</b> · 올라간 글 <b>' + (p.done || 0) + '편</b>'
+          + ' · 편수 상한 없음 · 마감 없음</span></div>'
+          : o.paid_at ? '<div class="row" style="margin-top:14px">'
           + '<div class="bar" style="flex:1"><i style="width:' + (o.total_qty ? Math.round((p.done || 0) / o.total_qty * 100) : 0) + '%"></i></div>'
           + '<span class="mono">' + o.total_qty + '편 중 ' + (p.done || 0) + '편 올라감 · 만든 글 ' + (p.made || 0) + '편</span></div>'
           : '<div class="row" style="margin-top:14px">'
@@ -2741,6 +2761,12 @@
     var o = A.ORDERS.filter(function (x) { return x.id === $('kwOrder').value; })[0];
     var box = $('kwPaid'); if (!box) return true;
     if (!o) { box.innerHTML = ''; return true; }
+    /* 🔴 연습 주문은 입금을 보지 않습니다 (2026-11-13) */
+    if (o.is_practice) {
+      box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">🧪 <b>연습 주문입니다</b> · '
+        + '입금 확인 없이 글을 만드실 수 있습니다</div>';
+      return true;
+    }
     if (o.paid_at) {
       box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">입금 확인됨 ('
         + esc(o.paid_at) + ') · 글을 만드실 수 있습니다</div>';
@@ -4140,7 +4166,7 @@
       if (!made) {
         return '<div class="empty" style="text-align:left;line-height:1.8">'
           + '<b>아직 글이 하나도 안 만들어졌습니다.</b><br>'
-          + (o.paid_at
+          + (o.paid_at || o.is_practice
             ? '「4 키워드 만들기」에서 [키워드 만들기] → <b>[이대로 글 만들기]</b> 까지 두 번 눌러 주세요. '
               + '두 번째 버튼을 눌러야 글이 생깁니다.<br>'
               + '<button class="link" data-gokw2="' + o.id + '">4번으로 가기 →</button>'
@@ -7350,11 +7376,24 @@
       var prv = ((document.querySelector('[data-practicerate="' + pid2 + '"]') || {}).value || '').trim();
       var prate = prv === '' ? null : Number(prv);
       if (pon && (prate == null || !(prate >= 0))) { A.toast('연습 주문의 편당 원고료를 넣어 주세요 (0원도 됩니다)'); return; }
+      /* 🔴 켜면 마감이 지워지고 바로 시작됩니다 — 한 번 짚어 드립니다 (2026-11-13) */
+      var po2 = A.ORDERS.filter(function (x) { return x.id === pid2; })[0] || {};
+      if (pon && !po2.is_practice
+        && !confirm((po2.academy_name || '이 주문') + ' 을 연습 주문으로 바꿉니다.\n\n'
+          + '· 바로 블로거에게 맡기실 수 있습니다 ([의뢰 시작]을 누르실 필요가 없습니다)\n'
+          + '· 주문 마감이 없어집니다' + (po2.deadline ? ' (지금 ' + po2.deadline + ' → 없음)' : '') + '\n'
+          + '· 입금을 보지 않습니다\n'
+          + '· 업체에는 아무 알림도 가지 않습니다\n'
+          + '· 블로거 원고료는 편당 ' + won(prate) + '원이 됩니다\n\n계속할까요?')) return;
       t.disabled = true;
       try {
         var pr = await A.rpc('order_set_practice', { p_order: pid2, p_on: !!pon, p_rate: pon ? prate : null }) || {};
-        A.toast(pon ? '연습 주문 · 편당 ' + won(prate) + '원으로 저장했습니다' + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편도 바꿈)' : '')
-          : '연습 주문을 껐습니다' + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편은 단계 단가로 돌림)' : ''));
+        A.toast(pon ? '연습 주문 · 편당 ' + won(prate) + '원'
+            + (pr.now_started ? ' · 바로 맡기실 수 있습니다' : '')
+            + (pr.deadline_cleared ? ' · 마감 없앰' : '')
+            + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편도 바꿈)' : '')
+          : '연습 주문을 껐습니다 — 마감은 다시 안 생기니 필요하면 따로 넣어 주세요'
+            + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편은 단계 단가로 돌림)' : ''));
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
