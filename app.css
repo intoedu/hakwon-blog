@@ -333,6 +333,12 @@ select.inp{cursor:pointer}
   .tblscroll > table:not(.commtbl):has(tr > :nth-child(6)){min-width:660px}
   .tblscroll > table:not(.commtbl):has(tr > :nth-child(8)){min-width:800px}
   .tblscroll th,.tblscroll td{padding:10px 11px}
+  /* 표 안의 단추 줄은 꺾지 않습니다 — 사람 관리 표 맨 끝 칸(단계 고르기 + 단추 4~6개)이
+     좁아지면 단추가 세로로 쌓여 한 줄이 화면 하나만큼 길어졌습니다 (11/13).
+     대신 표가 옆으로 넓어지고, 밀어서 봅니다. 단추·고르기 칸 안의 글자도 한 줄로 */
+  .tblscroll td .row,.tblscroll td .mixcell{flex-wrap:nowrap}
+  .tblscroll td .btn,.tblscroll td select,.tblscroll td .nmbtn{white-space:nowrap}
+  .tblscroll .nw{white-space:nowrap}   /* 전화번호 — 「-」에서 줄이 바뀌지 않게 */
   .tblscroll{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
   /* 옆에 더 있으면 오른쪽 끝을 흐리게 — 「여기서 끝」으로 오해하지 않게 (core.js 가 .more 를 붙입니다) */
   .tblscroll.more{-webkit-mask-image:linear-gradient(to left,transparent 0,#000 40px);

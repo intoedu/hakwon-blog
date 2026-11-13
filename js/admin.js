@@ -746,7 +746,7 @@
           + '<button class="nmbtn" data-bopen="' + p.id + '" title="눌러서 신청 내용 보기">'
           + esc(p.name) + '</button>'
           + (p.wants_more ? ' <span class="chip c-ok"><i class="ic i-star-fill"></i> 많이 원함</span>' : '')
-          + '<div class="mono">' + esc(p.phone || '') + '</div></td>'
+          + '<div class="mono nw">' + esc(p.phone || '') + '</div></td>'
           + '<td>' + esc(A.commName(p.community_id)) + '</td>'
           + '<td>' + A.lvBadge(p.level) + '</td><td class="num">' + won(lv.rate) + '</td>'
           + '<td class="num">' + nbCell(p) + '</td>'
