@@ -3613,8 +3613,8 @@
       + '<summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--ink-2)">'
       + '<i class="ic i-search"></i> 방금 무엇을 주고받았는지 보기 <span class="mono">(토큰 '
       + won(u.in || 0) + ' + ' + won(u.out || 0) + ' · 약 ' + usd.toFixed(3) + ' 달러)</span></summary>'
-      + '<div class="note" style="margin-top:10px"><b>이건 기록일 뿐입니다.</b> '
-      + '아래 내용은 저장되지 않고, 화면을 새로 고치면 사라집니다.</div>'
+      + '<div class="note" style="margin-top:10px">이건 기록일 뿐입니다. '
+      + '아래 내용은 <b>저장되지 않아서</b> 화면을 새로 고치면 사라집니다.</div>'
       + '<div class="sec">① 보낸 규칙</div>'
       + '<pre class="tpnote">' + esc(RMLAST.system || '') + '</pre>'
       + '<div class="sec">② 보낸 주문 내용</div>'
@@ -3622,8 +3622,8 @@
       + '<div class="sec">③ 받은 글</div>'
       + '<pre class="tpnote">' + esc(RMLAST.text || '') + '</pre>'
       + '<div class="note" style="margin-top:12px">'
-      + '<b>비용</b> — 이번에 <b>약 ' + usd.toFixed(3) + ' 달러</b>'
-      + '(원화로 대략 ' + won(Math.round(usd * 1400)) + '원, 1달러 1,400원 기준)를 썼습니다.<br>'
+      + '이번에 쓴 비용은 약 ' + usd.toFixed(3) + ' 달러입니다. '
+      + '1달러 1,400원으로 치면 대략 ' + won(Math.round(usd * 1400)) + '원입니다.<br>'
       + '<b>모델</b> ' + esc(RMLAST.model || '-') + ' · <b>생각 깊이</b> ' + esc(RMLAST.effort || '-')
       + '</div></details>';
   }
@@ -3685,7 +3685,7 @@
       RMDRAFT.forEach(function (x) { by[x.category || '(갈래 없음)'] = (by[x.category || '(갈래 없음)'] || 0) + 1; });
       $('rmCount').innerHTML = RMDRAFT.length
         ? '<b>' + RMDRAFT.length + '편</b>을 읽었습니다'
-        : '읽어낸 것이 없습니다 — --- 로 나눠져 있는지 보세요';
+        : '읽어낸 것이 없습니다. --- 로 나눠져 있는지 보세요';
       /* 같은 문장이 섞여 있으면 여기서 잡습니다 */
       var seen = {}, dup = 0;
       RMDRAFT.forEach(function (x) {
@@ -3765,7 +3765,7 @@
         + '여러 개 올리면 바로 티가 납니다.<br>'
         + bad.map(function (k) {
           var pr = k.split('|'), who = A.PEOPLE.filter(function (x) { return x.id === pr[0]; })[0];
-          return '· <b>' + esc(who ? who.name : '?') + '</b> — ' + pr[1] + ' 에 ' + clash[k] + '편';
+          return '· <b>' + esc(who ? who.name : '?') + '</b> 님이 ' + pr[1] + '에 ' + clash[k] + '편';
         }).join('<br>') + '</div>'
       : '';
 
@@ -3872,7 +3872,7 @@
           : '<div class="note warn" style="margin:0">캡처가 없습니다.</div>') + '</div>'
         + '</div>'
         + '<div class="row" style="margin-top:14px">'
-        + '<button class="btn btn-a btn-s" data-rvok="' + p.id + '">올라왔습니다 — 확인</button>'
+        + '<button class="btn btn-a btn-s" data-rvok="' + p.id + '">올라온 것 확인</button>'
         + '<button class="btn btn-s" data-rvno="' + p.id + '">다시 올려 달라기</button>'
         + '</div></div>';
     }).join('') : A.empty('지금 확인할 리뷰가 없습니다. 리뷰어가 올리면 여기에 뜹니다.');
@@ -3894,7 +3894,7 @@
     if (p.status !== 'approved') return '승인 안 됨';
     if (p.quality === 'low') return '저품질로 표시해 두셨습니다';
     if (blogRoleOf(p.id) && !p.also_blogging) {
-      return '검수자·관리자 — 「블로거 병행」이 꺼져 있습니다';
+      return '검수자·관리자인데 블로거 병행에 체크가 안 돼 있습니다';
     }
     /* 교육 기록을 아직 못 읽었으면 넘겨짚지 않습니다 */
     if (!ALLMATS.length && !ALLSESS.length) return '교육 미완';
@@ -3929,7 +3929,7 @@
     else if (needT1 && !came) miss.push('1차 줌 미참석');
     if (done < need.length) {
       miss.push('필수 영상 ' + done + '/' + need.length
-        + (wait ? ' — ' + wait + '건은 요약을 냈고 확인 대기' : ''));
+        + (wait ? ', ' + wait + '건은 요약을 내서 확인을 기다립니다' : ''));
     }
     return miss.join(' · ') || '알 수 없음';
   }
@@ -3970,18 +3970,18 @@
     var wmSum = wm.reduce(function (t, r) { return t + r.m; }, 0);
 
     box.innerHTML = '<details class="outbox" style="margin-top:14px"><summary><i class="ic i-chart-column"></i> 이번 달 받은 편수'
-      + ' — 가장 많은 분 <b>' + top + '편</b> / 상한 ' + cap + '편'
-      + (zero ? ' · 아직 0편인 분 <b>' + zero + '명</b>' : '')
+      + ': 가장 많은 분 ' + top + '편, 상한 ' + cap + '편'
+      + (zero ? ', 아직 0편인 분 ' + zero + '명' : '')
       + '</summary>'
-      + '<div class="note"><b>받은(배정된) 편수입니다.</b> 끝낸 편수가 아닙니다 — '
-      + '공동체 표의 [멤버 보기]에 있는 「이번 달 N편」은 <b>끝낸</b> 편수라 이 숫자와 다릅니다.<br>'
-      + '이 달에 모두 <b>' + sum + '편</b>이 나갔고 <b>' + got + '명</b>이 받았습니다. '
-      + '한 사람 상한은 <b>' + cap + '편</b>입니다.</div>'
+      + '<div class="note">여기 숫자는 <b>배정받은 편수</b>입니다. '
+      + '공동체 표의 [멤버 보기]에 나오는 이번 달 N편은 끝낸 편수라서 이 숫자와 다릅니다.<br>'
+      + '이 달에 모두 ' + sum + '편이 나갔고 ' + got + '명이 받았습니다. '
+      + '한 사람 상한은 ' + cap + '편입니다.</div>'
       + (wm.length ? '<div class="note' + (top >= cap * 0.8 ? ' warn' : '') + '">'
-        + '<i class="ic i-star-fill"></i> <b>「많이 원함」을 켠 분이 ' + wm.length + '명</b>이고, 이 달 받은 글 가운데 <b>' + wmSum + '편</b>'
-        + '(' + (sum ? Math.round(wmSum * 100 / sum) : 0) + '%)을 그분들이 받았습니다. '
-        + '자동으로 나눠주면 이분들이 <b>먼저</b> 뽑힙니다 — 한쪽으로 몰리면 '
-        + '[고른 사람에게만 나눠주기]로 다른 분께 돌려 주십시오.</div>' : '')
+        + '<i class="ic i-star-fill"></i> 많이 원함을 켠 분 ' + wm.length + '명이 이 달 받은 글 가운데 ' + wmSum + '편'
+        + '(' + (sum ? Math.round(wmSum * 100 / sum) : 0) + '%)을 받았습니다. '
+        + '자동으로 나눠주면 이분들이 먼저 뽑힙니다. 한쪽으로 몰리면 '
+        + '[고른 사람에게만 나눠주기]로 다른 분께 돌려 주세요.</div>' : '')
       + '<div class="tblbox tblscroll"><table><thead><tr><th>#</th><th>이름</th><th>공동체</th>'
       + '<th>이번 달 받은 편수</th><th>남은 편수</th></tr></thead><tbody>'
       + rows.map(function (r, i) {
@@ -4023,10 +4023,10 @@
       schPaint();
       var mb = $('asMember');
       if (mb) mb.innerHTML = !o ? '' : '<div class="note" style="margin:0 0 12px">'
-        + memBadge(o) + ' <b>' + esc(o.academy_name) + '</b> — 편당 '
-        + won(o.sale_price) + '원을 받는 주문입니다. '
-        + '1단계 블로거가 한 편 쓰면 <b>' + won(basePay(o)) + '원</b>'
-        + (o.is_premium ? ' — 파트너 주문은 등급과 상관없이 같은 금액입니다.'
+        + memBadge(o) + ' ' + esc(o.academy_name) + ' 주문은 편당 '
+        + won(o.sale_price) + '원을 받습니다. '
+        + '1단계 블로거가 한 편 쓰면 ' + won(basePay(o)) + '원'
+        + (o.is_premium ? '입니다. 파트너 주문은 등급과 상관없이 같은 금액입니다.'
            : ', 단계가 오르면 ' + won(A.payFor(o, 5)) + '원까지 갑니다.')
         + '</div>';
 
@@ -4059,12 +4059,12 @@
           + (ok.length ? '' : '<br><b style="color:var(--bad)">한 사람도 못 받는 상태입니다.</b> '
               + '아래 이유를 풀어 주셔야 글이 나갑니다.')
           + (no.length ? '<div style="margin-top:9px">' + Object.keys(by).map(function (r) {
-              return '· <b>' + esc(r) + '</b> — ' + esc(by[r].join(', '))
+              return '· ' + esc(r) + ': ' + esc(by[r].join(', '))
                 + ' <span class="mono">(' + by[r].length + '명)</span>';
             }).join('<br>')
             + '<div class="mono" style="margin-top:8px">'
-            + '「필수 영상」은 본인이 <b>센터에서 영상을 보고 요약을 내면</b>, '
-            + '「2 블로거 교육 → 낸 요약 확인하기」에서 통과시켜 주시면 풀립니다. '
+            + '필수 영상은 본인이 센터에서 영상을 보고 요약을 낸 뒤 '
+            + '[2 블로거 교육]의 [낸 내용 확인하기]에서 통과시켜 주시면 풀립니다. '
             + '<button class="link" data-go="edu">2번으로 가기 →</button></div></div>' : '')
           + '</div>';
       })();
@@ -4088,7 +4088,7 @@
           + '한 블로그에 같은 업체 글이 몰리면 서로 검색어를 잡아먹습니다.<br>'
           + bad.map(function (k) {
             var pr = k.split('|'), who = A.PEOPLE.filter(function (x) { return x.id === pr[0]; })[0];
-            return '· <b>' + esc(who ? who.name : '?') + '</b> — ' + pr[1] + ' 에 ' + clash[k] + '편';
+            return '· <b>' + esc(who ? who.name : '?') + '</b> 님이 ' + pr[1] + '에 ' + clash[k] + '편';
           }).join('<br>')
           + '<br><br><b>블로거를 더 모으시거나</b> 발행 기간을 늘려 다시 까시면 풀립니다.</div>'
         : '';
@@ -4097,8 +4097,8 @@
         ? '<div class="msg err" style="margin:0 0 12px">'
         + '<b><i class="ic i-triangle-alert"></i> 주문은 ' + o.total_qty + '편인데 글이 ' + made + '편 만들어져 있습니다 (' + over + '편 초과).</b><br>'
         + '키워드를 두 번 만드신 것 같습니다. 이대로 나눠주면 업체가 시킨 것보다 많이 쓰게 됩니다. '
-        + '아래에서 <b>남는 ' + over + '편은 빼고</b> 맡기시거나, 「4 키워드 만들기」에서 '
-        + '<b>안 맡긴 글을 지우고 새로</b> 만들어 주세요.</div>'
+        + '아래에서 남는 ' + over + '편은 빼고 맡기시거나 [4 키워드 만들기]에서 '
+        + '안 맡긴 글을 지우고 새로 만들어 주세요.</div>'
         : '';
     })();
 
@@ -4167,12 +4167,12 @@
         return '<div class="empty" style="text-align:left;line-height:1.8">'
           + '<b>아직 글이 하나도 안 만들어졌습니다.</b><br>'
           + (o.paid_at || o.is_practice
-            ? '「4 키워드 만들기」에서 [키워드 만들기] → <b>[이대로 글 만들기]</b> 까지 두 번 눌러 주세요. '
+            ? '[4 키워드 만들기]에서 [키워드 만들기]를 누르고 이어서 <b>[이대로 글 만들기]</b>까지 눌러 주세요. '
               + '두 번째 버튼을 눌러야 글이 생깁니다.<br>'
               + '<button class="link" data-gokw2="' + o.id + '">4번으로 가기 →</button>'
             : '<b style="color:var(--bad)">이 주문은 아직 입금 확인이 안 됐습니다.</b> '
               + '입금 확인 전에는 글이 만들어지지 않습니다.<br>'
-              + '「3 주문 · 입금」에서 [입금 확인]을 먼저 누르시고, 그다음 4번에서 글을 만드시면 됩니다.<br>'
+              + '[3 주문 · 입금]에서 [입금 확인]을 먼저 누르신 다음 4번에서 글을 만드시면 됩니다.<br>'
               + '<button class="link" data-gopay="' + o.id + '">3번으로 가기 →</button>')
           + '</div>';
       }
@@ -4239,7 +4239,7 @@
     $('doAssign').disabled = !(a && b);
     $('doAuto').disabled = !a;            /* 자동은 사람을 안 골라도 됩니다 */
     $('assignHint').textContent = !a ? '왼쪽에서 글을 고르세요'
-      : !b ? a + '편 — [고르게 자동으로]를 누르시면 알아서 나눠줍니다'
+      : !b ? '[고르게 자동으로]를 누르시면 ' + a + '편을 알아서 나눠줍니다'
         : a === b ? a + '편을 ' + b + '명에게 한 편씩 줍니다'
           : a > b ? a + '편을 ' + b + '명에게 골고루 나눕니다 (한 명당 최대 ' + Math.ceil(a / b) + '편)'
             : a + '편을 ' + b + '명 중 앞에서 ' + a + '명에게 한 편씩 줍니다';
@@ -4289,7 +4289,7 @@
       + '날짜를 안 깔면 블로거가 아무 때나 올립니다.\n'
       + '같은 업체 글이 며칠 안에 몰려 올라가면 네이버가 광고로 보기 쉽습니다.\n\n'
       + '위 「발행 일정 짜기」를 펼쳐 날짜를 먼저 깔아 주세요.\n'
-      + '먼저 나눠주고 날짜를 나중에 깔아도 됩니다 — 그때는 맡긴 글이 앞 날짜를 받습니다.\n\n'
+      + '먼저 나눠주고 날짜를 나중에 깔아도 됩니다. 그때는 맡긴 글이 앞 날짜를 받습니다.\n\n'
       + '그래도 지금 나눠주시겠습니까?');
   }
 
@@ -4311,7 +4311,7 @@
       if (n <= 5) return;
       var t = o.photo_tags || {};
       var on = Object.keys(t).filter(function (k) { return t[k] && (t[k].t || t[k].s); }).length;
-      if (!on) bad.push((o.academy_name || '이름 없음') + ' — 사진 ' + n + '장에 꼬리표 0개');
+      if (!on) bad.push((o.academy_name || '이름 없음') + ' 사진 ' + n + '장에 꼬리표 0개');
     });
     if (!bad.length) return false;
     return !confirm('사진에 꼬리표가 하나도 없습니다.\n\n· '
@@ -4355,7 +4355,7 @@
         return (p.wants ? '★' : '') + p.name + ' ' + p.month + '편';
       }).join(' · ');
       A.toast(r.assigned + '편을 나눠줬습니다');
-      if (who) A.toast('이번 달 — ' + who);
+      if (who) A.toast('이번 달 ' + who);
       await A.loadAdmin();
     } catch (e) { A.toast('실패: ' + e.message); }
     this.disabled = false;
@@ -4431,10 +4431,10 @@
     var g = stagesOfGrade(w[1]), sb = stagesOfSubject(w[2]);
     /* 조사(는/은)가 낱말마다 달라지므로 「…」 뒤에 바로 붙이지 않습니다 */
     if (sb && sb.indexOf(stage) < 0)
-      return '「' + w[2] + '」 제목은 ' + sb.join('·') + '등 이야기인데, 글 내용은 '
+      return '제목(' + w[2] + ')은 ' + sb.join('·') + '등 이야기인데 글 내용은 '
         + stage + '등입니다';
     if (g && g.indexOf(stage) < 0)
-      return '「' + w[1] + '」 제목은 ' + g.join('·') + '등이 읽는 글인데, 글 내용은 '
+      return '제목(' + w[1] + ')은 ' + g.join('·') + '등이 읽는 글인데 글 내용은 '
         + stage + '등입니다';
     return null;
   }
@@ -4534,7 +4534,7 @@
       (bad.length ? '<div class="msg err" style="margin:0 0 14px">'
         + '<b><i class="ic i-triangle-alert"></i> 제목과 내용이 어긋난 글이 ' + bad.length + '편 있습니다.</b><br>'
         + '제목은 한 과목을 파는데 글 내용은 다른 과목입니다. '
-        + '<b>다시 쓰게 하지 마세요</b> — 블로거는 우리가 준 대로 썼습니다. '
+        + '<b>다시 쓰게 하지 마세요.</b> 블로거는 우리가 준 대로 썼습니다. '
         + '아래 <b><i class="ic i-pencil"></i></b> 를 눌러 <b>제목을 내용에 맞게</b> 바꿔 주시면 그 글이 그대로 살아납니다.'
         + tbl(bad, '실제 내용', function (p) {
             var d = subjBad(p);
@@ -4545,8 +4545,8 @@
         + '</div>' : '')
       + (grd.length ? '<div class="msg err" style="margin:0 0 14px">'
         + '<b><i class="ic i-triangle-alert"></i> 제목의 학년이 글 내용과 안 맞는 글이 ' + grd.length + '편 있습니다.</b><br>'
-        + '과목은 맞는데 <b>누구에게 하는 이야기인지</b>가 다릅니다. 예) 제목은 '
-        + '<b>「고등 수능영어」</b>인데 내용은 <b>「중1 첫 시험에서 무너지는 이유」</b>. '
+        + '과목은 맞는데 누구에게 하는 이야기인지가 다릅니다. 예) 제목은 '
+        + '「고등 수능영어」인데 내용은 「중1 첫 시험에서 무너지는 이유」. '
         + '고등학생 학부모가 눌러 들어와서 중학생 이야기를 보면 바로 나갑니다.'
         + tbl(grd, '무엇이 안 맞나', function (r) {
             return '<span style="color:var(--bad)"><b>' + esc(r.g.why) + '</b></span>'
@@ -4555,8 +4555,8 @@
         + '</div>' : '')
       + (odd.length ? '<div class="msg warn" style="margin:0 0 14px">'
         + '<b><i class="ic i-triangle-alert"></i> 제목의 말 조합이 이상한 글이 ' + odd.length + '편 있습니다.</b><br>'
-        + '예) <b>예비고 중등수학내신</b> — 예비고(중3)는 <b>고등</b>을 준비하는 학년인데 '
-        + '<b>중등</b> 과목을 팝니다. 학부모는 그렇게 검색하지 않습니다. '
+        + '예) 예비고 중등수학내신. 예비고는 고등을 준비하는 중3 학년인데 '
+        + '중등 과목을 팝니다. 학부모는 그렇게 검색하지 않습니다. '
         + '<b>제목이 이상하면 글을 아무리 잘 써도 아무도 안 읽습니다.</b>'
         + tbl(odd, '무엇이 이상한가', function (r) {
             return '<span style="color:var(--bad)"><b>' + esc(r.why) + '</b></span>';
@@ -4578,7 +4578,7 @@
     var h = $('kwReasonHint'); if (!h) return;
     h.innerHTML = r === '내부 교정'
       ? '우리가 고치는 것이라 <b>무료</b>입니다.'
-      : '<span style="color:var(--bad)"><b>학원 요청 — 유료 변경(한 편 ' + won(kwFeeTotal()) + '원)입니다.</b></span> '
+      : '<span style="color:var(--bad)">학원 요청이라 유료 변경입니다. 한 편에 ' + won(kwFeeTotal()) + '원입니다.</span> '
           + (m.dataset.status === 'pending'
             ? '<b>아직 배정 전인 글도 셉니다(9/16 결정).</b> 블로거 몫은 나중에 이 글을 맡아 올린 블로거에게 갑니다. ' : '')
           + '바꾸기를 누른 분 ' + won(kwFee().admin) + '원 · 이 글을 맡은 블로거 ' + won(kwFee().blogger) + '원으로 정산에 잡힙니다. '
@@ -4628,20 +4628,20 @@
       + '</dl>'
 
       + '<div class="fld" style="margin-top:14px"><label class="f">'
-        + '새 검색어 — 지역 · 학년 · 과목 · 목적 순서로 띄어 씁니다</label>'
+        + '새 검색어는 지역, 학년, 과목, 목적 순서로 띄어 씁니다</label>'
       + '<input class="inp" id="kwNew" value="' + esc(p.keyword || '') + '" '
         + 'placeholder="이매동 예비중 중등국어논술 학습코칭" autocomplete="off">'
       + '<div class="mono" id="kwNewSub" style="margin-top:6px"></div></div>'
 
       /* 사유 — 학원 요청이고 배정 뒤면 유료(한 편당 3,000원)로 기록됩니다. 블로거 알림에는 안 나갑니다 */
-      + '<div class="fld"><label class="f">누가 바꾸자고 했나요 — 꼭 고르세요</label>'
+      + '<div class="fld"><label class="f">누가 바꾸자고 했는지 꼭 골라 주세요</label>'
       + '<div class="chips" id="kwReason">'
       + '<button type="button" data-kwreason="학원 요청">학원 요청</button>'
       + '<button type="button" data-kwreason="내부 교정">내부 교정 (제목이 원고와 안 맞는 등)</button>'
       + '</div><div class="mono" id="kwReasonHint" style="margin-top:6px;line-height:1.6"></div></div>'
 
       + '<div class="fld"><label class="f">'
-        + '메모 — 우리 기록에만 남습니다 (안 적으셔도 됩니다)</label>'
+        + '메모는 우리 기록에만 남습니다. 안 적으셔도 됩니다</label>'
         /* 9/17 알림톡 9번 재검수본 : 블로거 알림에는 자유 메모 대신 사유(학원 요청 / 내부 교정) 문장만 갑니다 */
       + '<input class="inp" id="kwWhy" autocomplete="off" '
         + 'value="' + (bad ? '쓰신 내용이 ' + esc(bad.topic) + '이라 제목을 내용에 맞췄습니다.' : '') + '"></div>'
@@ -4652,7 +4652,7 @@
             + '블로거는 <b>제목 한 줄만</b> 고치면 됩니다.'
           : '아직 원고가 안 온 글입니다. 과목이 바뀌면 <b>이 글이 다룰 내용(소재)도 '
             + '새 과목에 맞춰 다시 붙습니다.</b>')
-      + (b.name ? ' 바꾸면 <b>' + esc(b.name) + '</b> 님에게 알림이 만들어집니다.'
+      + (b.name ? ' 바꾸면 ' + esc(b.name) + ' 님에게 알림이 만들어집니다.'
                 : ' 아직 맡은 사람이 없어 알릴 곳은 없습니다.')
       + '</div>'
 
@@ -4674,14 +4674,17 @@
       var why = A.badKeyword(v);
       var stg = t && t.stage ? stageBad(v, t.stage) : null;   /* 학년까지 봅니다 */
       $('kwNewSub').innerHTML = !v.trim() ? ''
-        : '이 제목의 과목 · ' + (sj ? '<b>' + esc(sj) + '</b>' : '<b>모르겠음</b>')
-          + (t && t.subject ? ' / 글 내용 · <b>' + esc(t.subject) + '</b>'
-              + (t.stage && t.stage !== '공통' ? ' <b>' + esc(t.stage) + '등</b>' : '') : '')
-          + (same ? ' <span style="color:var(--bad)">— 과목이 안 맞습니다</span>'
-             : sj ? ' <span style="color:var(--ok)">— 과목은 맞습니다</span>' : '')
+        : (sj ? '제목 과목은 ' + esc(sj)
+              + (t && t.subject ? ', 글 내용은 ' + esc(t.subject)
+                  + (t.stage && t.stage !== '공통' ? ' ' + esc(t.stage) + '등' : '') : '') + '입니다.'
+            : '제목 과목을 알 수 없습니다.'
+              + (t && t.subject ? ' 글 내용은 ' + esc(t.subject)
+                  + (t.stage && t.stage !== '공통' ? ' ' + esc(t.stage) + '등' : '') + '입니다.' : ''))
+          + (same ? ' <span style="color:var(--bad)">과목이 안 맞습니다</span>'
+             : sj ? ' <span style="color:var(--ok)">과목은 맞습니다</span>' : '')
           + (stg ? '<div style="color:var(--bad);margin-top:4px"><i class="ic i-triangle-alert"></i> ' + esc(stg) + '</div>' : '')
           + (why ? '<div style="color:var(--bad);margin-top:4px">'
-                 + '<i class="ic i-triangle-alert"></i> 말 조합이 이상합니다 — <b>' + esc(why) + '</b></div>'
+                 + '<i class="ic i-triangle-alert"></i> 말 조합이 이상합니다. ' + esc(why) + '</div>'
                  : v.trim().split(/\s+/).length >= 3
                    ? '<div style="color:var(--ok);margin-top:4px">말 조합은 괜찮습니다</div>' : '');
     }
@@ -4972,9 +4975,9 @@
       var np = (o.photo_paths || []).length;
       pbox.innerHTML = !np ? ''
         : '<div class="note' + (tn ? '' : ' warn') + '" style="margin-bottom:14px">'
-        + '<b>업체가 보낸 사진 ' + np + '장</b> — '
-        + (tn ? '그중 ' + tn + '장에 꼬리표가 달려 있습니다. '
-              : '<b>꼬리표가 없어 사진이 글 내용과 상관없이 나가고 있습니다.</b> ')
+        + '업체가 보낸 사진 ' + np + '장'
+        + (tn ? ' 가운데 ' + tn + '장에 꼬리표가 달려 있습니다. '
+              : '에 꼬리표가 없어 사진이 글 내용과 상관없이 나가고 있습니다. ')
         + '꼬리표를 달면 영어 글에는 영어 사진이, 맨 앞에는 간판 사진이 갑니다.'
         + '<div class="row" style="margin-top:10px">'
         + '<button class="btn btn-s" data-seepics="' + o.id + '"><i class="ic i-image"></i> 사진 보기 · 꼬리표 · 내려받기</button>'
@@ -4985,9 +4988,9 @@
       (todo.length ? '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'
         + todo.map(function (p) { return rvRow(p, false, false); }).join('') + '</tbody></table></div>'
         : A.empty('지금 볼 원고가 없습니다.'))
-      + (rest.length ? '<div class="sec">나머지 글 <small>'
-        + rest.length + '편 — 아직 원고가 안 온 글과 이미 끝난 글입니다. '
-        + '「어디까지」 칸으로 진행을 보실 수 있습니다</small></div>'
+      + (rest.length ? '<div class="sec">나머지 글 '
+        + rest.length + '편 <small>아직 원고가 안 온 글과 이미 끝난 글입니다. '
+        + '진행은 표의 어디까지 칸에서 보실 수 있습니다</small></div>'
         + '<div class="tblbox tblscroll"><table>' + rvHead(false) + '<tbody>'
         + rest.map(function (p) { return rvRow(p, true, false); }).join('') + '</tbody></table></div>' : '');
     A.view('acad-posts');
@@ -5003,7 +5006,7 @@
     }).sort(function (a, b) { return (a.verified_at || '') > (b.verified_at || '') ? -1 : 1; });
 
     var doneHtml = done.length
-      ? '<div class="sec">이미 확인한 글 <small>' + done.length + '편 — 회색은 다 끝났다는 뜻입니다</small></div>'
+      ? '<div class="sec">이미 확인한 글 ' + done.length + '편 <small>회색 줄은 다 끝난 글입니다</small></div>'
         + '<div class="tblbox tblscroll"><table><thead><tr><th>업체</th><th>누가</th>'
         + '<th>노리는 검색어</th><th>순위</th><th>올린 날</th><th></th></tr></thead><tbody>'
         + done.map(function (p) {
@@ -5039,7 +5042,7 @@
             + '<div class="mono" style="margin:5px 0 10px">' + esc((p.published_url || '').slice(0, 52)) + '</div>'
             + '<div class="row">'
             + (isDemoUrl(p.published_url)
-              ? '<span class="chip c-wait">시연용 주소 — 실제로는 블로거가 넣은 진짜 주소가 열립니다</span>'
+              ? '<span class="chip c-wait">시연용 주소입니다. 실제로는 블로거가 넣은 주소가 열립니다</span>'
               : '<a class="btn btn-s" href="' + esc(p.published_url) + '" target="_blank" rel="noopener">글 열어보기 ↗</a>')
             + '<a class="btn btn-s" href="https://search.naver.com/search.naver?query=' + encodeURIComponent(p.keyword || '')
             + '" target="_blank" rel="noopener">이 검색어로 검색해보기 ↗</a></div></div>'
@@ -5264,8 +5267,8 @@
 
     var ph = $('pgHead');
     if (ph) ph.innerHTML = RV
-      ? '<h1>진행 현황</h1><p>리뷰 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 것을 찾습니다.</p>'
-      : '<h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고, 늦는 글을 찾습니다.</p>';
+      ? '<h1>진행 현황</h1><p>리뷰 한 편이 한 줄입니다. 어디까지 갔는지 보고 늦는 것을 찾습니다.</p>'
+      : '<h1>진행 현황</h1><p>글 한 편이 한 줄입니다. 어디까지 갔는지 보고 늦는 글을 찾습니다.</p>';
 
     /* 상태 칩을 갈래에 맞게 다시 그립니다 (고른 것은 그대로 둡니다) */
     var box = $('pgStatus');
@@ -5352,7 +5355,7 @@
     box.innerHTML = '<div class="msg warn" style="margin:0 0 12px">'
       + '<b>올릴 날이 지난 글이 ' + late.length + '편 있습니다.</b>'
       + (appr ? ' 그중 <b>' + appr + '편은 이미 통과</b>해서 블로거가 지금 올리면 됩니다.' : '')
-      + '<br><b>날짜는 옮기지 않습니다.</b> 주문 마감일 안에만 올라가면 됩니다 — 넘기면 업체에 환불하고 그 글 원고료는 없습니다. '
+      + '<br><b>날짜는 옮기지 않습니다.</b> 주문 마감일 안에만 올라가면 됩니다. 마감일을 넘기면 업체에 환불하고 그 글 원고료는 없습니다. '
       + '늦어지는 분께는 직접 연락해 주세요. 알림은 올릴 날 다음 날과 주문 마감 3일 전에 한 번씩만 갑니다. '
       + '같은 업체 글이 한 블로그에 같은 날 몰리는 것은 링크를 넣을 때 막습니다.</div>';
   }
@@ -5381,7 +5384,7 @@
         }).join(' · ')
       + '</summary>'
       + '<div class="mono" style="margin:8px 0">학원 요청 + 배정 뒤 = 한 편 3,000원 · 배정 전 = 무료 · 내부 교정 = 무료. '
-      + '청구 방법은 아직 정하지 않았습니다 — 기록만 남깁니다. 9/13 전 변경은 사유가 없습니다.</div>'
+      + '청구 방법은 아직 정하지 않아 기록만 남깁니다. 9/13 전 변경은 사유가 없습니다.</div>'
       + '<div class="tblbox tblscroll"><table><thead><tr><th>학원</th><th>학원 요청 · 유료</th>'
       + '<th>학원 요청 · 무료</th><th>내부 교정</th><th>사유 없음(9/13 전)</th></tr></thead><tbody>'
       + ids.map(function (id) {
@@ -5530,12 +5533,12 @@
       var olderM = {};
       older.forEach(function (i) { olderM[A.kstMonth(i.earned_at)] = 1; });
       pst.innerHTML = PAY_PREVIEW
-        ? '<div class="note warn"><b>마감 전 — 지금까지 한 일로 계산한 금액입니다.</b> '
-          + '일이 생길 때마다 늘어나고, 저장된 것은 없습니다. '
-          + '<b>[이 달 마감하기]</b>를 누르면 이 금액으로 확정되고, 그 뒤에 한 일은 다음 달로 넘어갑니다.'
+        ? '<div class="note warn"><b>마감 전이라 지금까지 한 일로 계산한 금액입니다.</b> '
+          + '일이 생길 때마다 금액이 늘어납니다. 저장된 것은 없습니다. '
+          + '[이 달 마감하기]를 누르면 이 금액으로 확정됩니다. 그 뒤에 한 일은 다음 달로 넘어갑니다.'
           + (mmP >= nowM ? '<br><i class="ic i-triangle-alert"></i> <b>' + mmP.replace('-', '년 ') + '월이 아직 안 끝났습니다.</b> 달이 끝난 뒤 마감하세요.' : '')
-          + (older.length ? '<br><i class="ic i-triangle-alert"></i> 이 중 <b>' + older.length + '건은 ' + Object.keys(olderM).sort().map(function (k) { return k.replace('-', '년 ') + '월'; }).join(' · ')
-            + '에 한 일</b>입니다. 그 달을 먼저 마감하면 그 달 몫으로 따로 잡힙니다 (세무 신고 달이 맞게).' : '')
+          + (older.length ? '<br><i class="ic i-triangle-alert"></i> 이 중 ' + older.length + '건은 ' + Object.keys(olderM).sort().map(function (k) { return k.replace('-', '년 ') + '월'; }).join(' · ')
+            + '에 한 일입니다. 그 달을 먼저 마감하면 그 달 몫으로 따로 잡혀서 세무 신고 달도 맞습니다.' : '')
           + '</div>'
         : '<div class="note"><b>' + mmP.replace('-', '년 ') + '월은 마감된 달입니다.</b> 아래 금액으로 확정되어 있습니다. '
           + '돈을 보낸 공동체가 없으면 [이 달 마감하기]로 다시 계산할 수 있습니다.</div>';
@@ -5675,13 +5678,13 @@
     $('payPartner').innerHTML = (ppOn.length || etcRf.length)
       ? '<div class="sec" style="margin-top:14px">영업실장 커미션 <small>'
         + ppOn.length + '명 · 고객이 <b>입금한 달</b>로 잡힙니다 · 다음 달 10일 지급</small></div>'
-        + '<div class="note">이 돈은 <b>인투마케팅 몫에서 나갑니다</b> — 블로거 원고료 · 검수 수당 · 공동체 운영비는 줄지 않습니다. '
-        + '공동체 대표가 실장을 겸하면 <b>운영비와 커미션을 둘 다</b> 받습니다. '
-        + '고객이 취소해 환불한 편수만 빠지고, <b>우리가 마감을 못 지켜 생긴 환불은 그대로 지급</b>합니다(계약서 제7조). '
-        + '커미션을 매기는 금액은 <b>고객이 실제로 결제한 금액</b>입니다 — 정가와 견주어 깎지 않습니다.</div>'
-        + (etcRf.length ? '<div class="note warn"><i class="ic i-circle-alert"></i> <b>사유가 「그 밖」인 환불 ' + etcRf.length + '건</b>이 실장 주문에 있어 <b>이 달은 마감되지 않습니다.</b> '
-          + '우리 잘못인지 고객 취소인지 가릴 수 없는데 그대로 차감하면, 우리 잘못인데 실장 돈을 덜 주게 되어 계약서 제7조를 어기게 됩니다. '
-          + '고객이 취소한 것이면 「중도 해지」로, 우리 쪽 사정이면 「우리 잘못」으로 사유를 고쳐 주십시오 — 고치면 마감됩니다.</div>' : '')
+        + '<div class="note">이 돈은 <b>인투마케팅 몫에서 나갑니다</b>. 블로거 원고료와 검수 수당, 공동체 운영비는 줄지 않습니다. '
+        + '공동체 대표가 실장을 겸하면 운영비와 커미션을 둘 다 받습니다. '
+        + '고객이 취소해 환불한 편수만 빠집니다. 우리가 마감을 못 지켜 생긴 환불은 계약서 제7조에 따라 그대로 지급합니다. '
+        + '커미션은 고객이 실제로 결제한 금액에 매깁니다. 정가와 견주어 깎지 않습니다.</div>'
+        + (etcRf.length ? '<div class="note warn"><i class="ic i-circle-alert"></i> 사유가 [그 밖]인 환불 ' + etcRf.length + '건이 실장 주문에 있어 <b>이 달은 마감되지 않습니다.</b> '
+          + '우리 잘못인지 고객 취소인지 가릴 수 없는 환불입니다. 이대로 차감했는데 우리 잘못이었다면 실장 돈을 덜 주게 되어 계약서 제7조를 어기게 됩니다. '
+          + '고객이 취소했으면 [중도 해지]로, 우리 쪽 사정이면 [우리 잘못]으로 사유를 고쳐 주십시오. 고치면 마감됩니다.</div>' : '')
         + (ppOn.length ? '<div class="tblbox tblscroll"><table><thead><tr>'
         + '<th>영업실장</th><th>주문</th><th>커미션</th><th>지급 예정</th><th>상태</th><th></th></tr></thead><tbody>'
         + ppOn.map(function (pp) {
@@ -5747,7 +5750,7 @@
   function peopleTable() {
     var rows = payPeopleRows();
     if (!rows.length) return '';
-    return '<div class="sec" style="margin-top:18px">사람별로 얼마 <small>이 돈이 누구 몫인지 · 실제 이체는 위 공동체별로 나갑니다</small></div>'
+    return '<div class="sec" style="margin-top:18px">사람별로 얼마 <small>사람마다 받을 몫입니다. 실제 이체는 위 공동체별로 나갑니다</small></div>'
       + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>구분</th><th>편수</th><th>원고료</th>'
       + '<th>원고 통과</th><th>노출 확인</th><th>검수 수당</th><th>검색어 보상</th><th>받을 돈</th><th>받는 곳</th></tr></thead><tbody>'
       + rows.map(function (r) {
@@ -5766,8 +5769,8 @@
       + '<tr><td colspan="8" style="text-align:right"><b>사람에게 나가는 돈 합계</b></td>'
       + '<td class="num"><b>' + won(rows.reduce(function (a, r) { return a + r.total; }, 0)) + '</b></td><td></td></tr>'
       + '</tbody></table></div>'
-      + '<p class="mono" style="margin-top:6px">공동체 운영비는 사람 몫이 아니라 공동체가 쓰는 돈이라 이 표에 넣지 않았습니다 '
-      + '(위 공동체별 표의 「공동체 운영비」 칸).</p>';
+      + '<p class="mono" style="margin-top:6px">공동체 운영비는 공동체가 쓰는 돈이라 사람별 표에 넣지 않았습니다. '
+      + '위 공동체별 표의 공동체 운영비 칸에서 볼 수 있습니다.</p>';
   }
 
   function openCP(id) {
@@ -5815,8 +5818,8 @@
       + '블로거 원고료 ' + won(c.amount) + '원 + 검수 수당 ' + won(c.review_amount || 0) + '원 + 공동체 운영비 '
       + won(c.ops_amount || 0) + '원 + 검색어 변경 보상 ' + won(c.kw_amount || 0) + '원 = <b>'
       + won(c.amount + (c.review_amount || 0) + (c.kw_amount || 0) + (c.ops_amount || 0)) + '원</b> 입니다.<br>'
-      + '<b>공동체 운영비</b>는 개인에게 나눠 주는 돈이 아니라 공동체가 쓰시는 몫입니다 '
-      + '(올라가 확인까지 끝난 글 한 편마다 붙습니다).</div>'
+      + '<b>공동체 운영비</b>는 공동체가 쓰시는 몫입니다. 개인에게 나눠 주는 돈은 아닙니다. '
+      + '올라가 확인까지 끝난 글 한 편마다 붙습니다.</div>'
       + (function () {
       })();
   }
@@ -5952,7 +5955,7 @@
   $('btnClose').onclick = async function () {
     var cm = $('payMonth').value;
     if (cm >= A.thisMonth() && !confirm(cm.replace('-', '년 ') + '월이 아직 끝나지 않았습니다.\n\n'
-        + '지금 마감하면 지금까지 한 일로 확정되고, 오늘 이후에 한 일은 다음 달 정산으로 넘어갑니다.\n그래도 마감할까요?')) return;
+        + '지금 마감하면 지금까지 한 일로 확정됩니다. 오늘 이후에 한 일은 다음 달 정산으로 넘어갑니다.\n그래도 마감할까요?')) return;
     if (!confirm(cm.replace('-', '년 ') + '월을 마감할까요?\n\n화면에 보이는 금액으로 확정됩니다. '
         + '돈을 보내기 전까지는 다시 마감(다시 계산)할 수 있습니다.')) return;
     this.disabled = true;
@@ -6066,7 +6069,7 @@
       return o ? { name: o.academy_name, sub: [o.contact_name, o.contact_phone].filter(Boolean).join(' · ') }
         : { name: '(지워진 주문)', sub: '' };
     }
-    return { name: '우리 팀', sub: '보낼 곳 없음 — 확인만 하시면 됩니다' };
+    return { name: '우리 팀', sub: '보낼 곳 없이 확인만 하시면 됩니다' };
   }
 
   /* ── 손으로 보낼 때 붙는 주소 ──
@@ -6166,8 +6169,8 @@
     if (!rows.length) {
       $('notiList').innerHTML = A.empty(NOTI_TAB === 'staff'
         ? '지금 챙길 것이 없습니다.'
-        : '손보실 것이 없습니다 — 알림톡은 저절로 나갑니다. '
-          + '지나간 것을 보시려면 위 「이미 보낸 것도 보기」를 켜 주세요.');
+        : '손보실 것이 없습니다. 알림톡은 저절로 나갑니다. '
+          + '지나간 것을 보시려면 위 [이미 나간 것도 보기]를 켜 주세요.');
       return;
     }
     var sendable = rows.filter(notiCanSend);
@@ -6331,7 +6334,7 @@
     box.value = names
       ? names.map(function (v) { return v + '='; }).join('\n')
       : '';
-    box.placeholder = names ? '' : '이 종류의 변수를 모릅니다 — 변수표를 보고 적어 주세요';
+    box.placeholder = names ? '' : '이 종류의 변수를 모릅니다. 변수표를 보고 적어 주세요';
   }
 
   function renderAtTest() {
@@ -6409,8 +6412,8 @@
       msg.innerHTML = d.check === 'ok'
         ? '<div class="note"><b>키가 맞습니다.</b> 보낼 준비가 되었습니다.'
           + '<div class="mono" style="margin-top:4px">잔액 ' + A.won(d.balance || 0)
-          + ' · 포인트 ' + (d.point || 0) + 'P — 알림톡 한 통 14.3원으로 약 '
-          + Math.floor((Number(d.balance || 0) + Number(d.point || 0)) / 14.3) + '통 보낼 수 있습니다</div></div>'
+          + '원과 포인트 ' + (d.point || 0) + 'P로 알림톡을 약 '
+          + Math.floor((Number(d.balance || 0) + Number(d.point || 0)) / 14.3) + '통 보낼 수 있습니다. 한 통에 14.3원입니다</div></div>'
         : '<div class="note bad"><b>아직 보낼 수 없습니다.</b> ' + esc(d.error || '')
           + (d.check === 'bad_key'
             ? '<div class="mono" style="margin-top:4px">API Key 와 API Secret 이 <b>한 쌍</b>인지 확인해 주세요.</div>'
@@ -6519,10 +6522,10 @@
       + st(sum, mm.replace('-', '년 ') + '월 수당 (원)');
     var mine0 = (await A.sel('review_payouts', { eq: { month: m } }) || []).filter(function (r) { return r.staff_id === me; })[0];
     $('rpNote').innerHTML = '<div class="note" style="margin-bottom:14px">'
-      + (mine0 ? '<b>이 달은 마감되었습니다</b> — 확정 금액 ' + won(mine0.amount + (mine0.kw_amount || 0)) + '원'
-          + (mine0.community_payout ? ' (소속 공동체로 함께 보내 드립니다)' : ' (공동체에 속하지 않아 개별로 보내 드립니다)') + '.'
+      + (mine0 ? '<b>이 달은 마감되었습니다.</b> 확정 금액은 ' + won(mine0.amount + (mine0.kw_amount || 0)) + '원이며 '
+          + (mine0.community_payout ? '소속 공동체로 함께 보내 드립니다' : '공동체에 속하지 않아 개별로 보내 드립니다') + '.'
         : '<b>아직 마감 전입니다.</b> 한 일이 생길 때마다 늘어납니다. 관리자가 달을 마감하면 확정됩니다.')
-      + '<br>원고 통과는 <b>통과시킨 날</b>, 노출 확인은 <b>확인한 날</b>의 달로 셉니다. '
+      + '<br>원고 통과는 통과시킨 날, 노출 확인은 확인한 날의 달로 셉니다. '
       + '마감 전에 그 앞 달이 마감되지 않았다면 앞 달 몫이 이 달 마감에 함께 붙을 수 있습니다.</div>';
 
     var rows = [];
@@ -6635,7 +6638,7 @@
       u: function () { return baseUrl(); }, who: '승인된 블로거·직원에게' },
     { t: 'ESC 홈페이지', d: '학원이 의뢰를 넣는 곳입니다. 블로그 홍보 신청도 여기서 받습니다.',
       u: function () { return 'https://intomarketing.co.kr/hakwon/'; }, who: '학원에게' },
-    { t: 'ESC 관리자 (의뢰 관리)', d: '인력·컨텐츠·마케팅 의뢰를 관리하고, 직원 권한을 주는 곳입니다.',
+    { t: 'ESC 관리자 (의뢰 관리)', d: '인력·컨텐츠·마케팅 의뢰를 관리하고 직원 권한을 주는 곳입니다.',
       u: function () { return 'https://intomarketing.co.kr/hakwon/admin.html'; }, who: 'ESC 직원만' },
     { t: '인투마케팅 (회사 대표)', d: '회사 대표 페이지입니다. 학원지원센터는 이 밑에 있습니다.',
       u: function () { return 'https://intomarketing.co.kr/'; }, who: '누구에게나' },
@@ -6783,12 +6786,12 @@
             ? (tp.status === 'approved'
                 ? '이분은 원고를 다 써서 검수까지 통과했습니다.\n'
                 : '이분은 이미 원고를 냈습니다.\n')
-              + '약관 제10조③ — 원고를 낸 글은 최고관리자만 회수합니다.\n'
+              + '약관 제10조③에 따라 원고를 낸 글은 최고관리자만 회수합니다.\n'
               + (payIt
                   ? '회수해도 이 글의 원고료' + (tp.payout_rate ? '(' + won(tp.payout_rate) + '원)' : '')
-                    + '는 지급됩니다 (제13조⑨ · 회수한 달 정산에 붙습니다).\n'
+                    + '는 지급됩니다. 제13조⑨에 따라 회수한 달 정산에 붙습니다.\n'
                   : noPayRework
-                    ? '수정 요청에 응하지 않아 «다시 낼 날»이 지난 글입니다.\n'
+                    ? '수정 요청에 응하지 않아 다시 낼 날을 넘긴 글입니다.\n'
                       + '이 글의 원고료는 지급되지 않습니다 (제13조⑨ 단서 · 2026-11-04 시행).\n'
                     : '이 주문은 9월 25일 약관 시행 전에 성립해 (부칙②)\n'
                       + '이 글의 원고료는 지급되지 않습니다.\n')
@@ -6804,12 +6807,12 @@
                     + '마감을 넘기면 고객 환불이 생깁니다.\n\n'
                   : '')
             : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
-        + '글은 그대로 남고, 맡은 사람만 떨어집니다 (다시 나눠주실 수 있습니다).';
+        + '글은 그대로 남고 맡은 사람만 빠집니다. 다시 나눠 주실 수 있습니다.';
       if (!confirm(msg)) return;
       var why = prompt('왜 회수하는지 한 줄 적어 주세요.\n(그대로 ' + (tb.name || '본인') + ' 님께 갑니다)',
         '같은 업체 글이 한 분께 몰려서 조정합니다.');
       if (why === null) return;
-      if (!why.trim()) { A.toast('회수 사유를 적어 주세요 — 블로거에게 그대로 갑니다'); return; }
+      if (!why.trim()) { A.toast('회수 사유를 적어 주세요. 적은 내용이 블로거에게 그대로 갑니다'); return; }
       if (wrote && !confirm('마지막 확인입니다.\n\n'
           + (tb.name || '이분') + ' 님이 낸 원고를 두고 회수합니다. 정말 진행할까요?')) return;
       t.disabled = true;
@@ -6841,7 +6844,7 @@
       if (!kres) { A.toast('복사할 문구가 없습니다'); return; }
       try { await navigator.clipboard.writeText(kwMsg(kres));
         A.toast('문구를 복사했습니다'
-          + (kres.phone ? ' — ' + kres.phone + ' 으로 보내세요' : ' — 연락처가 없습니다'));
+          + (kres.phone ? '. ' + kres.phone + ' 으로 보내세요' : '. 연락처가 없습니다'));
       } catch (err) { A.toast('복사에 실패했습니다'); }
       return;
     }
@@ -6920,7 +6923,7 @@
         var ed = er.data || {};
         if (er.error || ed.error) throw new Error(ed.error || er.error.message);
         await A.loadAdmin();
-        A.toast('지웠습니다 — ' + (ed.tag || '') + ' · 알림 ' + (ed.notes_deleted || 0) + '건 지움');
+        A.toast('지웠습니다. ' + (ed.tag ? ed.tag + ', ' : '') + '알림 ' + (ed.notes_deleted || 0) + '건도 함께 지웠습니다');
       } catch (err) { A.toast('실패: ' + err.message); }
       t.disabled = false; t.innerHTML = '<i class="ic i-trash-2"></i> 개인정보 지우기';
       return;
@@ -6970,7 +6973,7 @@
         + '그다음 이 메시지를 지워 주세요. 여기 적힌 비밀번호가 대화방에 계속 남습니다.'
         + '\n\n' + (A.SIGN || 'ESC 이은총 드림');
       navigator.clipboard.writeText(msg2).then(function () {
-        A.toast('문구를 복사했습니다 — ' + (w2.phone || '연락처 없음') + ' 으로 보내세요');
+        A.toast('문구를 복사했습니다' + (w2.phone ? '. ' + w2.phone + ' 으로 보내세요' : '. 연락처가 없습니다'));
       }, function () { A.toast('복사에 실패했습니다'); });
       return;
     }
@@ -7056,7 +7059,7 @@
       if (!who) { A.toast('이 사람을 찾을 수 없습니다'); return; }
       if (!confirm(who.name + ' 님의 비밀번호를 새로 만들까요?\n\n'
         + '지금 쓰던 비밀번호는 즉시 못 쓰게 됩니다.\n'
-        + '새 비밀번호는 이 화면에 한 번만 보이니, 본인에게 꼭 전해 주세요.')) return;
+        + '새 비밀번호는 이 화면에 한 번만 보입니다. 본인에게 꼭 전해 주세요.')) return;
       t.disabled = true; t.textContent = '만드는 중…';
       try {
         var rr = await A.sb.functions.invoke('reset-password', { body: { blogger_id: who.id } });
@@ -7087,7 +7090,7 @@
       if (!box) return;
       var v = A.normNid(box.value);
       if (!A.NID_OK.test(v)) {
-        A.toast('네이버 아이디 형식이 아닙니다 — 영문 소문자·숫자·_·- 만, 3~20자');
+        A.toast('네이버 아이디 형식이 아닙니다. 영문 소문자, 숫자, _, -만 쓸 수 있고 3~20자입니다');
         return;
       }
       t.disabled = true;
@@ -7170,7 +7173,7 @@
         if (why === null) return;
         if (!why.trim()) { A.toast('사유를 적어 주세요'); return; }
       } else if (!confirm(ids.length + '명을 ' + word + '할까요?'
-        + (act === 'approved' ? '\n\n모두 1단계로 시작하고, 승인 알림이 각자에게 만들어집니다.' : ''))) return;
+        + (act === 'approved' ? '\n\n모두 1단계로 시작합니다. 승인 알림도 한 사람씩 따로 만듭니다.' : ''))) return;
 
       var btns = document.querySelectorAll('[data-bulk]');
       btns.forEach(function (b) { b.disabled = true; });
@@ -7212,7 +7215,7 @@
           + '꼭 필요한 것은 아니니 어려우시면 넘어가셔도 됩니다. '
           + '단계를 올릴 때 참고만 하는 숫자입니다.' + sign;
       navigator.clipboard.writeText(txt).then(function () {
-        A.toast('문구를 복사했습니다 — ' + (who.phone || '연락처 없음') + ' 으로 보내세요');
+        A.toast('문구를 복사했습니다' + (who.phone ? '. ' + who.phone + ' 으로 보내세요' : '. 연락처가 없습니다'));
       }, function () { A.toast('복사에 실패했습니다'); });
       return;
     }
@@ -7356,7 +7359,7 @@
       var qv = window.prompt(src.academy_name + ' — 같은 조건으로 새 주문을 만듭니다.\n\n'
         + '· 복사하는 것 : 단가 · 업체 정보 · 글감 · 사진' + (src.is_practice ? ' · 연습 주문 원고료' : '') + '\n'
         + '· 새로 하는 것 : 입금 확인 → 자료 확인 → [의뢰 시작] → 30일\n'
-        + '· 키워드는 복사하지 않습니다 — 같은 검색어로 또 쓰면 글끼리 겹칩니다\n\n'
+        + '· 키워드는 복사하지 않습니다. 같은 검색어로 또 쓰면 글끼리 겹칩니다\n\n'
         + '몇 편으로 할까요?', String(src.total_qty || ''));
       if (qv == null) return;
       var qn2 = parseInt(qv, 10);
@@ -7364,7 +7367,7 @@
       t.disabled = true;
       try {
         await A.rpc('order_copy', { p_order: src.id, p_qty: qn2 });
-        A.toast('새 주문 ' + qn2 + '편을 만들었습니다 — 입금 확인 뒤 자료를 확인하고 [의뢰 시작]을 눌러 주세요. 키워드는 새로 만들어 주세요');
+        A.toast('새 주문 ' + qn2 + '편을 만들었습니다. 입금 확인 뒤 자료를 확인하고 [의뢰 시작]을 눌러 주세요. 키워드는 새로 만들어 주세요');
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
@@ -7392,7 +7395,7 @@
             + (pr.now_started ? ' · 바로 맡기실 수 있습니다' : '')
             + (pr.deadline_cleared ? ' · 마감 없앰' : '')
             + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편도 바꿈)' : '')
-          : '연습 주문을 껐습니다 — 마감은 다시 안 생기니 필요하면 따로 넣어 주세요'
+          : '연습 주문을 껐습니다. 마감은 다시 안 생기니 필요하면 따로 넣어 주세요'
             + (pr.updated_posts ? ' (이미 맡긴 글 ' + pr.updated_posts + '편은 단계 단가로 돌림)' : ''));
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
@@ -7482,9 +7485,9 @@
       try {
         await A.rpc('order_start', { p_order: so.id });
         await A.loadAdmin();
-        A.toast('시작했습니다. 주문 마감 ' + mdKo(sdl)
-          + (copied ? ' — 업체에 보낼 시작 안내 문구를 복사했습니다'
-                    : ' — 안내 문구는 [시작 안내 문구 복사]로 꺼내실 수 있습니다'));
+        A.toast('시작했습니다. 주문 마감은 ' + mdKo(sdl) + '입니다'
+          + (copied ? '. 업체에 보낼 시작 안내 문구를 복사했습니다'
+                    : '. 안내 문구는 [시작 안내 문구 복사]로 꺼내실 수 있습니다'));
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
     }
@@ -7511,7 +7514,7 @@
       if (!po.late_exempt && A.today() < '2026-09-25'
           && !confirm('약관 시행(9/25) 전 입금입니다.\n\n'
             + '약관 부칙②에 따라 이 주문(' + (po.academy_name || '') + ')은 새 약관 밖이라 '
-            + '예외 주문이 됩니다 — 주문 마감을 넘겨도 환불 · 원고료 제외가 없습니다.\n\n입금 확인을 계속할까요?')) return;
+            + '예외 주문이 됩니다. 주문 마감을 넘겨도 환불이나 원고료 제외가 없습니다.\n\n입금 확인을 계속할까요?')) return;
       t.disabled = true;
       try {
         await A.rpc('order_set_paid', {
@@ -7782,7 +7785,7 @@
       try {
         await A.rpc('blogger_set_edu_exempt', { p_blogger: t.dataset.eexempt, p_on: exOn });
         await A.loadAdmin();
-        A.toast(exOn ? exName + ' 님 교육을 면제했습니다 — 이제 글을 받을 수 있습니다'
+        A.toast(exOn ? exName + ' 님 교육을 면제했습니다. 이제 글을 받을 수 있습니다'
           : exName + ' 님 교육 면제를 껐습니다');
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
@@ -7949,7 +7952,7 @@
       + '<div class="row">' + commPick('eduComm3' + (TK === 'review' ? 'R' : ''))
       + '<button class="btn btn-s" data-attclose="1">닫기</button></div></div>'
       + '<div class="mono" style="margin-bottom:8px">못 온 사람이 녹화본을 보고 낸 요약은 '
-      + '<b>「낸 내용 확인하기」</b>에서 읽고 통과시키시면 됩니다.</div>'
+      + '[낸 내용 확인하기]에서 읽고 통과시키시면 됩니다.</div>'
       + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th>'
       + '<th>지금</th><th></th></tr></thead><tbody>'
       + appr.map(function (p) {
