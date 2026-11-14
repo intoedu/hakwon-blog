@@ -46,18 +46,18 @@
     }).join('');
   }
   function splitBox() {
-    return '<details class="outbox" style="margin-top:18px"><summary><i class="ic i-coins"></i> 업체가 낸 돈이 어떻게 나뉘는지'
-      + '<span class="mono">— 일반 ' + won(sale().normal) + '원 · 파트너 ' + won(sale().premium) + '원</span></summary>'
+    return '<details class="outbox" style="margin-top:18px"><summary><i class="ic i-coins"></i> 업체가 낸 돈이 나뉘는 방식'
+      + '<span class="mono">일반 ' + won(sale().normal) + '원 · 파트너 ' + won(sale().premium) + '원</span></summary>'
       + '<div class="obody">'
       + '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>주문 갈래 · 단계</th><th>업체가 냄</th><th>블로거</th>'
       + '<th>검수자</th><th>공동체</th><th>블로그센터</th></tr></thead><tbody>'
       + splitRows('normal') + splitRows('premium') + '</tbody></table></div>'
-      + '<div class="note" style="margin-top:12px"><b>판매가는 부가세가 포함된 금액입니다.</b> '
+      + '<div class="note" style="margin-top:12px">판매가는 부가세가 포함된 금액입니다. '
       + '일반 10,000원이면 부가세 909원은 블로그센터 몫에서 나갑니다.<br>'
-      + '<b>금액은 글마다 굳습니다.</b> 원고료는 글을 맡길 때, 검수 수당은 검수할 때 그 글에 적힙니다. '
-      + '여기 값을 바꿔도 이미 맡긴 글 · 검수한 글의 금액은 그대로입니다.<br>'
-      + '<b>공동체 운영비</b>는 글이 올라가 확인까지 끝나면 그 블로거의 공동체에 붙습니다. '
+      + '원고료는 글을 맡길 때, 검수 수당은 검수할 때 그 글에 적힙니다. '
+      + '한 번 적힌 금액은 여기 값을 바꿔도 달라지지 않습니다.<br>'
+      + '공동체 운영비는 글이 올라가 확인까지 끝나면 그 블로거의 공동체에 붙습니다. '
       + '공동체가 없는 분의 몫은 블로그센터에 남습니다.</div>'
       + '</div></details>';
   }
@@ -173,7 +173,7 @@
       el0.innerHTML = A.ORDERS.map(function (o) {
         var s = kwMade(o.id);
         return '<option value="' + o.id + '">' + esc(orderLabel(o)) + ' (' + o.total_qty + '편)'
-          + (s.made ? ' — 이미 ' + s.made + '편 만듦' : ' — 아직 안 만듦') + '</option>';
+          + (s.made ? ' · 이미 ' + s.made + '편 만듦' : ' · 아직 안 만듦') + '</option>';
       }).join('') || '<option value="">주문이 없습니다</option>';
       if (k0) el0.value = k0;
     }
@@ -189,7 +189,7 @@
       el1.innerHTML = sorted.map(function (o) {
         var n = left(o.id);
         return '<option value="' + o.id + '">' + esc(orderLabel(o))
-          + (n ? ' — 맡길 글 ' + n + '편' : ' — 다 맡김') + '</option>';
+          + (n ? ' · 맡길 글 ' + n + '편' : ' · 다 맡김') + '</option>';
       }).join('') || '<option value="">주문이 없습니다</option>';
       if (k1 && A.ORDERS.some(function (o) { return o.id === k1; })) el1.value = k1;
     }
@@ -211,7 +211,7 @@
   /* ═══ 오늘 할 일 ═══ */
   function renderDash() {
     $('flowMap').innerHTML =
-      '<h4>전체 흐름 — 왼쪽 메뉴가 이 순서입니다</h4>'
+      '<h4>전체 흐름 · 왼쪽 메뉴 순서와 같습니다</h4>'
       + '<div class="fsub">누르면 그 화면으로 갑니다. 처음이시면 1번부터 차례로 보세요.</div>'
       + '<div class="flowrow">'
       + fgroup('사람을 모읍니다', [[1, '블로거 관리', 'staff'], [2, '블로거 교육', 'edu']])
@@ -253,7 +253,7 @@
     if (unass) todo.push(job('담당자 미정 ' + unass + '편',
       '한 번에 맡길 수 있습니다', 'assign', '5 글 나눠주기 →'));
     if (wait) todo.push(job('승인 기다리는 사람 ' + wait + '명',
-      '블로그를 열어보고 판단하세요 · 1명당 1분', 'staff', '1 블로거 관리 →'));
+      '블로그를 열어보고 판단하세요. 1명당 1분이면 됩니다.', 'staff', '1 블로거 관리 →'));
     /* 주문 마감 7일 안 · 안 올라간 글 있음 — 돈이 걸린 일이라 맨 위에 둡니다 */
     A.ORDERS.forEach(function (o) {
       var s = soonInfo(o); if (!s) return;
@@ -267,15 +267,15 @@
       if (!o.paid_at || o.started_at || o.status === 'done' || o.status === 'closed') return;
       var bd = bizDaysSince(o.paid_at);
       if (bd < 3) return;
-      todo.unshift(job('입금 ' + bd + '영업일 지남 · ' + o.academy_name + ' ' + (o.total_qty || 0) + '편 — 아직 [의뢰 시작] 안 누름',
-        '고객 화면에 「아직 시작 안 됨」으로 보입니다. 자료를 확인하고 [의뢰 시작]을 눌러 주세요 (입금 ' + o.paid_at + ')',
+      todo.unshift(job('입금 ' + bd + '영업일이 지났는데 ' + o.academy_name + ' ' + (o.total_qty || 0) + '편의 [의뢰 시작]을 아직 안 눌렀습니다',
+        o.paid_at + '에 입금된 주문인데 고객 화면에는 아직 시작하지 않은 것으로 보입니다. 자료를 확인하고 [의뢰 시작]을 눌러 주세요.',
         'orders', '3 주문 · 입금 →', true));
     });
     var cand = candidates();
     if (cand.length) todo.push(job('승급 후보 ' + cand.length + '명',
       '기준을 넘었습니다. 확인하고 올려주세요', 'staff', '단계 관리 →'));
     $('dashTodo').innerHTML = todo.length ? todo.join('')
-      : '<div class="empty">지금 급한 일은 없습니다. 잘 돌아가고 있습니다.</div>';
+      : '<div class="empty">지금 급한 일은 없습니다.</div>';
 
     /* 끝난 주문(다 끝냄·종료, 또는 ESC 관리자에서 의뢰를 '완료'로 바꾼 것)은 맨 아래로 */
     function closed(o) {
@@ -411,7 +411,7 @@
   }
   /* 약관 · 개인정보 · 알림 동의 (2026-09-21) — 가입할 때 받고, 옛 분들은 로그인할 때 한 번 받습니다 */
   function agreeCell(p) {
-    if (!p.terms_agreed_at) return '<span class="chip c-wait">아직 — 다음 로그인 때 받습니다</span>';
+    if (!p.terms_agreed_at) return '<span class="chip c-wait">아직 안 받음 · 다음 로그인 때 받습니다</span>';
     return '<span class="chip c-ok">약관 · 개인정보 · 알림 동의</span> '
       + '<span class="mono">' + A.fdate(p.terms_agreed_at)
       + (p.agreed_terms_version ? ' · 약관 ' + esc(p.agreed_terms_version) + ' 판' : '') + '</span>';
@@ -442,11 +442,11 @@
         ? '보호자 ' + esc(p.guardian_name || '-')
           + (p.guardian_relation ? '(' + esc(p.guardian_relation) + ')' : '')
           + ' · ' + esc(fmtPhone(p.guardian_phone))
-        : '<b>보호자 정보가 아직 없습니다</b> — 먼저 넣어 주셔야 동의 화면이 열립니다')
+        : '보호자 정보가 아직 없습니다. 먼저 넣어 주셔야 동의 화면이 열립니다.')
       + '</div>'
       + (has && p.guardian_src === 'admin'
-        ? '<div class="mono" style="margin-top:4px">관리자가 넣은 번호입니다 — '
-          + '<b>알림톡은 자동으로 가지 않습니다.</b> 아래 문구를 복사해 보내 주세요.</div>' : '')
+        ? '<div class="mono" style="margin-top:4px">관리자가 넣은 번호라 '
+          + '알림톡이 자동으로 가지 않습니다. 아래 문구를 복사해 보내 주세요.</div>' : '')
       + '<div class="row" style="margin-top:8px">'
       + '<button class="btn btn-s" data-gset="' + p.id + '">'
       + (has ? '<i class="ic i-pencil"></i> 보호자 정보 고치기' : '보호자 정보 넣기') + '</button>'
@@ -473,8 +473,8 @@
           + '<input class="inp gnote" placeholder="예: 어머니 카톡으로 확인 2026-09-21"></div>'
           + '<button class="btn btn-s" data-guardian="' + p.id + '" data-on="1">동의 받았음으로 표시</button>'
           + '</div>'
-          + '<div class="mono" style="margin-top:6px">만 14세 미만은 법정대리인 동의가 있어야 '
-          + '개인정보를 처리할 수 있습니다 (개인정보보호법 제22조의2). 동의가 끝나야 승인할 수 있습니다.</div>')
+          + '<div class="mono" style="margin-top:6px">개인정보보호법 제22조의2에 따라 만 14세 미만은 법정대리인 동의가 있어야 '
+          + '개인정보를 처리할 수 있습니다. 동의가 끝나야 승인할 수 있습니다.</div>')
       + '</div>';
   }
 
@@ -527,7 +527,7 @@
     var btns = p.status === 'rejected'
       ? '<button class="btn btn-s" data-act="pending" data-id="' + p.id + '">다시 대기로</button>'
       : (p.consent_required && !p.guardian_consent_at
-          ? '<button class="btn btn-s" disabled title="보호자 동의가 끝나야 승인할 수 있습니다">승인 — 보호자 동의 대기</button>'
+          ? '<button class="btn btn-s" disabled title="보호자 동의가 끝나야 승인할 수 있습니다">승인 (보호자 동의 대기)</button>'
           : '<button class="btn btn-a btn-s" data-act="approved" data-id="' + p.id + '">승인 (1단계로 시작)</button>')
       + (p.status === 'hold' ? '' : '<button class="btn btn-s" data-act="hold" data-id="' + p.id + '">보류</button>')
       + '<button class="btn btn-s" data-act="rejected" data-id="' + p.id + '">거절</button>'
@@ -576,19 +576,19 @@
       + 'max-height:calc(100vh - 40px);overflow:auto">'
       + '<h3>' + esc(who.name) + ' 님의 새 비밀번호</h3>'
       + '<div class="note warn" style="margin:12px 0">'
-      + '<b>이 창을 닫으면 다시 못 봅니다.</b> 저장해 두지 않기 때문입니다. '
+      + '저장해 두지 않으니 <b>이 창을 닫으면 다시 볼 수 없습니다.</b> '
       + '지금 복사해서 본인에게 전해 주세요.</div>'
       + '<div style="font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:1px;'
       + 'text-align:center;padding:16px;background:var(--surface-2);border-radius:10px;'
       + 'border:1px solid var(--line);user-select:all">' + esc(pw) + '</div>'
       + '<div class="mono" style="margin-top:10px">아이디(이메일) · ' + esc(who.email || '-') + '</div>'
       + '<div class="note" style="margin-top:10px">본인이 들어가서 '
-      + '<b>왼쪽 아래 [<i class="ic i-key-round"></i> 비밀번호 바꾸기]</b>로 바꿀 때까지, 이 비밀번호가 카톡 대화방에 남습니다. '
+      + '왼쪽 아래 [<i class="ic i-key-round"></i> 비밀번호 바꾸기]로 바꾸기 전까지는 이 비밀번호가 카톡 대화방에 남아 있습니다. '
       /* ⚠️ 「바꾸라는 안내」 띠는 블로거 화면에만 있습니다. 블로거를 겸하지 않는
          직원에게는 안 뜨므로, 안 뜬다고 적어야 관리자가 직접 말해 줍니다. */
       + (A.PEOPLE.some(function (x) { return x.id === who.id; })
-          ? '들어오시면 <b>바꾸라는 안내가 뜹니다.</b>'
-          : '<b>직원 계정이라 안내 띠가 뜨지 않습니다</b> — 바꾸시라고 꼭 말씀해 주세요.')
+          ? '들어오시면 바꾸라는 안내가 뜹니다.'
+          : '직원 계정이라 안내 띠가 뜨지 않습니다. 바꾸시라고 꼭 말씀해 주세요.')
       + '</div>'
       + '<div class="row" style="margin-top:16px">'
       + '<button class="btn btn-p" data-pwcopy="' + esc(pw) + '"><i class="ic i-clipboard-copy"></i> 보낼 문구 복사</button>'
@@ -612,8 +612,8 @@
         + 'autocorrect="off" spellcheck="false"> '
         + '<button class="btn btn-p btn-s" data-nidsave="' + p.id + '">저장</button> '
         + '<button class="btn btn-s" data-nidcancel="' + p.id + '">취소</button>'
-        + '<div class="mono" style="margin-top:4px">blog.naver.com/<b>아이디</b> · '
-        + '주소를 통째로 붙여넣으셔도 됩니다 · <b>대문자는 소문자로 바꿔 저장됩니다</b></div></span>';
+        + '<div class="mono" style="margin-top:4px">blog.naver.com/ 뒤의 아이디를 적습니다. '
+        + '주소를 통째로 붙여넣으셔도 됩니다. 대문자는 소문자로 바꿔 저장됩니다.</div></span>';
     }
     return '<span data-nidbox="' + p.id + '">'
       + '<a class="mono" href="' + esc(p.blog_url) + '" target="_blank" rel="noopener">'
@@ -681,7 +681,7 @@
       f: function (p) { return !stat(p.id).ready; } },
     { k: 'edu_ok',   ko: '교육 이수',   tip: '교육이 끝나 글을 받을 수 있습니다',
       f: function (p) { return !!stat(p.id).ready; } },
-    { k: 'practice', ko: '연습 필요',   tip: '교육은 끝났는데 연습글을 다 올리지 않았습니다 (교육 이수 안에 들어갑니다)',
+    { k: 'practice', ko: '연습 필요',   tip: '교육은 끝났는데 연습글을 다 올리지 않았습니다. 교육 이수에도 들어갑니다.',
       f: function (p) { return !!stat(p.id).ready && needsPractice(p.id); } }
   ];
   /* 고른 칩 중 하나라도 해당하면 포함 (합집합) */
@@ -704,8 +704,8 @@
       }).join('')
       + (LIST_FILTERS.length
         ? '<span class="mono" style="margin-left:8px;align-self:center">'
-          + '고른 ' + LIST_FILTERS.length + '가지에 해당하는 사람 <b>' + picked + '명</b>'
-          + (LIST_FILTERS.length > 1 ? ' <span style="color:var(--muted)">— 하나라도 해당하면 셉니다</span>' : '')
+          + '고른 ' + LIST_FILTERS.length + (LIST_FILTERS.length > 1 ? '가지 중 하나라도' : '가지에')
+          + ' 해당하는 사람 <b>' + picked + '명</b>'
           + '</span>'
         : '');
   }
@@ -815,8 +815,8 @@
       + kvrow('로그인', '<span class="mono">' + esc(p.email || '-') + '</span> '
         + '<button class="btn btn-s" data-pwreset="' + p.id + '" '
         + 'title="비밀번호를 잊으셨을 때 새로 만들어 드립니다"><i class="ic i-key-round"></i> 비밀번호 초기화</button>'
-        + '<div class="mono" style="margin-top:4px">비밀번호는 <b>블로그 센터 전용</b>입니다 — '
-        + '메일 비밀번호가 아닙니다</div>')
+        + '<div class="mono" style="margin-top:4px">메일 비밀번호와 따로 쓰는 '
+        + '블로그 센터 전용 비밀번호입니다</div>')
       + kvrow('이웃 수', '<span class="mono">본인 신고 ' + esc(p.neighbors_band || '-') + '</span>'
         + (p.neighbors != null ? ' · 확인 <b>' + won(p.neighbors) + '명</b>'
           + (p.neighbors_checked_at ? ' <span class="mono">(' + A.fdate(p.neighbors_checked_at) + ')</span>' : '')
@@ -860,7 +860,7 @@
       return '<div class="note" style="margin-top:14px">'
         + '<b>개인정보를 지웠습니다</b> <span class="mono">' + A.fdate(done.erased_at) + '</span>'
         + (done.auth_blocked ? ' <span class="chip c-ok">로그인 막음</span>'
-           : ' <span class="chip c-bad">로그인이 안 막혔습니다 — 다시 눌러 주세요</span>')
+           : ' <span class="chip c-bad">로그인이 안 막혔으니 다시 눌러 주세요</span>')
         + '<div class="mono" style="margin-top:4px">· 사유: ' + esc(done.reason) + '</div>'
         + '<div class="mono">· 지운 알림 ' + (done.notes_deleted || 0) + '건 · '
         + '이름을 가린 기록 ' + ((done.logs_hidden || 0) + (done.notes_hidden || 0)) + '건</div>'
@@ -869,8 +869,8 @@
     }
     if (!A.IS_OWNER) return '';
     return '<div class="note warn" style="margin-top:14px">'
-      + '<b>개인정보 지우기</b> — 앞으로 쓰지 않기로 한 분의 이름 · 생년월일 · 연락처 · '
-      + '블로그 주소 · 보호자 정보를 되돌릴 수 없게 지우고, 로그인을 영구히 막습니다.'
+      + '[개인정보 지우기]를 누르면 앞으로 쓰지 않기로 한 분의 이름, 생년월일, 연락처, '
+      + '블로그 주소, 보호자 정보가 <b>되돌릴 수 없게</b> 지워지고 로그인이 영구히 막힙니다.'
       + '<div class="mono" style="margin-top:4px">글과 원고료 지급 내역은 남습니다. '
       + '먼저 <b>쉬게 하기</b>와 <b>맡은 글 회수</b>를 끝내 주세요.</div>'
       + '<div class="row" style="margin-top:8px">'
@@ -934,20 +934,20 @@
        입금도 마감도 업체 알림도 없습니다. 「연습 주문」을 켜는 순간 서버가 시작까지
        같이 해 주므로, 여기서는 그렇게 되었다고 알려 주기만 합니다. */
     if (o.is_practice) {
-      return '<div class="note" style="margin-top:14px"><b><i class="ic i-flask-conical"></i> 연습 주문입니다.</b> '
-        + '입금 확인도, 의뢰 시작도, 주문 마감도 없습니다. '
-        + '<b>바로 블로거에게 맡기실 수 있습니다.</b>'
+      return '<div class="note" style="margin-top:14px"><i class="ic i-flask-conical"></i> 연습 주문이라 '
+        + '입금 확인, 의뢰 시작, 주문 마감이 없습니다. '
+        + '바로 블로거에게 맡기실 수 있습니다.'
         + '<div class="mono" style="margin-top:7px">'
-        + '· 편수를 맞추지 않아도 됩니다 — 글은 얼마든지 더 만드실 수 있습니다<br>'
-        + '· 마감이 없어 「마감 지남」으로 뜨지 않습니다<br>'
+        + '· 편수를 맞출 필요가 없어 글을 얼마든지 더 만드실 수 있습니다<br>'
+        + '· 마감이 없으니 마감 지남 표시도 뜨지 않습니다<br>'
         + '· 업체에는 아무 알림도 가지 않습니다<br>'
         + '· 블로거 원고료는 주문 카드에서 정한 <b>편당 '
         + (o.practice_rate == null ? '(아직 안 정함)' : won(o.practice_rate) + '원') + '</b>'
         + '</div></div>';
     }
     if (!o.started_at) {
-      return '<div class="note warn" style="margin-top:14px"><b>의뢰 시작 전입니다.</b> '
-        + '담당자가 카톡으로 자료를 받고 확인한 뒤 누르세요. <b>누른 날부터 30일</b>이 주문 마감이고, '
+      return '<div class="note warn" style="margin-top:14px">의뢰 시작 전입니다. '
+        + '담당자가 카톡으로 자료를 받고 확인한 뒤 누르세요. 주문 마감은 누른 날부터 30일입니다. '
         + '시작 전에는 블로거에게 맡길 수 없습니다.'
         + '<div class="row" style="margin-top:10px">'
         + '<button class="btn btn-p btn-s" data-start="' + o.id + '">▶ 의뢰 시작</button>'
@@ -1071,10 +1071,10 @@
       b.classList.toggle('on', b.dataset.pmrole === PM.role);
     });
     $('pmLead').innerHTML = PM.role === 'none'
-      ? '검수·관리 권한이 사라지고 <b>글을 다시 받게</b> 됩니다.'
+      ? '검수·관리 권한이 사라지고 다시 글을 받습니다.'
       : PM.role === 'admin'
-        ? '주문·배정·정산까지 <b>전부</b> 하실 수 있게 됩니다.'
-        : '원고를 보고 <b>통과·수정요청</b>을 하실 수 있게 됩니다. 담당 공동체는 올린 뒤에 정하시면 됩니다.';
+        ? '주문·배정·정산까지 모두 하실 수 있습니다.'
+        : '원고를 보고 통과·수정요청을 하실 수 있습니다. 담당 공동체는 올린 뒤에 정하시면 됩니다.';
     $('pmAlsoRow').classList.toggle('hide', PM.role === 'none');
   }
   $('pmCancel').onclick = function () { $('promoteBox').classList.add('hide'); };
@@ -1160,7 +1160,7 @@
     var m = $('holiMsg');
     if (m) m.textContent = (A.HOLIDAYS || []).length
       ? (A.HOLIDAYS || []).length + '일 적혀 있습니다'
-      : '아직 없습니다 — 지금은 토·일만 빠집니다';
+      : '아직 없어서 지금은 토·일만 빠집니다';
   }
   if ($('holiSave')) $('holiSave').onclick = async function () {
     var lines = ($('holidays').value || '').split('\n')
@@ -1197,12 +1197,12 @@
           + '<td class="num">' + n + '명</td></tr>';
       }).join('') + '</tbody></table></div>'
       + '<div class="note" style="margin-top:12px">'
-      + '<b>적는 값은 일반 회원 글(편당 ' + won(sale().normal) + '원) 기준입니다.</b> '
-      + '파트너 회원 글(편당 ' + won(sale().premium) + '원)은 등급과 상관없이 '
-      + '<b>' + won(premRate()) + '원</b>이며, 아래 「파트너 · 검수 · 공동체 금액」에서 고칩니다.</div>'
+      + '적는 값은 편당 ' + won(sale().normal) + '원인 일반 회원 글 기준입니다. '
+      + '편당 ' + won(sale().premium) + '원인 파트너 회원 글은 등급과 상관없이 '
+      + won(premRate()) + '원입니다. 이 금액은 아래 파트너 주문 · 공동체 운영비 칸에서 고칩니다.</div>'
       + splitBox()
       + '<div class="row" style="margin-top:12px"><button class="btn btn-p" id="btnSaveLevels">단계 설정 저장</button>'
-      + '<span class="mono">기준은 자동 승급이 아니라 후보를 골라내는 용도입니다</span></div>'
+      + '<span class="mono">기준은 승급 후보를 골라내는 데만 씁니다. 자동으로 올리지는 않습니다.</span></div>'
 
       /* 검수자 수당 */
       + '<div class="sec" style="margin-top:26px">검수자 수당 '
@@ -1219,9 +1219,9 @@
       + '</div>'
       + '<div class="row" style="margin-top:14px">'
       + '<button class="btn btn-p" id="btnSaveReview">검수 수당 저장</button>'
-      + '<span class="mono">일반 주문 글 한 편당 합계 <b>'
-      + won((Number(revRate().approve) || 0) + (Number(revRate().verify) || 0)) + '원</b>'
-      + ' · 바꿔도 <b>이미 검수한 글의 금액은 안 변합니다</b></span></div></div>'
+      + '<span class="mono">일반 주문 글 한 편당 합계는 <b>'
+      + won((Number(revRate().approve) || 0) + (Number(revRate().verify) || 0)) + '원</b>입니다.'
+      + ' 바꿔도 이미 검수한 글의 금액은 그대로입니다.</span></div></div>'
 
       /* 파트너(프리미엄) 주문과 공동체 운영비 — 9/20 새 분배 */
       + '<div class="sec" style="margin-top:26px">파트너 주문 · 공동체 운영비 '
@@ -1257,8 +1257,8 @@
       + '</div>'
       + '<div class="row" style="margin-top:14px">'
       + '<button class="btn btn-p" id="btnSaveKw">검색어 변경 요금 저장</button>'
-      + '<span class="mono">업체에 받는 금액 = 두 칸 합계 <b id="kwFeeSum">' + won(kwFeeTotal()) + '원</b>'
-      + ' · 바꿔도 <b>이미 바꾼 글의 금액은 안 변합니다</b></span></div></div>';
+      + '<span class="mono">업체에서 받는 금액은 두 칸 합계 <b id="kwFeeSum">' + won(kwFeeTotal()) + '원</b>입니다.'
+      + ' 바꿔도 이미 바꾼 글의 금액은 그대로입니다.</span></div></div>';
 
     $('btnSaveLevels').onclick = saveLevels;
     $('btnSaveReview').onclick = saveReviewRate;
@@ -1734,7 +1734,7 @@
             + '<div class="mono" style="margin-top:3px">'
             + (m.check_question
               ? '확인 질문 · <b>' + esc(m.check_question) + '</b>'
-              : '확인 질문 없음 — 「영상 자료」에서 넣으실 수 있습니다')
+              : '확인 질문 없음 · [영상 자료]에서 넣으실 수 있습니다')
             + ' · 요약 ' + (m.min_chars || 150) + '자 이상</div></div>';
         }).join('') : '<span class="mono">영상 자료가 없습니다.</span>')
       + ((SESSIONS || []).length
@@ -1771,7 +1771,7 @@
     })).sort(function (a, b) { return (a.at || '') > (b.at || '') ? -1 : 1; }).slice(0, 20);
 
     box.innerHTML = head
-      + (waitHtml || '<div class="note ok">확인을 기다리는 것이 없습니다. <i class="ic i-thumbs-up"></i></div>')
+      + (waitHtml || '<div class="note ok">확인을 기다리는 것이 없습니다.</div>')
       + (done.length ? '<div class="sec">이미 본 것</div>'
         + '<div class="tblbox tblscroll"><table><thead><tr><th>이름</th><th>공동체</th><th>종류</th>'
         + '<th>무엇</th><th>결과</th><th>누가 · 언제</th></tr></thead><tbody>'
@@ -1800,8 +1800,8 @@
       + '<span class="chip c-off">' + (a.note || '').length + '자</span></div></div>'
       + (sess.replay_url
         ? '<div class="mono" style="margin-bottom:8px">'
-          + '<a href="' + esc(sess.replay_url) + '" target="_blank" rel="noopener">녹화본 열기 ↗</a>'
-          + ' — 무엇을 봤어야 하는지 여기서 확인하세요</div>' : '')
+          + '무엇을 봤어야 하는지는 여기서 확인하세요. '
+          + '<a href="' + esc(sess.replay_url) + '" target="_blank" rel="noopener">녹화본 열기 ↗</a></div>' : '')
       + '<pre class="sumtext">' + esc(a.note || '') + '</pre>'
       + '<div class="row" style="margin-top:12px">'
       + '<button class="btn btn-a" data-attok="' + key + '">이수 처리</button>'
@@ -1838,7 +1838,7 @@
       + '<pre class="sumtext">' + esc(g.summary || '') + '</pre>'
       + '<div class="row" style="margin-top:12px">'
       + '<input class="inp" style="flex:1;min-width:180px" data-sumnote="' + key + '" '
-      + 'placeholder="한마디 (통과에도 다시쓰기에도 같이 갑니다)">'
+      + 'placeholder="통과든 다시쓰기든 함께 보낼 한마디">'
       + '<button class="btn btn-a" data-sumok="' + key + '">이수 처리</button>'
       + '<button class="btn" data-sumno="' + key + '">다시 써 달라기</button></div></div>';
   }
@@ -1858,13 +1858,13 @@
     if (oi) oi.innerHTML = RV
       ? '<div class="note ok" style="margin-bottom:18px">'
         + '<b>리뷰 주문은 아래에서 직접 만드시면 됩니다.</b> '
-        + '업체 이름·편수·마감일만 넣고 만든 뒤, 주문 카드에서 '
-        + '<b>네이버 지도 주소</b>와 <b>리뷰 구성</b>(어떤 리뷰를 몇 편, 무엇을 짚을지)을 채워 주세요. '
+        + '업체 이름과 편수, 마감일만 넣어 만든 다음 주문 카드에서 '
+        + '네이버 지도 주소와 리뷰 구성을 채워 주세요. 리뷰 구성에는 어떤 리뷰를 몇 편 쓰고 무엇을 짚을지 적습니다. '
         + '사진은 업체에서 받아 넣어 주시면 됩니다.</div>'
       : '<div class="note ok" style="margin-bottom:18px">'
-        + '<b>주문은 보통 홈페이지에서 저절로 들어옵니다.</b> '
-        + '업체가 신청하면 관리자페이지 의뢰 상세에 <b>[<i class="ic i-pen"></i> 블로그 주문 만들기]</b> 버튼이 생기고, '
-        + '그걸 누르면 지역·과목·대상·목적·정보팩·사진까지 여기로 그대로 넘어옵니다. '
+        + '주문은 보통 홈페이지에서 저절로 들어옵니다. '
+        + '업체가 신청하면 관리자페이지 의뢰 상세에 [<i class="ic i-pen"></i> 블로그 주문 만들기] 버튼이 생깁니다. '
+        + '그 버튼을 누르면 지역·과목·대상·목적 글감과 정보팩, 사진까지 여기로 그대로 넘어옵니다. '
         + '<b>손으로 만드실 일은 거의 없습니다.</b></div>';
 
     /* 편당 받는 돈 기본값 = 설정의 일반 회원 판매가 (9/20 10,000원) */
@@ -1874,11 +1874,11 @@
 
     var om = $('ordManual');
     if (om) om.innerHTML = RV
-      ? '<b>리뷰 주문은 여기서 만듭니다.</b> 업체 이름·편수·마감일을 넣고 만드시면 '
-        + '아래 목록에 뜹니다. 만든 뒤 그 카드에서 <b>지도 주소·리뷰 구성·사진</b>을 채워 주세요.'
-      : '<b>이럴 때만 쓰세요.</b> 업체가 전화·카톡으로 바로 주문했을 때, '
-        + '이미 거래하던 업체가 신청서 없이 재주문할 때, 우리가 먼저 제안해서 성사됐을 때.<br>'
-        + '<b>손으로 만들면 글감(지역·과목·대상·목적)과 사진이 비어 있습니다.</b> '
+      ? '<b>리뷰 주문은 여기서 만듭니다.</b> 업체 이름과 편수, 마감일을 넣고 만드시면 '
+        + '아래 목록에 뜹니다. 그다음 그 카드에서 지도 주소와 리뷰 구성, 사진을 채워 주세요.'
+      : '업체가 전화나 카톡으로 바로 주문했을 때, '
+        + '이미 거래하던 업체가 신청서 없이 다시 주문할 때, 우리가 먼저 제안해서 성사됐을 때만 쓰세요.<br>'
+        + '<b>손으로 만들면 지역·과목·대상·목적 글감과 사진이 비어 있습니다.</b> '
         + '아래 주문 카드에서 직접 채워 넣으셔야 합니다.';
     $('orderList').innerHTML = list.length ? list.map(function (o) {
       var p = prog(o.id);
@@ -1924,7 +1924,7 @@
           + fld(o, 'target_regions', '지역 (쉼표로 구분)') + fld(o, 'target_subjects', '과목')
           + fld(o, 'target_grades', '학년 · 대상') + fld(o, 'target_purposes', '목적')
           + '</div>'
-          + '<div style="margin-top:12px"><label class="f">정보팩 — 모든 글에 똑같이 들어갑니다</label>'
+          + '<div style="margin-top:12px"><label class="f">모든 글에 똑같이 들어가는 정보팩</label>'
           + '<textarea class="inp" data-of="info_pack" data-oid="' + o.id + '">' + esc(o.info_pack || '') + '</textarea></div>')
         + (RV ? '' : '<div class="row" style="margin-top:10px">'
         + ((o.photo_paths || []).length
@@ -1939,8 +1939,8 @@
             : '<span class="chip c-bad">사진 없음</span><span class="mono">업체에 요청하세요</span>') + '</div>')
         + (RV ? rvOrderBox(o) : outBox(o))
         + '<div class="sec" style="margin-top:16px">업체에 보낼 진행현황 주소 '
-        + '<small>로그인 없이 열립니다 · 이 업체 것만 보입니다 · '
-        + (RV ? '리뷰어' : '블로거') + ' 이름·단가는 안 보입니다</small></div>'
+        + '<small>로그인 없이 열리고 이 업체 것만 보입니다. '
+        + (RV ? '리뷰어' : '블로거') + ' 이름과 단가는 안 보입니다.</small></div>'
         + '<div class="row">'
         + '<input class="inp" style="flex:1;min-width:240px;font-family:var(--mono);font-size:12px" readonly '
         + 'value="' + esc(statusUrl(o)) + '" onclick="this.select()">'
@@ -1954,7 +1954,7 @@
         + (RV ? '' : '<button class="btn btn-p btn-s" data-saveo="' + o.id + '">글감 저장</button>')
         + '<button class="btn btn-s" data-gokw="' + o.id + '">'
         + (RV ? '4 리뷰 만들기 →' : '4 키워드 만들기 →') + '</button>'
-        + '<button class="btn btn-s" data-copyorder="' + o.id + '" title="이어서 하는 업체 — 편수 · 단가 · 업체 정보 · 사진을 그대로 복사한 새 주문">같은 조건으로 새 주문</button>'
+        + '<button class="btn btn-s" data-copyorder="' + o.id + '" title="이어서 하는 업체에 씁니다. 편수와 단가, 업체 정보, 사진을 그대로 복사해 새 주문을 만듭니다.">같은 조건으로 새 주문</button>'
         + '<span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
         + '<select class="inp" style="width:auto;padding:4px 8px;font-size:12px" data-ostatus="' + o.id + '">'
         + ['active', 'paused', 'done', 'ended'].map(function (s) {
@@ -2000,9 +2000,9 @@
     if (o.is_practice) return '';
     var s = soonInfo(o); if (!s) return '';
     return '<div class="msg err" style="margin:14px 0 0"><b>주문 마감 ' + (s.d === 0 ? '오늘' : s.d + '일 남음')
-      + ' (' + mdKo(o.deadline) + ') — 아직 안 올라간 글 ' + s.left + '편</b><br>' + soonText(s) + '<br>'
+      + ' (' + mdKo(o.deadline) + '). 아직 안 올라간 글이 ' + s.left + '편 있습니다.</b><br>' + soonText(s) + '<br>'
       + (o.late_exempt ? '이 주문은 예외라 마감을 넘겨도 환불 · 원고료 제외는 없습니다.'
-        : '마감을 넘기면 <b>그 편수만큼 환불</b>하고 <b>그 글 원고료는 없습니다</b>. 안 맡긴 글은 맡기고, 검수 대기는 먼저 보고, 통과했는데 안 올린 분께는 연락해 주세요.')
+        : '마감을 넘기면 <b>그 편수만큼 환불</b>하고 그 글 원고료는 없습니다. 안 맡긴 글은 맡겨 주세요. 검수 대기 글을 먼저 보시고 통과했는데 안 올린 분께는 연락해 주세요.')
       + '</div>';
   }
 
@@ -2020,7 +2020,7 @@
       + '<button class="btn btn-s" data-practicesave="' + o.id + '">저장</button>'
       + '<span class="mono">' + (o.is_practice
         ? (o.practice_rate == null ? '<b style="color:var(--bad)">원고료를 넣어야 블로거에게 맡길 수 있습니다</b>'
-          : '글 나눠주기에서 <b>「연습 필요」</b> 블로거에게 맡기세요')
+          : '글 나눠주기에서 연습 필요 블로거에게 맡기세요')
         : '체크하면 단계 단가 대신 이 금액이 나갑니다') + '</span></div>';
   }
 
@@ -2059,13 +2059,13 @@
         .reduce(function (a, r) { return a + r.qty; }, 0));
     return '<div class="sec" style="margin-top:16px">환불 <small>'
       + (mine.length ? mine.length + '건 · 돌려줄 것 ' + owed.length + '건' : '아직 없음')
-      + (o.late_exempt ? ' · 이 주문은 약관 시행 전이라 「마감 넘긴 글 원고료 없음」을 적용하지 않습니다' : '')
+      + (o.late_exempt ? ' · 이 주문은 약관 시행 전이라 마감을 넘긴 글도 원고료를 빼지 않습니다' : '')
       + (late ? ' · 주문 마감 넘긴 글 ' + late + '편' : '') + '</small></div>'
       + (owedLate ? '<div class="msg err" style="margin:0 0 10px"><b>돌려줄 날이 지난 환불이 ' + owedLate + '건 있습니다.</b> '
         + '확정한 날부터 <b>7영업일</b> 안에 입금하신 계좌로 돌려드리기로 되어 있습니다(약관 제7조⑦).</div>' : '')
       + (short && o.started_at && !o.is_practice ? '<div class="note warn" style="margin:0 0 10px"><b>주문 편수보다 만든 글이 '
-        + short + '편 적습니다.</b> 「4 키워드 만들기」에서 만들어 주세요. 마감을 넘겨 환불한 글도 '
-        + '<b>만들어서 올려 드립니다</b>(9/16 결정).</div>' : '')
+        + short + '편 적습니다.</b> [4 키워드 만들기]에서 만들어 주세요. 마감을 넘겨 환불한 글도 '
+        + '만들어서 올려 드립니다. 9/16에 그렇게 정했습니다.</div>' : '')
       + (mine.length ? '<div class="tblbox tblscroll"><table><thead><tr><th>사유</th><th>편수</th><th>금액</th>'
         + '<th>확정</th><th>돌려준 날</th><th>메모</th></tr></thead><tbody>'
         + mine.map(function (r) {
@@ -2081,7 +2081,7 @@
       + '<div class="row" style="margin-top:8px">'
       + '<button class="btn btn-s" data-refundcancel="' + o.id + '">중도 해지 환불</button>'
       + '<button class="btn btn-s" data-refundother="' + o.id + '">우리 잘못 · 그 밖 환불</button>'
-      + '<span class="mono">마감을 넘긴 글은 주문 마감 다음 날 아침 자동으로 환불이 만들어집니다</span></div>';
+      + '<span class="mono">마감을 넘긴 글은 주문 마감 다음 날 아침에 환불 건이 저절로 생깁니다</span></div>';
   }
 
   function kv(k, v) {
@@ -2107,7 +2107,7 @@
     var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
 
     return '<details class="outbox" open>'
-      + '<summary><i class="ic i-star"></i> 리뷰 구성 <span class="mono">— 어떤 리뷰를 몇 편 · 무엇을 짚을지</span></summary>'
+      + '<summary><i class="ic i-star"></i> 리뷰 구성 <span class="mono">어떤 리뷰를 몇 편 · 무엇을 짚을지</span></summary>'
       + '<div class="obody">'
 
       + '<div class="osec" style="margin-top:0">1 · 네이버 지도 주소</div>'
@@ -2118,18 +2118,18 @@
       + (o.map_url ? '<a class="btn btn-s" href="' + esc(o.map_url) + '" target="_blank" rel="noopener">열어보기 ↗</a>' : '')
       + '</div>'
       + '<div class="mono" style="margin-top:6px">'
-      + '<b>6번 「올라왔는지 확인」에서 이 주소로 바로 들어갑니다.</b> 꼭 넣어 주세요.</div>'
+      + '[6 올라왔는지 확인]에서 이 주소로 바로 들어가니 <b>꼭 넣어 주세요.</b></div>'
 
       + '<div class="osec">2 · 리뷰어가 직접 가나요</div>'
       + '<div class="row">'
       + '<select class="inp" style="width:auto" data-visit="' + o.id + '">'
-      + '<option value="visit"' + (o.visit_type !== 'material' ? ' selected' : '') + '>방문형 — 직접 가서 결제하고 씁니다</option>'
+      + '<option value="visit"' + (o.visit_type !== 'material' ? ' selected' : '') + '>방문형 (직접 가서 결제하고 씁니다)</option>'
       /* 🔴 자료형은 지금 고를 수 없습니다 — 아래 VISIT_MATERIAL_OK 참고.
          이미 자료형으로 저장된 주문이 있으면 그 주문에서만 보입니다(값이 조용히 바뀌면 안 됩니다) */
       + (VISIT_MATERIAL_OK || o.visit_type === 'material'
         ? '<option value="material"' + (o.visit_type === 'material' ? ' selected' : '')
-          + '>자료형 — 업체가 사진·내용을 주고 방문 안 합니다'
-          + (VISIT_MATERIAL_OK ? '' : ' (지금은 쓰지 않습니다)') + '</option>'
+          + '>자료형 (업체가 사진과 내용을 주고 방문은 안 합니다'
+          + (VISIT_MATERIAL_OK ? '' : '. 지금은 쓰지 않습니다') + ')</option>'
         : '')
       + '</select>'
       + '<button class="btn btn-s" data-savevisit="' + o.id + '">저장</button></div>'
@@ -2163,7 +2163,7 @@
           + (photoDonors(o).length
             ? '<button class="btn btn-s" data-pullpics="' + o.id + '"><i class="ic i-download"></i> 이전 주문 사진 가져오기</button>' : '')
           + '</div>'
-          + '<div class="mono" style="margin-top:7px">받은 때 — ' + A.picGroupText(o.photo_paths) + '</div>'
+          + '<div class="mono" style="margin-top:7px">받은 날: ' + A.picGroupText(o.photo_paths) + '</div>'
         : '<div class="note warn">사진이 없습니다. 리뷰는 사진이 생명이라 업체에 꼭 받으셔야 합니다.'
           + (photoDonors(o).length
             ? '<div class="row" style="margin-top:9px">'
@@ -2204,7 +2204,7 @@
         + '<input class="inp" data-rvq="' + oid + '_' + i + '" type="number" min="0" style="width:80px" '
         + 'placeholder="편수" value="' + (x.qty || '') + '">'
         + '<input class="inp" data-rvp="' + oid + '_' + i + '" style="flex:1;min-width:180px" '
-        + 'placeholder="세부 항목 — 쉼표로 (예: 짜장면, 짬뽕, 탕수육)" '
+        + 'placeholder="세부 항목을 쉼표로 구분 (예: 짜장면, 짬뽕, 탕수육)" '
         + 'value="' + esc((x.points || []).join(', ')) + '">'
         + '<button class="xdel" data-rvdel="' + oid + '_' + i + '" title="지우기">×</button></div>';
     }).join('');
@@ -2242,24 +2242,24 @@
           + '<pre>' + esc(t.body) + '</pre></details>';
       }).join('')
       : '<div class="note warn">아직 소재를 안 잘랐습니다. 학원이 보낸 글을 통째로 주면 '
-        + '같은 업체 글끼리 비슷해져 <b>유사문서로 통째로 검색에서 빠집니다.</b> '
-        + '<b>[4 키워드 만들기]</b> 아래 「학원이 보낸 글감 나누기」에서 잘라 주세요.</div>';
+        + '같은 업체 글끼리 비슷해져 <b>유사문서로 몽땅 검색에서 빠집니다.</b> '
+        + '[4 키워드 만들기] 화면 아래 학원이 보낸 글감 나누기 칸에서 잘라 주세요.</div>';
 
     var tinfo = !tps.length ? ''
       : mine.length
-        ? '<div class="mono" style="margin-top:8px">이 주문 글 ' + mine.length + '편 중 <b>'
-          + got + '편</b>에 소재가 붙어 있습니다'
-          + (got < mine.length ? ' — 4번 화면에서 <b>[글에 나눠 배정하기]</b>를 눌러 주세요' : '')
+        ? '<div class="mono" style="margin-top:8px">이 주문 글 ' + mine.length + '편 중 '
+          + got + '편에 소재가 붙어 있습니다'
+          + (got < mine.length ? '. 4번 화면에서 [글에 나눠 배정하기]를 눌러 주세요' : '')
           + '</div>'
         : '<div class="mono" style="margin-top:8px">아직 글이 없습니다. '
           + '키워드로 글을 먼저 만든 다음 <b>[글에 나눠 배정하기]</b>를 누르시면 붙습니다</div>';
 
     return '<details class="outbox">'
-      + '<summary><i class="ic i-package"></i> 블로거에게 나가는 정보 한눈에 보기'
-      + '<span class="mono">— ' + esc(sum) + '</span></summary>'
+      + '<summary><i class="ic i-package"></i> 블로거에게 나가는 정보'
+      + '<span class="mono">' + esc(sum) + '</span></summary>'
       + '<div class="obody">'
-      + '<div class="note">블로거 한 사람이 글쓰기 화면에서 보는 것은 <b>자기 글 몫 하나뿐</b>입니다. '
-      + '소재는 글마다 하나씩 돌아가고, 광고 문구도 글마다 다른 것이 뜹니다. '
+      + '<div class="note">블로거는 글쓰기 화면에서 <b>자기 글 몫 하나만</b> 봅니다. '
+      + '소재는 글마다 하나씩 돌아가고 광고 문구도 글마다 다른 것이 뜹니다. '
       + '정보팩과 사진은 모든 글에 같이 들어갑니다.</div>'
 
       + '<div class="osec">1 · 학원이 보낸 원문 <small>이걸 잘라서 아래 소재를 만듭니다</small></div>'
@@ -2300,15 +2300,15 @@
                         : '<i class="ic i-triangle-alert"></i> 간판·외부로 표시한 사진이 없습니다. ')
                 + '나머지는 그 글 소재의 과목에 맞춰 골라 나갑니다.</div>'
               : '<div class="note warn" style="margin-top:9px">'
-                + '<b>꼬리표가 없으면 사진이 내용과 상관없이 순서대로 나눠집니다.</b> '
-                + '영어 이야기를 쓰는 글에 수학 사진이 가고, 간판 사진이 한 장도 없는 글이 생깁니다. '
-                + '<b>[<i class="ic i-image"></i> 사진 보기]</b> → <b>[<i class="ic i-tag"></i> 꼬리표 달기]</b> 에서 달아 주세요.</div>');
+                + '<b>꼬리표가 없으면 사진을 내용과 상관없이 순서대로 나눠 줍니다.</b> '
+                + '영어 이야기를 쓰는 글에 수학 사진이 가고 간판 사진이 한 장도 없는 글이 생깁니다. '
+                + '[<i class="ic i-image"></i> 사진 보기]를 누르고 [<i class="ic i-tag"></i> 꼬리표 달기]에서 달아 주세요.</div>');
         })()
         : '<div class="mono">받은 사진이 없습니다.</div>'
           + (photoDonors(o).length
             ? '<div class="note warn" style="margin-top:9px">'
-              + '<b>사진이 없으면 블로거에게 줄 것이 없습니다.</b> 고객에게 새 사진을 받는 것이 '
-              + '원칙이지만, 급하시면 이전 주문 사진을 끌어올 수 있습니다.'
+              + '사진이 없으면 블로거에게 줄 것이 없습니다. 원칙대로라면 고객에게 새 사진을 받아야 '
+              + '하지만 급하시면 이전 주문 사진을 끌어올 수 있습니다.'
               + '<div class="row" style="margin-top:9px">'
               + '<button class="btn btn-s" data-pullpics="' + o.id + '"><i class="ic i-download"></i> 이전 주문 사진 가져오기</button>'
               + '</div></div>' : ''))
@@ -2326,15 +2326,15 @@
 
       /* 학원이 뒤늦게 보낸 것을 이미 쓰고 있는 사람에게 알리는 곳 */
       + '<div class="osec">6 · 바뀐 내용 알리기 <small>이미 글을 맡고 있는 분들에게</small></div>'
-      + '<div class="note">위의 정보팩·소재·사진을 고치면 <b>블로거 화면에는 이미 바뀐 것이 보입니다.</b> '
-      + '따로 다시 보낼 필요가 없습니다. 다만 <b>바뀐 줄 모르고 예전 내용으로 쓰고 있을 수</b> 있어, '
-      + '아래로 한 번 알려 주세요. 아직 안 올린 글을 맡은 분들에게만 갑니다.</div>'
+      + '<div class="note">위의 정보팩과 소재, 사진을 고치면 블로거 화면에도 바로 바뀌어 보입니다. '
+      + '따로 다시 보낼 필요가 없습니다. 그래도 바뀐 줄 모르고 <b>예전 내용으로 쓰고 있을 수 있으니</b> '
+      + '아래에서 한 번 알려 주세요. 아직 안 올린 글을 맡은 분들에게만 갑니다.</div>'
       + '<textarea class="inp" data-chgwhat="' + o.id + '" style="min-height:70px"'
       + ' placeholder="예) 업체에서 수학 담당 원장님 성함과 3.14 학원 MOU 내용을 새로 보내주셨습니다. '
       + '소재 6번을 확인해 주세요."></textarea>'
       + '<div class="row" style="margin-top:9px">'
       + '<button class="btn btn-a btn-s" data-chgnoti="' + o.id + '">바뀐 내용 알리기</button>'
-      + '<span class="mono">센터 알림과 알림톡이 함께 나갑니다 — 따로 카톡을 보내지 않으셔도 됩니다</span></div>'
+      + '<span class="mono">센터 알림과 알림톡이 함께 나가니 따로 카톡을 보내지 않으셔도 됩니다</span></div>'
       + '</div></details>';
   }
 
@@ -2391,9 +2391,9 @@
       document.body.appendChild(m);
     }
     m.innerHTML = '<div class="ovlcard" style="max-width:520px">'
-      + '<h3>' + esc(orderLabel(o)) + ' — 이전 주문 사진 가져오기</h3>'
+      + '<h3>' + esc(orderLabel(o)) + '에 이전 주문 사진 가져오기</h3>'
       + '<div class="note warn" style="margin:12px 0">'
-      + '<b>원칙은 고객에게 새 사진을 받는 것입니다.</b> 이미 글에 쓴 사진을 다시 쓰면 '
+      + '<b>원칙대로라면 고객에게 새 사진을 받아야 합니다.</b> 이미 글에 쓴 사진을 다시 쓰면 '
       + '네이버가 <b>중복으로 잡아 글이 밀립니다.</b> 새 사진을 받기 어려울 때만 쓰세요.</div>'
       + ds.map(function (d) {
         var used = donorUsed(d.id);
@@ -2436,7 +2436,7 @@
     PICRV = (o.track || 'blog') === 'review';
     PICTAGS = Object.assign({}, o.photo_tags || {});
     PSHOWN = 0;
-    $('picTitle').textContent = orderLabel(o) + ' — '
+    $('picTitle').textContent = orderLabel(o) + '에 '
       + '업체가 보낸 사진 ' + PICS.length + '장';
     $('picBody').innerHTML = '';
     morePics();
@@ -2507,8 +2507,8 @@
     var done = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t; }).length;
     var out = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).x; }).length;
     var rot = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).r; }).length;
-    var tail = (out ? ' <b>' + out + '장은 빼 뒀습니다</b>(안 나갑니다).' : '')
-      + (rot ? ' <b>' + rot + '장은 돌려 뒀습니다</b> — 받을 때 바로 선 파일로 나갑니다.' : '');
+    var tail = (out ? ' ' + out + '장은 빼 둬서 안 나갑니다.' : '')
+      + (rot ? ' ' + rot + '장은 돌려 뒀으니 받을 때 바로 선 파일로 나갑니다.' : '');
 
     if (PICRV) {
       /* 리뷰 — 영수증이 리뷰어 수보다 모자라면 같은 영수증이 여러 사람에게 갑니다.
@@ -2525,9 +2525,9 @@
       var shortRec = rec && nP && rec < nP;
       bar.innerHTML = '<div class="note' + (rec && !shortRec ? '' : ' warn') + '">'
         + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
-        + '<b>영수증 ' + rec + '장 · 실제 사진 ' + real + '장</b>'
-        + (rec ? ' — 영수증은 <b>한 사람당 한 장</b>씩 갑니다.'
-               : ' — <b>영수증이 아직 없습니다.</b> 영수증 리뷰를 쓰시려면 필요합니다.')
+        + '영수증 ' + rec + '장, 실제 사진 ' + real + '장입니다.'
+        + (rec ? ' 영수증은 <b>한 사람당 한 장</b>씩 갑니다.'
+               : ' 영수증이 아직 없습니다. 영수증 리뷰를 쓰시려면 필요합니다.')
         + (shortRec ? '<br><b style="color:var(--bad)">지금 이 업체를 맡은 리뷰어가 ' + nP + '명인데 '
             + '영수증은 ' + rec + '장뿐입니다.</b> 같은 영수증이 여러 분께 가니 '
             + (nP - rec) + '장을 더 받으시는 편이 좋습니다.' : '')
@@ -2542,7 +2542,7 @@
       var sign = PICS.filter(function (x) { return (PICTAGS[x.path] || {}).t === '간판·외부'; }).length;
       bar.innerHTML = '<div class="note' + (sign ? '' : ' warn') + '">'
         + '<b>' + done + ' / ' + PICS.length + '장</b>에 꼬리표를 다셨습니다. '
-        + (sign ? '간판·외부 사진 ' + sign + '장 — 글마다 맨 앞에 한 장씩 들어갑니다.'
+        + (sign ? '간판·외부 사진 ' + sign + '장은 글마다 맨 앞에 한 장씩 들어갑니다.'
                 : '<b>간판·외부 사진이 아직 없습니다.</b> 글의 첫 사진은 간판이 좋습니다.')
         + tail
         + '<div class="row" style="margin-top:10px">'
@@ -2664,10 +2664,10 @@
        그걸 두고 또 만들면 나눠줄 글만 쌓입니다. */
     if (o.is_practice) {
       box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">'
-        + '<b>연습 주문입니다.</b> 편수를 맞추지 않아도 되고, 마감도 보지 않습니다. '
+        + '연습 주문입니다. 편수를 맞추지 않아도 되고 마감도 보지 않습니다. '
         + '필요할 때마다 더 만드세요.'
-        + (s.made ? '<br>지금까지 ' + s.made + '편 만들었고, 맡긴 글 ' + s.given
-            + '편 · 올라간 글 ' + s.up + '편입니다.' : '')
+        + (s.made ? '<br>지금까지 ' + s.made + '편 만들었고 맡긴 글은 ' + s.given
+            + '편, 올라간 글은 ' + s.up + '편입니다.' : '')
         + (s.idle ? '<br><b>아직 안 맡긴 글이 ' + s.idle + '편 있습니다.</b> '
             + '먼저 나눠주시는 것이 좋습니다. '
             + '<button class="link" data-goassign="' + o.id + '">5번으로 가기 →</button>' : '')
@@ -2676,7 +2676,7 @@
     }
     if (!s.made) {
       box.innerHTML = '<div class="msg ok" style="margin:0 0 12px">'
-        + '<b>이 업체는 아직 키워드를 안 만들었습니다.</b> 처음 만드시는 것이 맞습니다.</div>';
+        + '<b>이 업체는 아직 키워드를 안 만들었습니다.</b> 이번이 처음이니 그대로 만드시면 됩니다.</div>';
       return;
     }
     var done = s.up >= s.made && s.made > 0;
@@ -2686,11 +2686,11 @@
       + (s.idle ? ' · <b>아직 안 맡긴 글 ' + s.idle + '편</b>' : '') + ')<br>'
       + (done
         ? '<b>이 주문은 이미 다 썼습니다.</b> 여기서 또 만들면 업체가 시킨 것보다 많이 쓰게 됩니다. '
-        + '정말 더 만드시는 것이 맞습니까?'
+        + '정말 더 만드시겠습니까?'
         : s.idle
           ? '<b>먼저 「5 글 나눠주기」에서 남은 ' + s.idle + '편을 맡기세요.</b> '
           + '여기서 또 만들면 같은 업체 글이 두 배로 늘어납니다.'
-          : '더 만들면 주문 편수를 넘길 수 있습니다. 정말 더 만드시는 것이 맞습니까?')
+          : '더 만들면 주문 편수를 넘길 수 있습니다. 정말 더 만드시겠습니까?')
       + ' <button class="link" data-goassign="' + o.id + '">5번으로 가기 →</button></div>';
   }
 
@@ -2706,8 +2706,8 @@
     tps.forEach(function (t) { have[t.stage || '공통'] = (have[t.stage || '공통'] || 0) + 1; });
     var anyStage = !!(have['초'] || have['중'] || have['고']);
     if (!anyStage) return '<div class="note" style="margin-top:10px">'
-      + '<b>소재에 학년이 안 적혀 있습니다.</b> 「4 소재 넣기」에서 소재마다 '
-      + '<b>초·중·고</b>를 골라 주시면, 제목의 학년까지 맞춰 드립니다.</div>';
+      + '<b>소재에 학년이 안 적혀 있습니다.</b> [4 키워드 만들기] 화면 아래 학원이 보낸 글감 나누기 칸에서 소재마다 '
+      + '초·중·고를 골라 주시면 제목의 학년까지 맞춰 드립니다.</div>';
 
     /* ⚠️⚠️ 두 번 틀렸던 곳입니다.
        ① 학년만 보면 「고등 소재가 수학뿐인데 고등 영어 제목」이 통과합니다.
@@ -2747,13 +2747,13 @@
         }).join(' · ') + '<br>'
       + '<b>맞는 소재가 없는 제목</b><br>'
       + ks.map(function (k) {
-          return '· <b>' + esc(k) + '</b> 소재가 없는데 그런 제목이 ' + bad[k].length
-            + '편 — 예) ' + esc(bad[k][0]);
+          return '· ' + esc(k) + ' 소재가 없는데 그런 제목이 ' + bad[k].length
+            + '편입니다. 예) ' + esc(bad[k][0]);
         }).join('<br>')
       + '<br><br>이대로 만들면 <b>제목은 고등인데 내용은 중학생 이야기</b>인 글이 나옵니다. '
-      + '업체에 그 소재를 더 받으시거나, <b>지역·학년·과목 칸에서 그것을 빼고</b> 다시 만드세요.<br>'
-      + '<span class="mono">「공통」 소재로 때울 수는 있지만, 공통 소재는 몇 개 안 되니 '
-      + '그 소재만 여러 번 쓰이게 됩니다 (유사문서 위험).</span></div>';
+      + '업체에 그 소재를 더 받으시거나 <b>지역·학년·과목 칸에서 그것을 빼고</b> 다시 만드세요.<br>'
+      + '<span class="mono">공통 소재로 때울 수는 있지만 공통 소재는 몇 개 안 됩니다. '
+      + '같은 소재를 여러 번 쓰게 되니 유사문서가 될 위험이 있습니다.</span></div>';
   }
 
   /* 입금 전이면 글을 만들 수 없습니다 — 다 만들고 나서 알면 늦으니 미리 알려줍니다 */
@@ -2774,7 +2774,7 @@
     }
     box.innerHTML = '<div class="msg err" style="margin:0 0 12px">'
       + '<b>아직 입금 확인이 안 된 주문입니다.</b> 키워드는 만들 수 있지만 '
-      + '<b>글은 만들어지지 않습니다.</b><br>'
+      + '<b>글은 만들 수 없습니다.</b><br>'
       + '「3 주문 · 입금」에서 <b>' + esc(o.academy_name) + '</b> 카드의 [입금 확인]을 먼저 눌러 주세요.'
       + ' <button class="link" data-gopay="' + o.id + '">3번으로 가기 →</button></div>';
     return false;
@@ -2935,7 +2935,7 @@
     $('kwOut').innerHTML = '<table><thead><tr>'
       + '<th style="width:34px"><input type="checkbox" id="kwAll" checked></th>'
       + '<th>#</th><th>주차</th>'
-      + '<th>이 글이 노릴 검색어 — 제목에 그대로 들어갑니다</th><th>과목</th><th>다룰 내용</th></tr></thead><tbody>'
+      + '<th>이 글이 노릴 검색어 (제목에 그대로 들어갑니다)</th><th>과목</th><th>다룰 내용</th></tr></thead><tbody>'
       + KWDRAFT.map(function (p, i) {
         return '<tr><td><input type="checkbox" class="kw-pick" value="' + i + '" checked></td>'
           + '<td class="mono">' + (i + 1) + '</td><td class="mono">' + p.week + '주차</td>'
@@ -3075,7 +3075,7 @@
       var most = cnt[order[0]] || 0, least = cnt[order[order.length - 1]] || 0;
       var skew = most >= 3 && most >= least * 3;
       box.innerHTML = '<div class="note' + (skew ? ' warn' : '') + '" style="margin-top:10px">'
-        + '<b>과목별로 몇 편</b> — '
+        + '과목별 편수: '
         + order.map(function (k) {
             var rk = Object.keys(raw[k]);
             return esc(k) + ' <b>' + cnt[k] + '편</b>'
@@ -3085,13 +3085,13 @@
                     }).join(' + ') + ')</span>' : '');
           }).join(' · ')
         + (shortOf.length
-            ? '<br><span class="mono">쓸 만한 조합이 모자란 과목 · ' + esc(shortOf.join(' · '))
-              + ' — 그 과목 지역·학년·목적을 더 넣으시면 늘어납니다</span>' : '')
+            ? '<br><span class="mono">쓸 만한 조합이 모자란 과목: ' + esc(shortOf.join(' · '))
+              + '. 그 과목의 지역·학년·목적을 더 넣으시면 조합이 늘어납니다.</span>' : '')
         + (skew
             ? '<br><b style="color:var(--bad)">한 과목이 다른 과목의 3배가 넘습니다.</b> '
-              + '적은 과목의 소재를 맡을 제목이 모자라, 제목과 내용이 어긋난 글이 나올 수 있습니다.'
+              + '적은 과목의 소재를 맡을 제목이 모자라서 제목과 내용이 어긋난 글이 나올 수 있습니다.'
             : '')
-        + '<br><span class="mono">이 개수가 「4 소재 넣기」의 과목별 소재 개수와 비슷해야 '
+        + '<br><span class="mono">이 개수가 [4 키워드 만들기] 화면 아래 학원이 보낸 글감 나누기 칸의 과목별 소재 개수와 비슷해야 '
         + '제목·내용·사진이 같은 과목으로 갑니다.</span></div>'
         + stageWarn(picked);
     })();
@@ -3114,7 +3114,7 @@
     if (!keep.length) { A.toast('만들 검색어를 하나 이상 체크해 주세요'); return; }
     KWDRAFT = keep;
     if (!kwPaidCheck()) {
-      A.toast('입금 확인을 먼저 해주세요 — 위 안내를 봐주세요');
+      A.toast('입금 확인을 먼저 해 주세요. 위 안내를 봐 주세요.');
       $('kwPaid').scrollIntoView({ block: 'center' });
       return;
     }
@@ -3189,17 +3189,17 @@
     $('tpList').innerHTML = TOPICS.map(function (t, i) {
       return '<div class="tprow"><div class="row" style="margin-bottom:6px">'
         + '<span class="tpn">' + (i + 1) + '</span>'
-        + '<input class="inp" data-tpt="' + i + '" placeholder="소재 제목 — 예) [영어] 수행평가 감점 케어" '
+        + '<input class="inp" data-tpt="' + i + '" placeholder="소재 제목 (예: [영어] 수행평가 감점 케어)" '
         + 'value="' + esc(t.title || '') + '" style="flex:1">'
         /* 과목을 정해 두면 그 과목 사진이 이 소재를 맡은 글에 갑니다 */
-        + '<select class="inp" data-tpsub="' + i + '" style="width:auto" title="이 소재의 과목 — 사진을 맞춰 줍니다">'
+        + '<select class="inp" data-tpsub="' + i + '" style="width:auto" title="이 소재의 과목을 고르면 사진을 거기에 맞춰 줍니다">'
         + ['', '공통', '영어', '수학', '국어', '학습코칭'].map(function (s) {
           return '<option value="' + s + '"' + ((t.subject || '') === s ? ' selected' : '') + '>'
             + (s || '과목…') + '</option>';
         }).join('') + '</select>'
         /* ⭐ 학년 — 이게 있어야 「고등 수능영어」 제목에 중1 이야기가 안 붙습니다 */
         + '<select class="inp" data-tpstg="' + i + '" style="width:auto" '
-        + 'title="이 소재는 누구에게 하는 이야기인가 — 제목의 학년을 여기에 맞춥니다">'
+        + 'title="이 소재가 어느 학년 대상인지 고르면 제목의 학년을 거기에 맞춥니다">'
         + [['', '학년…'], ['공통', '학년 무관'], ['초', '초등 대상'],
            ['중', '중등 대상'], ['고', '고등 대상']].map(function (s) {
           return '<option value="' + s[0] + '"' + ((t.stage || '') === s[0] ? ' selected' : '') + '>'
@@ -3252,7 +3252,7 @@
       var mine = POSTS.filter(function (p) { return p.order_id === oid; });
       if (!mine.length) {
         alert('아직 이 주문에 글이 없습니다.\n\n'
-          + '소재는 «이미 만들어진 글»에만 붙습니다.\n'
+          + '소재는 이미 만든 글에만 붙습니다.\n'
           + '위에서 검색어를 넣고 [이대로 글 만들기]를 먼저 눌러 주세요.\n'
           + '글을 만든 뒤에 이 단추를 누르시면 됩니다.');
         return;
@@ -3281,8 +3281,8 @@
     $('tpLoadNote').onclick = async function () {
       var notes = await A.sel('order_notes', { eq: { order_id: $('tpOrder').value }, order: 'created_at' });
       $('tpNote').innerHTML = notes.length
-        ? '<div class="note" style="margin-bottom:12px"><b>학원이 보낸 전달사항 ' + notes.length + '건</b>'
-        + ' — 아래에서 필요한 부분을 골라 소재로 잘라 넣으세요.'
+        ? '<div class="note" style="margin-bottom:12px"><b>학원이 보낸 전달사항이 ' + notes.length + '건 있습니다.</b>'
+        + ' 아래에서 필요한 부분을 골라 소재로 잘라 넣으세요.'
         + notes.map(function (n) {
           return '<pre class="tpnote">' + esc(n.body) + '</pre>';
         }).join('') + '</div>'
@@ -3335,8 +3335,8 @@
     this.disabled = false;
     if (r.error || !r.data || !r.data.length) { A.toast('저장 실패 (권한 확인 필요)'); return; }
     A.AD_LINES = lines; A.FORM = v.form; A.MONTH_CAP = v.month_cap;
-    A.toast('저장했습니다 — 문구 ' + lines.length + '개 · 하루 ' + v.form.daily_limit
-      + '편 · 월 ' + v.month_cap + '편 · 1차 줌 '
+    A.toast('저장했습니다. 문구 ' + lines.length + '개, 하루 ' + v.form.daily_limit
+      + '편, 월 ' + v.month_cap + '편, 1차 줌 '
       + (v.form.require_t1 ? '필요' : '안 봄'));
     renderRules(); renderOrders(); renderAssign();
   };
@@ -3388,7 +3388,7 @@
           + esc(p.keyword || '') + '</b><div class="tagline">'
           + tg.map(function (x) { return '<span>#' + esc(x) + '</span>'; }).join('') + '</div></div>';
       }).join('')
-      + '<div class="mono" style="margin-top:6px">앞쪽 고정 태그는 모든 글에 같이 가고, '
+      + '<div class="mono" style="margin-top:6px">앞쪽 고정 태그는 모든 글에 같이 가고 '
       + '뒤쪽은 글마다 다르게 뽑힙니다.</div>';
   }
   function topicTagsOf(p) {
@@ -3492,8 +3492,8 @@
     var made = POSTS.filter(function (x) { return x.order_id === o.id; }).length;
     var want = specs.reduce(function (a, x) { return a + (x.qty || 0); }, 0);
     $('rmInfo').innerHTML = '<div class="note">'
-      + '<b>' + esc(orderLabel(o)) + '</b> — 주문 ' + o.total_qty + '편 · '
-      + '구성 합계 ' + want + '편 · <b>지금까지 만든 리뷰 ' + made + '편</b>'
+      + esc(orderLabel(o)) + ': 주문 ' + o.total_qty + '편, '
+      + '구성 합계 ' + want + '편, <b>지금까지 만든 리뷰 ' + made + '편</b>'
       + (specs.length
         ? '<div class="tagline" style="margin-top:8px">' + specs.map(function (x) {
             return '<span>' + esc(x.category) + ' ' + x.qty + '편</span>';
