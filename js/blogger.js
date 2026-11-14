@@ -149,11 +149,11 @@
       + '<div style="min-width:220px;flex:1">'
       + '<b style="font-size:14.5px">글을 더 받고 싶으신가요?</b>'
       + '<div class="mono" style="margin-top:4px;line-height:1.6">'
-      + '켜두시면 <b>글이 남을 때 먼저 배정</b>해 드립니다. 켠 분들끼리는 '
-      + '<b>이번 달 적게 받은 순서</b>로 돌아가니 한 사람에게 몰리지 않습니다.<br>'
-      + '언제든 끄실 수 있고, 꺼도 글이 아예 안 오는 것은 아닙니다.</div></div>'
+      + '켜 두시면 남는 글을 먼저 드립니다. 켠 분이 여럿이면 '
+      + '이번 달 적게 받은 분부터 차례로 드리니 한 사람에게 몰리지 않습니다.<br>'
+      + '언제든 끄실 수 있습니다. 꺼 두셔도 글은 받으실 수 있습니다.</div></div>'
       + '<button class="btn ' + (on ? 'btn-a' : '') + '" id="bWantsBtn">'
-      + (on ? '<i class="ic i-star-fill"></i> 많이 받는 중 — 끄기' : '많이 받고 싶어요') + '</button>'
+      + (on ? '<i class="ic i-star-fill"></i> 많이 받기 끄기' : '많이 받고 싶어요') + '</button>'
       + '</div></div>';
 
     $('bWantsBtn').onclick = async function () {
@@ -260,7 +260,7 @@
     if (pw) pw.innerHTML = (A.PW_TEMP && !PREVIEW)
       ? '<div class="note warn" style="margin-bottom:18px">'
         + '<b><i class="ic i-key-round"></i> 비밀번호를 바꿔 주세요.</b> 지금 쓰시는 것은 담당자가 만들어 드린 '
-        + '임시 비밀번호입니다. <b>카톡에 그대로 남아 있어</b> 다른 사람이 볼 수 있습니다.'
+        + '임시 비밀번호입니다. 카톡에 그대로 남아 있어서 다른 사람이 볼 수 있습니다.'
         + '<div class="row" style="margin-top:10px">'
         + '<button class="btn btn-p btn-s" data-pwme="1"><i class="ic i-key-round"></i> 지금 바꾸기</button>'
         + '<span class="mono">1분이면 됩니다</span></div></div>'
@@ -291,8 +291,8 @@
     });
     $('bTodo').innerHTML = (pub.length
       ? '<div class="note ok" style="margin-bottom:14px"><b>오늘 올릴 글이 ' + pub.length + '편 있습니다.</b><br>'
-      + '올리신 뒤에 <b>「2 글 쓰기」 3번 칸</b>에서 <b>올린 글 주소</b>를 넣어 주셔야 정산에 잡힙니다. '
-      + '올리기만 하고 주소를 안 넣으시면 저희가 알 수 없습니다.<br>'
+      + '올리신 뒤 [2 글 쓰기] 3번 칸에 올린 글 주소를 넣어 주세요. '
+      + '주소가 없으면 저희가 올린 줄 몰라서 정산에 잡히지 않습니다.<br>'
       + '<span class="mono">' + pub.map(function (p) { return esc(p.keyword || ''); }).join(' · ') + '</span></div>'
       : '')
       + (soon.length
@@ -313,13 +313,13 @@
       return '<div class="job' + (late ? ' due' : '') + '"><div>'
         + '<h4>' + esc(p.keyword || '') + '</h4>'
         + (p.keyword_changed_at && p.keyword_was
-            ? '<div class="mono" style="color:var(--wait)"><i class="ic i-pin"></i> 제목이 바뀌었습니다 — '
+            ? '<div class="mono" style="color:var(--wait)"><i class="ic i-pin"></i> 제목이 바뀌었습니다. '
               + '들어가서 확인해 주세요</div>' : '')
         + '<div class="meta">' + (p.is_practice ? '<span class="chip c-info">연습글</span> ' : '') + esc(p.academy_name) + ' · '
           /* 연습글 — 원고료가 없는 이유를 적습니다. 0원만 보이면 왜 0원인지 알 수 없습니다 (매뉴얼 창 10/27 문구)
              마감을 보지 않는 주문이라 주문 마감 날짜도 함께 빼 둡니다 */
           + (p.is_practice
-            ? '<b style="color:var(--info)">연습글 · 원고료 없음 — 교육 뒤 연습으로 올리는 글입니다</b>'
+            ? '<span style="color:var(--info)">연습글이라 원고료가 없습니다. 교육 뒤 연습으로 올리는 글입니다</span>'
           /* 주문 마감을 넘긴 글 — 원고료 없음 (약관 개정안 제13조⑤). 21번 알림톡과 같은 말 */
             : p.late_nopay
             ? '<b style="color:var(--bad)">주문 마감(' + esc(p.order_deadline || '') + ')이 지나 원고료가 없는 글입니다 · 고객과 약속한 글이라 꼭 올려 주세요</b>'
@@ -360,19 +360,19 @@
           + (RV ? '리뷰를 제때 올리고 확인이 잘 되면 올라갑니다.'
                 : '글을 꾸준히 쓰고 한 번에 통과되면 올라갑니다.')
         : '가장 높은 단계입니다.')
-      + '<br><b>단계는 블로그·리뷰가 같이 씁니다.</b>'
+      + '<br>블로그와 리뷰는 같은 단계를 씁니다.'
       + (myRates().length > 1
-        ? '<br><b>업체에 따라 편당 단가가 다릅니다.</b> 글마다 정해진 값은 「2 '
-          + (RV ? '리뷰 올리기' : '글 쓰기') + '」에서 보실 수 있습니다.'
+        ? '<br>편당 단가는 업체마다 다릅니다. 글마다 정해진 값은 [2 '
+          + (RV ? '리뷰 올리기' : '글 쓰기') + ']에서 보실 수 있습니다.'
         : '')
       + '</div></div></div>'
       + (RV
         ? '<div class="note warn" style="margin-top:14px"><b>정해 드린 시각에 올려 주세요.</b><br>'
         + '같은 가게 리뷰가 한꺼번에 올라가면 바로 티가 납니다. '
-        + '그래서 날짜와 <b>시각까지</b> 벌려 두었습니다.</div></div>'
+        + '그래서 날짜와 시각까지 벌려 두었습니다.</div></div>'
         : '<div class="note warn" style="margin-top:14px"><b>' + dailyRule() + '</b><br>'
-        + '몰아서 올리면 블로그가 광고 블로그로 찍혀 검색에 안 나오게 됩니다. '
-        + '그러면 내 블로그가 손해입니다. <b>글마다 올릴 날을 정해 드리니 그날 올리시면 됩니다.</b>'
+        + '몰아서 올리면 광고 블로그로 찍혀 검색에 안 나옵니다. '
+        + '손해는 내 블로그가 봅니다. 글마다 올릴 날을 정해 드리니 그날 올리시면 됩니다.'
         + '</div></div>');
   }
 
@@ -384,8 +384,8 @@
     $('bTodo').innerHTML = (nowT.length
       ? '<div class="note ok" style="margin-bottom:14px"><b>지금 올리실 리뷰가 '
       + nowT.length + '건 있습니다.</b><br>'
-      + '올리신 뒤에 <b>「2 리뷰 올리기」 3번 칸</b>에 <b>화면 캡처</b>를 올려 주셔야 정산에 잡힙니다. '
-      + '네이버 리뷰는 글마다 주소가 없어서 캡처가 유일한 증거입니다.<br>'
+      + '올리신 뒤 [2 리뷰 올리기] 3번 칸에 화면 캡처를 올려 주세요. 그래야 정산에 잡힙니다. '
+      + '네이버 리뷰는 글마다 주소가 없어서 캡처가 있어야 올린 것을 확인할 수 있습니다.<br>'
       + '<span class="mono">' + nowT.map(function (p) {
           return esc((p.academy_name || '') + ' · ' + (p.category || ''));
         }).join(' / ') + '</span></div>'
@@ -458,7 +458,7 @@
         + '지금 영상은 ' + r.videoDone + '/' + r.videoNeed + ' 이수하셨습니다.'
         + (r.videoWait ? ' <b style="color:var(--wait)">' + r.videoWait
           + '건은 요약을 내셨고 담당자 확인을 기다리는 중입니다.</b>' : ''))
-      + (RV ? '' : '<br><br><b>「연습글」로 표시되지 않은 글은 연습이 아니라 진짜 일입니다.</b> 업체가 돈을 낸 주문이고, 통과되면 정상적으로 지급됩니다.')
+      + (RV ? '' : '<br><br><b>연습글 표시가 없는 글은 진짜 일입니다.</b> 업체가 돈을 낸 주문이라 통과되면 원고료가 제대로 나갑니다.')
       + '</div></div>';
 
     /* 지난 회차도 남겨 둡니다 — 못 오신 분이 녹화본으로 이수해야 하니까요 */
@@ -612,7 +612,7 @@
       (vid
         ? '<div class="ytwrap" id="mp-' + id + '"><div id="ytp-' + id + '"></div></div>'
         + '<div class="mono" style="margin-top:6px">여기서 바로 보시면 됩니다. '
-        + '<b>재생하는 동안만 시간이 올라갑니다</b> — 틀어놓고 자리를 비우거나 '
+        + '재생하는 동안만 시간이 올라갑니다. 틀어 놓고 자리를 비우거나 '
         + '막대를 끝으로 끌면 올라가지 않습니다.</div>'
         /* ⚠️ 다음모션은 재생 위치를 읽을 수가 없습니다(그러려면 유료 Player ID 가 필요합니다).
               그래서 유튜브가 막혔을 때와 같은 「느슨하게」 방식으로 —
@@ -623,7 +623,7 @@
         + ' allow="autoplay; fullscreen; picture-in-picture; web-share"'
         + ' referrerpolicy="strict-origin"></iframe></div>'
         + '<div class="mono" style="margin-top:6px">여기서 바로 보시면 됩니다. '
-        + '<b>이 화면을 열어둔 동안 시간이 올라갑니다</b> — 다른 탭으로 넘어가면 멈춥니다.</div>'
+        + '이 화면을 열어 둔 동안 시간이 올라갑니다. 다른 탭으로 넘어가면 멈춥니다.</div>'
         : '<div class="note warn" id="mp-' + id + '">여기서 바로 못 트는 영상입니다. '
         + '<a href="' + esc(m.url) + '" target="_blank" rel="noopener">자료 열기 ↗</a></div>')
       + '<div id="wt-' + id + '" class="wbar"></div>'
@@ -772,7 +772,7 @@
       + tagBlock(p)
       + adBlock(p)
       + photoBlock(p)
-      + (p.info_pack ? '<label class="f">정보 박스 — 글에 그대로 붙여넣으세요</label>'
+      + (p.info_pack ? '<label class="f">글에 그대로 붙여넣을 정보 박스</label>'
         + '<textarea class="inp" id="ipk" readonly>' + esc(p.info_pack) + '</textarea>'
         + '<div class="row" style="margin-top:8px"><button class="btn btn-s" id="btnCopyPack">정보팩 복사</button>'
         + (p.academy_url ? '<a class="btn btn-s" href="' + esc(p.academy_url) + '" target="_blank" rel="noopener">업체 홈페이지 ↗</a>' : '')
@@ -792,16 +792,16 @@
          예전 「마무리 = 2줄 + 홈페이지 링크 1개」 안내 때문에 같은 링크가 정보 박스 바로
          아래에 또 붙었습니다. 그래서 마무리에서는 링크를 빼라고 적습니다. */
       + fl('정보 박스', '위의 [정보팩 복사] 눌러서 그대로 붙여넣기'
-        + '<br><span class="mono">업체명 · 주소 · 전화 · 수업시간 · 홈페이지가 다 들어 있습니다</span>')
+        + '<br><span class="mono">업체명, 주소, 전화, 수업시간, 홈페이지가 다 들어 있습니다</span>')
       + fl('지도', '네이버 지도에서 업체 검색해서 넣기 · 30초')
       + fl('마무리', '2~3줄로 짧게 맺기'
-        + '<br><span class="mono">홈페이지 주소는 <b style="color:var(--ink)">위 정보 박스에 이미 있습니다</b> — 또 넣지 마세요</span>')
+        + '<br><span class="mono">홈페이지 주소는 <b style="color:var(--ink)">위 정보 박스에 이미 있으니</b> 또 넣지 마세요</span>')
       + fl('태그', tagCount(p) ? '아래에 정해 둔 ' + tagCount(p) + '개를 그대로 넣으세요'
         : '7~10개')
       /* ⚠️ 광고 표기는 정보팩에 **없습니다.** 글마다 문장이 달라서 위쪽에 따로 뜹니다.
          「정보팩에 들어 있습니다」라고 되어 있어, 넣은 줄 알고 빠뜨릴 수 있었습니다.
          광고 표기 누락은 법 위반이고 약관 제11조상 원고료 보류 사유입니다. */
-      + fl('광고 표기', '맨 아래 한 줄 — <b style="color:var(--ink)">위의 [문구 복사]</b>를 눌러 그대로 넣으세요'
+      + fl('광고 표기', '<b style="color:var(--ink)">위의 [문구 복사]</b>를 눌러 맨 아래에 한 줄로 그대로 넣으세요'
         + '<br><span class="mono">정보팩에는 안 들어 있습니다. 글마다 문장이 다릅니다</span>')
       + '</div>'
       + '<div class="grid g2" style="margin-top:14px">'
@@ -812,8 +812,8 @@
       /* 🔴 블로거는 학원에 가지 않고 받은 자료로 씁니다. 검수 반려 사유 칩(index.html .rj)과
          같은 말이어야 합니다 — 한쪽만 고치면 블로거가 반려 이유를 못 알아봅니다. */
       + '<div class="note warn" style="margin-top:14px"><b>직접 다녀온 것처럼 쓰면 안 됩니다.</b> '
-      + '"상담받고 왔어요"가 아니라 <b>"찾는 분들을 위해 정리해봤습니다"</b> 로 써 주세요.'
-      + '<br><b>주신 자료에 없는 내용은 지어내지 마세요.</b> '
+      + '"상담받고 왔어요" 대신 "찾는 분들을 위해 정리해봤습니다"로 써 주세요.'
+      + '<br>주신 자료에 없는 내용은 지어내지 마세요. '
       + '모르는 것은 비워 두고 담당자에게 알려 주세요.</div>';
 
     /* ── 세 단계를 늘 같이 보여줍니다 ──
@@ -837,23 +837,23 @@
       : '<div class="step now"><div class="sh"><span class="sn">1</span>원고 내기</div>'
         + '<label class="f">구글 문서 링크</label>'
         + '<input class="inp" id="docUrl" value="' + esc(p.content_url || '') + '" placeholder="https://docs.google.com/…">'
-        + '<div class="note warn" style="margin-top:10px"><b>링크만 보내면 저희가 못 엽니다.</b><br>'
-        + '문서 오른쪽 위 <b>[공유]</b> → 아래쪽 <b>"제한됨"</b>을 눌러 '
-        + '<b>"링크가 있는 모든 사용자"</b>로 바꿔 주세요.<br>'
-        + '이걸 안 하시면 저희 화면에 <b>권한 요청</b>만 뜨고, 검수가 그만큼 늦어집니다.</div>'
+        + '<div class="note warn" style="margin-top:10px"><b>링크만 보내시면 저희가 열 수 없습니다.</b><br>'
+        + '문서 오른쪽 위 [공유]를 누르고 아래쪽 [제한됨]을 눌러 '
+        + '[링크가 있는 모든 사용자]로 바꿔 주세요.<br>'
+        + '이렇게 하지 않으시면 저희 화면에 권한 요청만 뜨고 검수가 그만큼 늦어집니다.</div>'
         + '<label class="row" style="gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">'
         + '<input type="checkbox" id="docShared"> '
-        + '<span><b>공유 설정을 “링크가 있는 모든 사용자”로 바꿨습니다</b></span></label>'
+        + '<span>공유 설정을 [링크가 있는 모든 사용자]로 바꿨습니다</span></label>'
         /* ⭐ 모자이크는 예민한 문제라 두 번 짚습니다 —
               여기서 「알고 있다」, 올릴 때 「가렸다」. 원고 단계에서 미리 알아야
               사진을 다시 찍거나 고르는 수고를 덜 수 있습니다. */
         + '<div class="note warn" style="margin-top:10px">'
-        + '<b>블로그에 올리실 때 사진 속 사람 얼굴은 반드시 가려야 합니다.</b><br>'
+        + '<b>블로그에 올리실 때 사진 속 사람 얼굴은 꼭 가려야 합니다.</b><br>'
         + '학생과 학부모의 얼굴입니다. 모자이크나 블러로 알아볼 수 없게 해 주세요.<br>'
-        + '<b>지금이 아니라 올릴 때</b> 하시면 되지만, 미리 아셔야 사진 고르기가 편합니다.</div>'
+        + '가리는 일은 올릴 때 하시면 됩니다. 다만 미리 알고 계셔야 사진 고르기가 편합니다.</div>'
         + '<label class="row" style="gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">'
         + '<input type="checkbox" id="faceKnow"> '
-        + '<span><b>올릴 때 사람 얼굴을 가려야 한다는 것을 알고 있습니다</b></span></label>'
+        + '<span>올릴 때 사람 얼굴을 가려야 한다고 알고 있습니다</span></label>'
         + '<div style="margin-top:12px"><label class="f">남길 말 (안 쓰셔도 됩니다)</label>'
         + '<input class="inp" id="docMemo" value="' + esc(p.memo || '') + '"></div>'
         + '<div class="row" style="margin-top:14px"><button class="btn btn-a" id="btnSubmit">원고 내기</button>'
@@ -864,7 +864,7 @@
       ? '<div class="step wait"><div class="sh"><span class="sn">2</span>검수'
         + '<span class="chip c-wait">보는 중</span></div>'
         + '<div class="mono">담당자가 원고를 읽고 있습니다. <b>2영업일 안에</b> 결과를 알려드립니다. '
-        + '결과가 나오면 이 자리에 뜨고, 알림도 갑니다.</div></div>'
+        + '결과가 나오면 이 자리에 뜨고 알림도 갑니다.</div></div>'
       : st === 'rework'
         ? '<div class="step bad"><div class="sh"><span class="sn">2</span>검수'
           + '<span class="chip c-bad">고쳐 주세요</span></div>'
@@ -897,7 +897,7 @@
         ? '<div class="note warn" style="margin-bottom:12px">'
           + '<b>원고는 통과됐지만 올리는 날은 ' + esc(pon) + ' 입니다'
           + (dleft != null ? ' (' + dleft + '일 남음)' : '') + '.</b><br>'
-          + '한 업체 글이 며칠 안에 몰려 올라가면 서로 검색어를 잡아먹고, '
+          + '한 업체 글이 며칠 안에 몰려 올라가면 서로 검색어를 잡아먹고 '
           + '그 블로그가 광고 블로그로 보입니다. 그래서 날짜를 벌려 두었습니다.<br>'
           + '<b>그날 센터에 들어오시면 이 칸이 열립니다.</b> '
           + '미리 예약 발행을 걸어두셔도 됩니다.</div>'
@@ -920,10 +920,10 @@
           + '<span class="mono">담당자가 검색 순위를 확인하면 정산에 잡힙니다</span></div>'
         : canPub
           ? '<div class="mono" style="margin-top:5px">'
-            + '내 블로그에서 그 글을 열고, 주소창의 주소를 그대로 복사해 오시면 됩니다.</div>'
+            + '내 블로그에서 그 글을 열어 주소창의 주소를 그대로 복사해 오시면 됩니다.</div>'
             + '<div class="row" style="margin-top:14px">'
             + '<button class="btn btn-a" id="btnPublish">다 올렸습니다</button>'
-            + '<span class="mono"><b>주소를 넣으셔야 정산에 잡힙니다.</b> 올리기만 하면 저희가 모릅니다</span></div>'
+            + '<span class="mono"><b>주소를 넣지 않으시면</b> 저희가 몰라서 정산에 넣을 수 없습니다</span></div>'
           : waitDay
             ? ''
             : '<div class="mono" style="margin-top:5px">'
@@ -932,7 +932,7 @@
       + '</div>'
       + (up || canPub
         ? '<div class="note warn" style="margin-top:14px"><b>올린 글은 1년 동안 지우지 말아 주세요.</b> '
-          + '업체가 그 기간만큼 값을 치른 것이라, 중간에 지우면 정산을 되돌려야 합니다.</div>'
+          + '업체가 그 기간만큼 값을 치렀기 때문에 중간에 지우면 정산을 되돌려야 합니다.</div>'
         : '');
 
     var act = '<div class="sec">여기까지 오면 끝납니다</div>' + s1 + s2 + s3;
@@ -975,7 +975,7 @@
       }
       /* ⚠️ 서버도 막습니다 — 여기서 먼저 잡아야 「왜 안 되지」를 안 겪습니다 */
       if (!$('faceKnow') || !$('faceKnow').checked) {
-        A.toast('얼굴을 가려야 한다는 것을 확인하고 체크해 주세요');
+        A.toast('얼굴 가리기 안내를 읽고 체크해 주세요');
         if ($('faceKnow')) {
           $('faceKnow').closest('label').style.color = 'var(--bad)';
           $('faceKnow').closest('label').scrollIntoView({ block: 'center' });
@@ -1040,12 +1040,12 @@
     if (['published', 'verified', 'paid'].indexOf(p.status) >= 0) return '';
     var wrote = ['submitted', 'rework', 'approved'].indexOf(p.status) >= 0;
     return '<div class="note warn" style="margin-bottom:12px">'
-      + '<b><i class="ic i-pin"></i> 제목에 넣을 말(검색어)이 바뀌었습니다.</b><br>'
+      + '<i class="ic i-pin"></i> 제목에 넣을 검색어가 바뀌었습니다.<br>'
       + '<span class="mono" style="text-decoration:line-through">' + esc(p.keyword_was) + '</span>'
       + ' → <b>' + esc(p.keyword || '') + '</b><br>'
       + (wrote
-          ? '<b>다시 쓰실 필요는 없습니다.</b> 쓰신 내용에 제목이 안 맞아서 제목 쪽을 '
-            + '내용에 맞춰 고친 것입니다. 원고 <b>제목 한 줄만</b> 새 검색어로 바꿔 주세요.'
+          ? '다시 안 쓰셔도 됩니다. 쓰신 내용에 제목이 안 맞아서 제목을 '
+            + '내용에 맞게 고쳤습니다. 원고 <b>제목 한 줄만</b> 새 검색어로 바꿔 주세요.'
           : '아직 안 쓰신 글입니다. 아래 새 검색어로 써 주세요.')
       + '</div>';
   }
@@ -1059,8 +1059,8 @@
       + '<b>' + esc(p.topic_title) + '</b>'
       + '<pre>' + esc(p.topic_body || '') + '</pre>'
       + '<div class="tb-w"><b>그대로 붙여넣지 마세요.</b> 읽고 이해한 다음 '
-      + '<b>내 말로 풀어서</b> 써 주세요. 똑같이 옮겨 적으면 다른 분 글과 겹쳐 '
-      + '검색에 안 잡히고, 돌려보내 드립니다.</div></div>';
+      + '내 말로 풀어서 써 주세요. 똑같이 옮겨 적으면 다른 분 글과 겹쳐 '
+      + '검색에 안 잡히고 원고도 돌려보내 드립니다.</div></div>';
   }
   /* ── 줌 한 회차 ──
      ⚠️ 예전엔 관리자가 한 명씩 눌러 줘야 했습니다. 100명이 되면 못 합니다.
@@ -1069,7 +1069,7 @@
   function sessRow(x) {
     var a = ATT.filter(function (y) { return y.session_id === x.id; })[0];
     var past = new Date(x.held_at) <= new Date();
-    var title = x.kind === 't1' ? '1차 교육 (줌)' : '2차 교육 (줌) — 내가 쓴 글 피드백';
+    var title = x.kind === 't1' ? '1차 교육 (줌)' : '2차 교육 (줌, 내가 쓴 글 피드백)';
 
     var state = !a ? ''
       : a.mode === 'live'
@@ -1093,7 +1093,7 @@
         + '<div class="mono" style="margin-bottom:8px"><b>이 교육을 들으셨나요?</b> 직접 체크해 주세요.</div>'
         + '<div class="row">'
         + '<button class="btn btn-a btn-s" data-att1="' + x.id + '">줌에 참석했습니다</button>'
-        + '<button class="btn btn-s" data-att2="' + x.id + '">못 갔습니다 — 녹화본으로 볼게요</button>'
+        + '<button class="btn btn-s" data-att2="' + x.id + '">못 가서 녹화본으로 보겠습니다</button>'
         + '</div>'
         + '<div class="attvid hide" data-attbox="' + x.id + '">'
         + (x.replay_url
@@ -1104,7 +1104,7 @@
         + '<textarea class="inp" data-attnote="' + x.id + '" rows="3" '
         + 'placeholder="예) 블로그 지수와 C-Rank 개념, 제목 앞쪽에 검색어를 넣어야 하는 이유를 배웠습니다"></textarea>'
         + '<div class="row" style="margin-top:8px">'
-        + '<button class="btn btn-a btn-s" data-att3="' + x.id + '">다 봤습니다 — 요약 내기</button>'
+        + '<button class="btn btn-a btn-s" data-att3="' + x.id + '">다 보고 요약 내기</button>'
         + '</div></div></div>'
       : '';
 
@@ -1131,7 +1131,7 @@
       + tg.map(function (x) { return '<span>#' + esc(x) + '</span>'; }).join('') + '</div>'
       + '<button class="btn btn-s" id="btnCopyTag">태그 복사</button>'
       + '<span class="mono" style="margin-left:8px">'
-      + '<b>태그를 바꾸거나 더 넣지 말아 주세요.</b> 다른 분 글과 겹치지 않게 짠 것입니다.'
+      + '<b>태그를 바꾸거나 더 넣지 말아 주세요.</b> 다른 분 글과 겹치지 않게 짜 두었습니다.'
       + '</span></div>';
   }
 
@@ -1147,12 +1147,12 @@
     /* 같은 학원 글을 한 사람이 한 달에 몇 편까지 맡는지 (2026-10-25 새 기준) */
     var am = Number(f.same_academy_month) || 0;
     var tail = (f.same_academy_daily === 0 ? ''
-        : ' — 다만 <b>같은 업체 글은 하루 한 편만</b> 올려 주세요. '
+        : '. 다만 <b>같은 업체 글은 하루 한 편만</b> 올려 주세요. '
           + '한 블로그에 같은 업체 글이 몰리면 광고 블로그로 보여 둘 다 검색에서 밀립니다')
       + (am ? '<br>같은 업체 글은 한 달에 <b>' + am + '편까지</b>만 맡겨 드립니다.' : '');
     if (n <= 1) return '오늘 이미 다른 글을 올리셨다면 내일 올려 주세요 <b>(하루 한 편)</b>'
       + (am ? '<br>같은 업체 글은 한 달에 <b>' + am + '편까지</b>만 맡겨 드립니다.' : '');
-    return '하루에 <b>' + n + '편까지</b> 올리실 수 있습니다' + tail;
+    return '하루에 ' + n + '편까지 올리실 수 있습니다' + tail;
   }
   function adBlock(p) {
     var line = adLineOf(p);
@@ -1314,12 +1314,12 @@
     var mine = myPhotos(p);
     if (!mine.length) {
       return p.photo_note
-        ? '<div class="note" style="margin:12px 0"><b>사진</b> — 업체가 링크로 주셨습니다.<br>'
+        ? '<div class="note" style="margin:12px 0">사진은 업체가 링크로 주셨습니다.<br>'
         + '<a href="' + esc(p.photo_note) + '" target="_blank" rel="noopener">' + esc(p.photo_note) + ' ↗</a></div>'
         /* 🔴 블로거는 의뢰처에 가지 않습니다 (10/1 확인). 사진은 고객이 보내 주신 것을 나눠 드립니다.
            「직접 찍으신 사진을 5장 이상」은 가서 찍으라는 말이라 사실과 맞지 않았습니다. */
         : '<div class="note warn" style="margin:12px 0"><b>사진이 아직 없습니다.</b> '
-        + '담당자에게 알려 주세요 — 의뢰처에서 사진을 받아 나눠 드립니다. '
+        + '담당자에게 알려 주시면 의뢰처에서 사진을 받아 나눠 드립니다. '
         + '직접 찍으러 가지 않으셔도 됩니다.</div>';
     }
     return '<div style="margin:12px 0"><label class="f">이 글에 쓸 사진 ' + mine.length + '장</label>'
@@ -1327,8 +1327,8 @@
       + '<b>맨 앞 사진이 간판·바깥</b>이니 글의 첫 사진으로 쓰세요. '
       + '다른 분과 같은 사진을 쓰면 검색에 안 걸릴 수 있으니 받으신 것만 쓰세요.</div>'
       + '<div class="note warn" style="margin-bottom:8px"><b>학생 얼굴이 나온 사진은 '
-      + '올리시기 전에 모자이크(흐리게) 처리해 주세요.</b> 네이버 블로그 사진 편집에 '
-      + '「모자이크」가 있습니다. 얼굴이 그대로 올라가면 업체가 곤란해집니다.</div>'
+      + '올리시기 전에 모자이크로 흐리게 처리해 주세요.</b> 네이버 블로그 사진 편집에 '
+      + '[모자이크]가 있습니다. 얼굴이 그대로 올라가면 업체가 곤란해집니다.</div>'
       + '<div class="row">'
       + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 ' + mine.length + '장 보기</button>'
       + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '"><i class="ic i-download"></i> ' + mine.length + '장 한번에 받기</button>'
@@ -1370,8 +1370,8 @@
         : '<span class="mono">지도 주소가 아직 없습니다</span>') + '</dd>'
       + '<dt>가야 하나요</dt><dd>'
       + (p.visit_type === 'material'
-        ? '아니요 — 받은 사진과 내용으로 올리시면 됩니다'
-        : '<b>네 — 직접 가서 결제하신 뒤</b> 영수증으로 인증하고 올려 주세요') + '</dd>'
+        ? '아니요. 받은 사진과 내용으로 올리시면 됩니다'
+        : '네. <b>직접 가서 결제하신 뒤</b> 영수증으로 인증하고 올려 주세요') + '</dd>'
       + '</dl></div>';
 
     /* ① 본문 */
@@ -1391,11 +1391,11 @@
     var s2 = '<div class="step ' + (up ? 'done' : 'now') + '">'
       + '<div class="sh"><span class="sn">2</span>사진 붙이기</div>'
       + (mine.length
-        ? '<div class="mono" style="margin-bottom:8px">이 리뷰에 쓸 사진 ' + mine.length + '장입니다'
-          + (nRec ? ' — <b>영수증 ' + nRec + '장</b>(맨 앞) + 실제 사진 ' + nReal + '장'
-                  : ' (실제 사진 ' + nReal + '장)') + '.<br>'
+        ? '<div class="mono" style="margin-bottom:8px">이 리뷰에 쓸 사진 ' + mine.length + '장입니다. '
+          + (nRec ? '맨 앞에 영수증 ' + nRec + '장, 그 뒤로 실제 사진 ' + nReal + '장이 있습니다.'
+                  : '실제 사진만 ' + nReal + '장입니다.') + '<br>'
           + '<b>실제 사진은 다른 분과 안 겹치게 나눠 뒀습니다.</b> 받으신 것만 쓰세요.'
-          + (nRec ? '<br><b>영수증은 한 분당 한 장</b>입니다 — 이 가게 리뷰를 여러 건 맡으셨어도 '
+          + (nRec ? '<br><b>영수증은 한 분당 한 장</b>입니다. 이 가게 리뷰를 여러 건 맡으셨어도 '
                   + '늘 같은 영수증이 갑니다.' : '')
           + '</div>'
           + (p.visit_type === 'visit'
@@ -1405,7 +1405,7 @@
           + '<button class="btn btn-a btn-s" data-getpics="' + p.id + '">사진 보기</button>'
           + '<button class="btn btn-p btn-s" data-zippics="' + p.id + '"><i class="ic i-download"></i> ' + mine.length + '장 한번에 받기</button>'
           + '</div><div id="picBox" style="margin-top:10px"></div>'
-        : '<div class="mono">받은 사진이 없습니다. 담당자에게 알려 주세요 — '
+        : '<div class="mono">받은 사진이 없습니다. 담당자에게 알려 주시면 '
           + '의뢰처에서 사진을 받아 나눠 드립니다.</div>')
       + '</div>';
 
@@ -1422,7 +1422,7 @@
         : up
           ? '<div class="note ok">올리신 것을 담당자가 확인하고 있습니다.</div>'
           : '<div class="note" style="margin-bottom:12px"><b>올리신 뒤</b> 그 화면을 캡처해서 아래에 올려 주세요.<br>'
-            + '네이버 리뷰는 글마다 주소가 없어서 <b>캡처가 유일한 증거</b>입니다.</div>'
+            + '네이버 리뷰는 글마다 주소가 없어서 저희는 캡처로만 확인할 수 있습니다.</div>'
             + faceBox('사진에 다른 손님 얼굴이 나왔다면')
             + '<label class="f">내 네이버 닉네임 <small>담당자가 지도에서 찾을 때 씁니다</small></label>'
             + '<input class="inp" id="rvNick" value="' + esc(p.memo || '') + '" placeholder="예: 먹보아저씨">'
@@ -1487,11 +1487,11 @@
 
     var rows = MY.filter(function (p) { return p.published_at || p.status === 'rework'; });
     $('bPayList').innerHTML =
-      '<div class="note" style="margin-bottom:14px">돈은 <b>' + esc(A.commName(A.ME.community_id))
-      + '로 한 번에 보내집니다.</b> 공동체에서 나눠 받으시면 됩니다. 보통 다음 달 10일쯤입니다.<br>'
-      + '<b>블로그와 리뷰는 합쳐서 한 번에 나갑니다.</b> 위 표는 지금 고르신 '
-      + (RV ? '<i class="ic i-star"></i> 리뷰' : '<i class="ic i-notebook-pen"></i> 블로그') + ' 것만 보여드리는 것이고, '
-      + '아래 「지난달」은 둘을 합친 금액입니다.<br>'
+      '<div class="note" style="margin-bottom:14px">돈은 ' + esc(A.commName(A.ME.community_id))
+      + '로 한 번에 보내 드립니다. 공동체에서 나눠 받으시면 됩니다. 보통 다음 달 10일쯤입니다.<br>'
+      + '<b>블로그와 리뷰는 합쳐서 한 번에 나갑니다.</b> 위 표에는 지금 고르신 '
+      + (RV ? '<i class="ic i-star"></i> 리뷰' : '<i class="ic i-notebook-pen"></i> 블로그') + ' 것만 나옵니다. '
+      + '아래 지난달 칸은 둘을 합친 금액입니다.<br>'
       + '<b>링크를 넣은 날의 달</b>로 잡힙니다. 확인이 다음 달에 끝나도 링크 넣은 달 몫입니다.'
       + (MY.some(function (p) { return p.kw_bonus; })
         ? '<br>학원 요청으로 <b>검색어가 바뀐 글</b>은 다시 쓰신 수고로 금액이 더 붙습니다.' : '')
