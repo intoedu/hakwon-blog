@@ -40,14 +40,14 @@
     var h = $('su_nid_hint'); if (!h) return;
     var v = A.normNid(this.value);
     if (!v) {
-      h.innerHTML = 'blog.naver.com/<b>여기에 들어가는 부분</b> · 주소를 통째로 붙여넣으셔도 됩니다';
+      h.innerHTML = 'blog.naver.com/ 뒤에 붙는 부분입니다. 주소를 통째로 붙여넣으셔도 됩니다.';
       return;
     }
     var ok = A.NID_OK.test(v);
     h.innerHTML = ok
-      ? '이 주소가 열립니다 → <a href="https://blog.naver.com/' + A.esc(v)
+      ? '<a href="https://blog.naver.com/' + A.esc(v)
         + '" target="_blank" rel="noopener">blog.naver.com/' + A.esc(v) + ' ↗</a>'
-        + ' <b>눌러서 내 블로그가 맞는지 확인해 주세요</b>'
+        + ' 주소가 열립니다. 눌러서 내 블로그가 맞는지 확인해 주세요.'
       : '<b style="color:var(--bad)">영문 소문자·숫자·_·- 만 쓸 수 있습니다 (3~20자)</b>';
   };
 
@@ -87,8 +87,8 @@
         아래 목록에서 누를 때만 채워집니다. 이름을 손으로 고치면 다시 비웁니다 —
         비우지 않으면 「적힌 이름」과 「저장되는 공동체」가 어긋납니다. */
   var COMM_WAIT = null, COMM_ROWS = [], COMM_AT = -1;
-  var COMM_HELP = '전체를 적지 않아도 됩니다 — 일부만 적으면 아래에 나옵니다. '
-    + '<b>나온 것을 눌러 주세요.</b>';
+  var COMM_HELP = '전체를 적지 않아도 됩니다. 일부만 적으면 아래에 나옵니다. '
+    + '나온 것을 눌러 주세요.';
 
   function commHint(html) { var h = $('su_commHint'); if (h) h.innerHTML = html; }
 
@@ -113,7 +113,7 @@
     if (!b) return;
     if (!COMM_ROWS.length) {
       b.innerHTML = '<div class="acnone">「' + A.esc(q) + '」(으)로는 찾지 못했습니다. '
-        + '이름의 일부만 적어 보시고, 그래도 없으면 공동체 대표님께 '
+        + '이름의 일부만 적어 보시고 그래도 없으면 공동체 대표님께 '
         + '등록된 이름을 물어봐 주세요.</div>';
       b.classList.remove('hide');
       return;
@@ -197,7 +197,7 @@
     if (!comm) {
       /* 적어 놓기만 하고 아래 목록을 누르지 않으면 공동체 id 가 비어 있습니다 */
       A.msg('suMsg', v('su_commText')
-        ? '공동체는 칸 아래에 뜨는 것을 눌러서 골라 주세요. (적어 놓기만 하면 저장되지 않습니다)'
+        ? '공동체는 칸 아래에 뜨는 목록에서 눌러 골라 주세요. 이름을 적어 놓기만 하면 저장되지 않습니다.'
         : '공동체 이름을 적어 주세요.');
       return;
     }
