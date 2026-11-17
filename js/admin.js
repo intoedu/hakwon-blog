@@ -3314,6 +3314,7 @@
     $('capNow').textContent = String(cap);
     /* 안내문의 「같은 업체 글 한 달 N편」도 설정값으로 — 월 상한보다 이것이 먼저 걸립니다 */
     if ($('acadMonthNow')) $('acadMonthNow').textContent = String(f.same_academy_month || 3);
+    if ($('acadMonthNow2')) $('acadMonthNow2').textContent = String(f.same_academy_month || 3);
   }
   if ($('ruleSave')) $('ruleSave').onclick = async function () {
     var lines = $('adLines').value.split('\n')
