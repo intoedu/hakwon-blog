@@ -297,7 +297,7 @@
         var p = prog(o.id), done = Number(p.done || 0), pct = o.total_qty ? Math.round(done / o.total_qty * 100) : 0;
         var d = A.dday(o.deadline);
         var fin = closed(o);
-        return '<tr' + (fin ? ' style="opacity:.5"' : '') + '>'
+        return '<tr' + (fin ? ' style="color:var(--muted)"' : '') + '>'
           + '<td><b>' + esc(orderLabel(o)) + '</b>'
           + (fin ? ' <span class="chip c-off">끝난 주문</span>' : '')
           + '<div class="mono">' + esc(o.region || '') + '</div></td>'
@@ -3312,6 +3312,8 @@
     var cap = Number(A.MONTH_CAP) || 30;
     $('monthCap').value = String(cap);
     $('capNow').textContent = String(cap);
+    /* 안내문의 「같은 업체 글 한 달 N편」도 설정값으로 — 월 상한보다 이것이 먼저 걸립니다 */
+    if ($('acadMonthNow')) $('acadMonthNow').textContent = String(f.same_academy_month || 3);
   }
   if ($('ruleSave')) $('ruleSave').onclick = async function () {
     var lines = $('adLines').value.split('\n')
@@ -3948,6 +3950,25 @@
     }).length;
   }
 
+  /* 한 사람이 이번 달 «같은 업체» 글을 몇 편 받았는지 — 업체별로 묶어 가장 많은 것을 봅니다.
+     🔴 서버 posts_auto_assign 의 same_academy_month 와 «같은 기준»(주문의 share_key)으로 셉니다.
+        혼공기적학원처럼 주문이 둘이어도 share_key 가 하나면 한 업체로 셉니다. */
+  function monthAcadMap() {
+    var m = A.thisMonth(), okey = {}, by = {};
+    (A.ORDERS || []).forEach(function (q) {
+      okey[q.id] = { k: q.share_key || q.id, n: q.academy_name || '' };
+    });
+    (POSTS || []).forEach(function (x) {
+      if (!x.blogger_id || x.status === 'cancelled') return;
+      if (A.kstMonth(x.assigned_at) !== m) return;
+      var oo = okey[x.order_id] || { k: x.order_id || '?', n: '' };
+      var b = by[x.blogger_id] || (by[x.blogger_id] = {});
+      var c = b[oo.k] || (b[oo.k] = { n: oo.n, c: 0 });
+      c.c++;
+    });
+    return by;
+  }
+
   /* 📊 이번 달 받은 편수 — 몰림을 한눈에 봅니다 (행정 창 2026-10-31 · 이은총 님 확정).
      까닭 — 월 상한이 2026-11-04 에 30 → 150 편으로 늘어납니다. 배정 순서는 그대로 두기로
      했으므로(「많이 원함」을 켠 분이 먼저 뽑힙니다), 몰리는지 사람이 보면서 조절해야 합니다.
@@ -3957,45 +3978,73 @@
   function renderMonthLoad() {
     var box = $('asLoad'); if (!box) return;
     var cap = Number(A.MONTH_CAP) || 30;
+    /* 🔴 몰림을 실제로 만드는 것은 월 상한이 아니라 «같은 업체 한 달 N편»입니다.
+       월 상한이 150 이라 「남은 편수」는 늘 넉넉해 보이고 경고가 걸리지 않습니다.
+       그래서 경고 기준을 같은 업체 편수로 옮겼습니다 (이은총 님 2026-11-17). */
+    var acap = Number((A.FORM || {}).same_academy_month) || 3;
+    var amap = monthAcadMap();
+    function acadTop(bid) {
+      var b = amap[bid] || {}, top = 0, nm = '', kinds = 0;
+      Object.keys(b).forEach(function (k) {
+        kinds++;
+        if (b[k].c > top) { top = b[k].c; nm = b[k].n; }
+      });
+      return { top: top, name: nm, kinds: kinds };
+    }
     var rows = (A.PEOPLE || []).filter(function (p) { return p.status === 'approved'; })
-      .map(function (p) { return { p: p, m: monthGot(p.id) }; })
-      /* 많이 받은 사람이 위로 — 몰림을 보려고 만든 표입니다 */
+      .map(function (p) { return { p: p, m: monthGot(p.id), a: acadTop(p.id) }; })
+      /* 같은 업체가 많이 몰린 사람부터 위로 — 그 다음이 받은 편수입니다 */
       .sort(function (a, b) {
+        if (a.a.top !== b.a.top) return b.a.top - a.a.top;
         if (a.m !== b.m) return b.m - a.m;
         if (!!a.p.wants_more !== !!b.p.wants_more) return a.p.wants_more ? -1 : 1;
         return (a.p.name || '').localeCompare(b.p.name || '');
       });
     if (!rows.length) { box.innerHTML = ''; return; }
 
-    var top = rows[0].m, zero = rows.filter(function (r) { return r.m === 0; }).length;
+    var top = rows.reduce(function (t, r) { return r.m > t ? r.m : t; }, 0);
+    var acadMax = rows[0].a.top;
+    var zero = rows.filter(function (r) { return r.m === 0; }).length;
     var got = rows.length - zero, sum = rows.reduce(function (t, r) { return t + r.m; }, 0);
     var wm = rows.filter(function (r) { return r.p.wants_more; });
     var wmSum = wm.reduce(function (t, r) { return t + r.m; }, 0);
+    var wmPct = sum ? Math.round(wmSum * 100 / sum) : 0;
+    /* 「많이 원함」을 켠 사람 «비율»보다 받은 «비율»이 훨씬 높을 때만 경고합니다
+       (옛 기준은 월 상한의 80% 였는데, 상한이 150 이라 걸리지 않았습니다) */
+    var wmWarn = wm.length > 0 && wmPct >= 60 && (wm.length * 100 / rows.length) < wmPct;
 
     box.innerHTML = '<details class="outbox" style="margin-top:14px"><summary><i class="ic i-chart-column"></i> 이번 달 받은 편수'
-      + ': 가장 많은 분 ' + top + '편, 상한 ' + cap + '편'
+      + ': 가장 많은 분 ' + top + '편'
+      + ', 같은 업체 최다 ' + acadMax + '편' + (acadMax >= acap ? ' (상한 ' + acap + '편에 닿음)' : '/' + acap + '편')
       + (zero ? ', 아직 0편인 분 ' + zero + '명' : '')
       + '</summary>'
       + '<div class="note">여기 숫자는 <b>배정받은 편수</b>입니다. '
       + '공동체 표의 [멤버 보기]에 나오는 이번 달 N편은 끝낸 편수라서 이 숫자와 다릅니다.<br>'
       + '이 달에 모두 ' + sum + '편이 나갔고 ' + got + '명이 받았습니다. '
-      + '한 사람 상한은 ' + cap + '편입니다.</div>'
-      + (wm.length ? '<div class="note' + (top >= cap * 0.8 ? ' warn' : '') + '">'
+      + '한 사람 월 상한은 ' + cap + '편이지만, <b>실제로 먼저 걸리는 것은 같은 업체 글 한 달 '
+      + acap + '편</b>입니다. 한 사람이 받을 수 있는 양은 사실 <b>맡을 업체 수 &times; ' + acap + '편</b>입니다.</div>'
+      + (wm.length ? '<div class="note' + (wmWarn ? ' warn' : '') + '">'
         + '<i class="ic i-star-fill"></i> 많이 원함을 켠 분 ' + wm.length + '명이 이 달 받은 글 가운데 ' + wmSum + '편'
-        + '(' + (sum ? Math.round(wmSum * 100 / sum) : 0) + '%)을 받았습니다. '
+        + '(' + wmPct + '%)을 받았습니다. '
         + '자동으로 나눠주면 이분들이 먼저 뽑힙니다. 한쪽으로 몰리면 '
         + '[고른 사람에게만 나눠주기]로 다른 분께 돌려 주세요.</div>' : '')
       + '<div class="tblbox tblscroll"><table><thead><tr><th>#</th><th>이름</th><th>공동체</th>'
-      + '<th>이번 달 받은 편수</th><th>남은 편수</th></tr></thead><tbody>'
+      + '<th>이번 달 받은 편수</th><th>같은 업체 최다</th></tr></thead><tbody>'
       + rows.map(function (r, i) {
-        var left = cap - r.m;
+        var a = r.a;
+        var col = a.top >= acap ? 'var(--bad)' : (acap > 1 && a.top >= acap - 1) ? 'var(--amber)' : '';
+        var cell = a.top
+          ? '<b' + (col ? ' style="color:' + col + '"' : '') + '>' + a.top + '편</b>'
+            + (a.name ? ' <span style="color:var(--muted)">' + esc(a.name) + '</span>' : '')
+            + (a.top >= acap ? ' <span class="chip c-bad">상한</span>' : '')
+            + (a.kinds > 1 ? ' <span style="color:var(--muted)">· 업체 ' + a.kinds + '곳</span>' : '')
+          : '<span style="color:var(--muted)">—</span>';
         return '<tr><td class="mono">' + (i + 1) + '</td>'
           + '<td><b>' + esc(r.p.name || '') + '</b>'
           + (r.p.wants_more ? ' <span class="chip c-ok"><i class="ic i-star-fill"></i> 많이 원함</span>' : '') + '</td>'
           + '<td class="mono">' + esc(A.commName(r.p.community_id)) + '</td>'
-          + '<td><b' + (r.m >= cap ? ' style="color:var(--bad)"' : r.m >= cap * 0.8 ? ' style="color:var(--amber)"' : '')
-          + '>' + r.m + '편</b></td>'
-          + '<td class="mono">' + (left <= 0 ? '<b style="color:var(--bad)">상한까지 찼습니다</b>' : left + '편') + '</td></tr>';
+          + '<td><b' + (r.m >= cap ? ' style="color:var(--bad)"' : '') + '>' + r.m + '편</b></td>'
+          + '<td>' + cell + '</td></tr>';
       }).join('')
       + '</tbody></table></div></details>';
   }
@@ -4933,7 +4982,7 @@
   function rvRow(p, dim, byComm) {
     var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0] || {};
     var seen = !dim && p.status === 'submitted' && RV_SEEN[p.id];
-    var cls = dim ? ' style="opacity:.5"'
+    var cls = dim ? ' style="color:var(--muted)"'
       : ' class="' + (p.rework_count > 0 ? 'sent ' : '') + (seen ? 'seen' : '') + '"';
     return '<tr' + cls + '>'
       + '<td>' + (byComm ? '<b>' + esc(orderName(p.order_id)) + '</b>'
