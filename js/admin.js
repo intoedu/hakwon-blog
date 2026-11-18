@@ -5135,10 +5135,45 @@
             + '<div class="mono" style="margin-top:5px">위 [검색해보기] 로 나온 순서입니다.<br>'
             + '<b>한참 내려도 안 보이면 [50+]</b> 를 누르세요.<br>안 적으셔도 됩니다</div></div>'
             + '<button class="btn btn-a" data-verify="' + p.id + '">확인 완료</button>'
-            + '<button class="btn btn-s" data-unverify="' + p.id + '">문제 있음</button>'
+            + '<button class="btn btn-s" data-unvopen="' + p.id + '">문제 있음</button>'
+            + unvBox(p)
             + '</div></div>';
         }).join('');
     }).join('') + doneHtml;
+  }
+
+  /* ══ 올라간 글 돌려보내기 — 무엇이 문제인지 고릅니다 (이은총 님 2026-11-18) ══
+     원고 검수 돌려보내기와 같은 모양입니다. 고른 사유는 blog_posts.reject_reasons 에 들어가고,
+     🔴 notify_post_change 가 그것을 «알림톡 6번(원고수정요청)의 #{사유}» 자리에 그대로 넣습니다.
+        승인된 본문은 건드리지 않습니다 — 값만 채웁니다. 문장을 고칠 때는 길이를 짧게 두십시오.
+     🔑 그 전에는 「올라간 글에 문제가 있습니다」 한 줄만 메모로 갔고 사유 자리는 「-」였습니다. */
+  var UNV_REASONS = [
+    '광고 표시 문구가 없습니다',
+    '사진 속 사람 얼굴을 가리지 않았습니다',
+    '받은 사진이 아닌 사진이 있습니다',
+    '제목에 정해준 검색어가 없습니다',
+    '전화번호 · 주소가 틀렸습니다',
+    '정해준 태그가 들어가지 않았습니다',
+    '글이 열리지 않습니다 (주소가 틀리거나 전체 공개가 아닙니다)'
+  ];
+  function unvBox(p) {
+    return '<div class="hide" data-unvbox="' + p.id + '"'
+      + ' style="flex-basis:100%;border-top:1px solid var(--line);margin-top:12px;padding-top:12px">'
+      + '<div class="checks"><p>무엇이 문제인지 모두 고르세요. <b>고르신 그대로 블로거에게 갑니다.</b></p>'
+      + UNV_REASONS.map(function (r) {
+          return '<label><input type="checkbox" data-unvr="' + p.id + '" value="' + esc(r) + '"> ' + esc(r) + '</label>';
+        }).join('')
+      + '<label><input type="checkbox" data-unvetc="' + p.id + '"> 기타 '
+      + '<span class="mono">(위에 없는 것은 직접 적어 주세요)</span></label></div>'
+      + '<textarea class="inp hide" data-unvetctext="' + p.id + '" rows="2" '
+      + 'placeholder="예) 글 맨 아래 지도가 다른 곳입니다&#10;예) 간판 사진이 맨 앞에 없습니다"'
+      + ' style="margin-top:10px"></textarea>'
+      + '<label class="f" style="margin-top:10px">더 할 말 (안 쓰셔도 됩니다)</label>'
+      + '<textarea class="inp" data-unvnote="' + p.id + '" rows="2" '
+      + 'placeholder="예: 세 번째 사진에 얼굴이 그대로 보입니다"></textarea>'
+      + '<div class="row" style="margin-top:12px">'
+      + '<button class="btn btn-p" data-unvsend="' + p.id + '">돌려보내기</button>'
+      + '<button class="btn" data-unvcancel="' + p.id + '">취소</button></div></div>';
   }
 
   /* 「기타」를 고르면 직접 쓰는 칸이 열립니다 */
@@ -5206,6 +5241,14 @@
     var d = o.paid_at || (o.started_at || '').slice(0, 10) || o.ordered_at || '';
     return d >= '2026-09-25';
   }
+  /* 한 번 올라갔다가 돌려보내져 «원고만 다시 통과»된 글입니다 (이은총 님 2026-11-18).
+     주소가 남아 있어 「글 보기」가 뜨는데, 그 주소는 돌려보내기 «전» 글이라
+     보는 사람이 「이미 올라갔네」로 오해합니다. 주소는 지우지 않습니다 —
+     무엇을 돌려보냈는지 봐야 할 때가 있고, 블로거가 다시 올리면 그 위에 덮어씁니다. */
+  function backSent(p) {
+    return p.status === 'approved' && !!p.published_url;
+  }
+
   function takeBackBtn(p) {
     if (!p.blogger_id || TAKEBACK_OK.indexOf(p.status) < 0) return '';
     if (TAKEBACK_WROTE.indexOf(p.status) >= 0 && !A.IS_OWNER) return '';
@@ -5407,7 +5450,9 @@
           + '</td>'
           + '<td class="mono' + (late ? '" style="color:var(--bad)' : '') + '">' + (p.due_date || '-') + '</td>'
           + '<td><div class="row" style="gap:6px">'
-          + postLink(p.published_url, '글 보기 ↗') + takeBackBtn(p) + '</div></td></tr>';
+          + postLink(p.published_url, backSent(p) ? '돌려보낸 글 ↗' : '글 보기 ↗')
+          + (backSent(p) ? ' <span class="chip c-wait" title="한 번 올라갔다가 돌려보낸 글입니다. 블로거가 고쳐서 다시 올려야 합니다 — 위 주소는 돌려보내기 «전» 글입니다">↩ 다시 올려야 함</span>' : '')
+          + takeBackBtn(p) + '</div></td></tr>';
       }).join('') + '</tbody></table></div>'
       + (rows.length > 300 ? '<div class="mono" style="margin-top:8px">앞의 300개만 보여드립니다. 필터를 좁혀 주세요.</div>' : '')
       : A.empty('해당하는 글이 없습니다.');
@@ -7197,16 +7242,65 @@
       return;
     }
 
-    if ((t = e.target.closest('[data-verify]')) || (t = e.target.closest('[data-unverify]'))) {
-      var pid = t.dataset.verify || t.dataset.unverify, ok = !!t.dataset.verify;
+    /* ── 올라간 글 : 확인 완료 ── */
+    if ((t = e.target.closest('[data-verify]'))) {
+      var pid = t.dataset.verify;
       var rk = document.querySelector('[data-rank="' + pid + '"]');
       t.disabled = true;
       try {
         await A.rpc('post_verify', {
-          p_post: pid, p_ok: ok, p_rank: rk && rk.value ? Number(rk.value) : null,
-          p_note: ok ? null : '올라간 글에 문제가 있습니다'
+          p_post: pid, p_ok: true, p_rank: rk && rk.value ? Number(rk.value) : null,
+          p_note: null, p_reasons: []
         });
-        A.toast(ok ? '확인 완료. 이제 정산 대상입니다' : '돌려보낸 것으로 되돌렸습니다');
+        A.toast('확인 완료. 이제 정산 대상입니다');
+        await A.loadAdmin();
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
+    /* ── 올라간 글 : 돌려보내기 — 사유 칸 열기 · 닫기 · 보내기 (2026-11-18) ── */
+    if ((t = e.target.closest('[data-unvopen]'))) {
+      var ub = document.querySelector('[data-unvbox="' + t.dataset.unvopen + '"]');
+      if (ub) ub.classList.toggle('hide');
+      return;
+    }
+    if ((t = e.target.closest('[data-unvetc]'))) {
+      var tx = document.querySelector('[data-unvetctext="' + t.dataset.unvetc + '"]');
+      if (tx) { tx.classList.toggle('hide', !t.checked); if (t.checked) tx.focus(); }
+      return;
+    }
+    if ((t = e.target.closest('[data-unvcancel]'))) {
+      var ub2 = document.querySelector('[data-unvbox="' + t.dataset.unvcancel + '"]');
+      if (ub2) ub2.classList.add('hide');
+      return;
+    }
+    if ((t = e.target.closest('[data-unvsend]'))) {
+      var vid = t.dataset.unvsend;
+      var reasons = [].map.call(
+        document.querySelectorAll('[data-unvr="' + vid + '"]:checked'),
+        function (c) { return c.value; });
+      /* ⭐ 기타 — 목록에 없는 것은 직접 씁니다. 줄이나 쉼표로 나누면 여러 사유가 됩니다 */
+      var etcOn2 = document.querySelector('[data-unvetc="' + vid + '"]');
+      var etcTx = document.querySelector('[data-unvetctext="' + vid + '"]');
+      if (etcOn2 && etcOn2.checked) {
+        var etc2 = (etcTx && etcTx.value || '').split(/[\n,]/)
+          .map(function (x) { return x.trim(); }).filter(Boolean);
+        if (!etc2.length) {
+          A.toast('「기타」를 고르셨으면 무엇이 문제인지 적어 주세요');
+          if (etcTx) etcTx.focus();
+          return;
+        }
+        reasons = reasons.concat(etc2);
+      }
+      if (!reasons.length) { A.toast('무엇이 문제인지 하나 이상 골라 주세요'); return; }
+      var nt = document.querySelector('[data-unvnote="' + vid + '"]');
+      t.disabled = true;
+      try {
+        await A.rpc('post_verify', {
+          p_post: vid, p_ok: false, p_rank: null,
+          p_note: (nt && nt.value.trim()) || null, p_reasons: reasons
+        });
+        A.toast('돌려보냈습니다. 블로거에게 사유가 갑니다');
         await A.loadAdmin();
       } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
       return;
