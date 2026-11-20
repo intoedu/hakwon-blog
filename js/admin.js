@@ -318,8 +318,12 @@
           + '<button class="fstep" data-go="' + s[2] + '"><b>' + s[0] + '</b>' + s[1] + '</button>';
       }).join('') + '</div></div>';
   }
-  function st(n, label, alert) {
-    return '<div class="stat' + (alert ? ' alert' : '') + '"><b'
+  /* pick = 누르면 아래 목록을 거를 상태 칩들(「submitted,published」) — 진행 현황 숫자 칸만 씁니다 · on = 지금 그것으로 걸러져 있음 */
+  function st(n, label, alert, pick, on) {
+    return '<div class="stat' + (alert ? ' alert' : '') + (pick ? ' pick' : '') + (on ? ' on' : '') + '"'
+      + (pick ? ' data-pick="' + pick + '" role="button" tabindex="0" aria-pressed="' + (on ? 'true' : 'false') + '"'
+        + ' title="' + (on ? '한 번 더 누르면 거르기를 풉니다' : '누르면 아래 목록이 이 상태 글만 보입니다') + '"' : '')
+      + '><b'
       + (alert ? ' style="color:var(--bad)"' : '') + '>' + won(n) + '</b><span>' + label + '</span></div>';
   }
   function job(title, meta, go, btn, due) {
@@ -2836,6 +2840,10 @@
   }
   var STAGE_KO = { 1: '초등', 2: '중등', 3: '고등' };
 
+  /* 긴 말(a)의 앞이나 끝에 짧은 말(b)이 붙어 있나 — 「중등수학내신」의 끝 「내신」 ○ · 「디카페인」 가운데 「카페」 ✕ */
+  function edgeHas(a, b) {
+    return a.length >= b.length && (a.slice(0, b.length) === b || a.slice(-b.length) === b);
+  }
   function badCombo(region, grade, subject, purpose) {
     var whole = [region, grade, subject, purpose];
 
@@ -2845,7 +2853,10 @@
         var x = whole[i], y = whole[j];
         if (!x || !y) continue;
         if (x === y) return '같은 말이 두 번';
-        if (x.length >= 2 && y.length >= 2 && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0))
+        /* 11/20 — 겹침은 한 말이 다른 말의 «앞이나 끝»에 붙어 있을 때만 봅니다.
+           예전에는 가운데에 들어 있어도 잡아서 「디카페인 + 카페」(디·카페·인)를 겹침으로 헛짚었습니다
+           (블로그-1120-6 · 우리동네커피). 가운데에 든 「수학내신대비 + 내신」 같은 것은 아래 ①-2 가 잡습니다. */
+        if (x.length >= 2 && y.length >= 2 && (edgeHas(x, y) || edgeHas(y, x)))
           return '같은 말이 겹침';
       }
     }
@@ -5412,12 +5423,14 @@
       ? '갈래나 이름으로 찾기' : '검색어나 이름으로 찾기';
 
     var oid = $('pgOrder').value, sel = pgPicked(), q = ($('pgQ').value || '').trim();
-    var rows = POSTS.filter(function (p) {
+    /* 상태를 뺀 거르기(갈래 · 주문 · 찾기) — 위 숫자 칸도 이것으로 셉니다.
+       11/20 — 숫자 칸을 누르면 목록이 걸러지므로, 숫자와 걸러진 줄 수가 같아야 합니다.
+       (예전 숫자는 갈래 · 찾기를 안 보고 세어 리뷰 글까지 섞일 수 있었습니다) */
+    var base = POSTS.filter(function (p) {
       /* 지금 보는 갈래 것만 */
       var o = A.ORDERS.filter(function (x) { return x.id === p.order_id; })[0];
       if (!o || ((o.track || 'blog') === 'review') !== RV) return false;
       if (oid && p.order_id !== oid) return false;
-      if (sel.length && sel.indexOf(p.status === 'writing' ? 'assigned' : p.status) < 0) return false;
       if (q) {
         var b = A.PEOPLE.filter(function (x) { return x.id === p.blogger_id; })[0];
         var hay = (p.keyword || '') + ' ' + (p.category || '');
@@ -5425,12 +5438,24 @@
       }
       return true;
     });
+    var rows = base.filter(function (p) {
+      return !sel.length || sel.indexOf(p.status === 'writing' ? 'assigned' : p.status) >= 0;
+    });
     PG_ROWS = rows;
-    var c = function (s) { return POSTS.filter(function (p) { return (!oid || p.order_id === oid) && p.status === s; }).length; };
-    $('pgStats').innerHTML = st(c('pending'), '담당자 미정')
-      + st(c('writing') + c('assigned'), '배정됨') + st(c('rework'), '돌려보낸 글', c('rework') > 0)
-      + st(c('submitted') + c('published'), '검수 대기')
-      + st(c('verified') + c('paid'), '확인 끝');
+    var c = function (s) { return base.filter(function (p) { return p.status === s; }).length; };
+    /* 숫자 칸 하나 = 아래 상태 칩 몇 개. 「배정됨」 칩이 writing 까지 함께 거르므로 assigned 하나면 됩니다 */
+    /* 이 갈래에 칩이 없는 상태는 뺍니다(리뷰엔 「원고 냄」·「다시 쓰기」가 없음). 남는 것이 없으면 누를 수 없는 칸으로 둡니다 */
+    var avail = (RV ? PG_RV : PG_BLOG).map(function (x) { return x[0]; });
+    var now = sel.slice().sort().join(',');
+    var sp = function (n, label, pick, alert) {
+      var ok = pick.split(',').filter(function (s) { return avail.indexOf(s) >= 0; }).sort().join(',');
+      return st(n, label, alert, ok, !!ok && ok === now);
+    };
+    $('pgStats').innerHTML = sp(c('pending'), '담당자 미정', 'pending')
+      + sp(c('writing') + c('assigned'), '배정됨', 'assigned')
+      + sp(c('rework'), '돌려보낸 글', 'rework', c('rework') > 0)
+      + sp(c('submitted') + c('published'), '검수 대기', 'submitted,published')
+      + sp(c('verified') + c('paid'), '확인 끝', 'verified,paid');
 
     $('pgList').innerHTML = rows.length ? '<div class="tblbox tblscroll"><table>'
       + '<thead><tr><th>#</th><th>노리는 검색어</th><th>업체</th><th>공동체</th><th>누가</th>'
@@ -5556,6 +5581,27 @@
      (실제로 그래서 「4 리뷰 만들기 →」 버튼과 주소 모음이 죽어 있었습니다.)
      누르는 것은 바로 위 #pgStatus 위임 처리기가 이미 받고 있습니다. */
   $('pgQ').oninput = renderProgress;
+  /* 11/20 — 위 숫자 칸을 누르면 아래 상태 칩을 그 상태로 맞춰 목록을 거릅니다. 같은 칸을 한 번 더 누르면 풉니다.
+     (블로그-1120-6 · 숫자만 보이고 «누구에게 어느 글이 갔는지»를 찾느라 헤맴)
+     칩을 직접 고르는 것과 같은 길을 씁니다 — 거르는 기준이 하나뿐이어야 숫자와 목록이 어긋나지 않습니다. */
+  function pgStatPick(t) {
+    var want = t.dataset.pick.split(',');
+    var off = t.classList.contains('on');
+    document.querySelectorAll('#pgStatus input').forEach(function (c) {
+      c.checked = !off && want.indexOf(c.value) >= 0;
+    });
+    renderProgress();
+    var list = $('pgList');
+    if (!off && list && list.getBoundingClientRect().top > window.innerHeight * 0.8)
+      list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('pgStats').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-pick]'); if (t) pgStatPick(t);
+  });
+  $('pgStats').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var t = e.target.closest('[data-pick]'); if (t) { e.preventDefault(); pgStatPick(t); }
+  });
 
   /* 표를 파일로 — 구글 시트·넘버스·엑셀에서 바로 열립니다 */
   function saveCsv(name, head, body) {
