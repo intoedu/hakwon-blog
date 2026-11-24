@@ -7,6 +7,7 @@
   var KWCHG = [];     /* 검색어 변경 기록 (blog_keyword_changes) — 새것부터 */
   var REFUNDS = [], LATE = [], LATE_BY = {};   /* 환불 기록 · 주문 마감 넘긴 글 (9/15) */
   var ERASED = {};    /* 개인정보를 지운 분 — blogger_id → 기록 (9/30) */
+  var BLOCKS = [];    /* 업체마다 「이 업체 글을 안 받을 사람」 (blog_company_blocks · 2026-11-24 · 블로그-1124-1) — 뺀 줄도 들어 있음 */
   var ALLTOPICS = [], NOTES = [], RVSPECS = [];   /* 소재 전체 · 학원이 보낸 전달사항 전체 (주문 카드에서 씁니다) */
   var CPAY = [], BPAY = [];
   var SUBTAB = 'pending', RV_ORDER = null, RV_COMM = null, RJ_POST = null, KWDRAFT = [];
@@ -84,6 +85,7 @@
     ALLTOPICS = await A.sel('blog_topics', { order: 'sort' });   /* 주문 카드 「나가는 정보」용 */
     NOTES = await A.sel('order_notes', { order: 'created_at' });
     RVSPECS = await A.sel('review_specs', { order: 'sort' });
+    BLOCKS = await A.sel('blog_company_blocks', { order: 'added_at', asc: false });
     /* 개인정보를 지운 분 — 누가·언제·왜 (최고관리자만 보입니다. RLS 가 막으면 빈 배열입니다) */
     ERASED = {};
     (await A.sel('blogger_erasures', { order: 'erased_at', asc: false }))
@@ -3796,10 +3798,16 @@
       }).join('') + '</div>'
       : A.empty(mine.length ? '맡길 리뷰가 남아 있지 않습니다.' : '아직 리뷰를 안 만들었습니다. 4번으로 가세요.');
 
-    var appr = A.PEOPLE.filter(function (p) {
+    var rvo = rvOrderOf('raOrder');
+    var appr0 = A.PEOPLE.filter(function (p) {
       return p.status === 'approved' && READY.review && READY.review[p.id];
     });
-    $('raPeople').innerHTML = appr.length
+    var appr = appr0.filter(function (p) { return !(rvo && blockOf(rvo.id, p.id)); });
+    var rvOut = appr0.filter(function (p) { return rvo && blockOf(rvo.id, p.id); });
+    $('raPeople').innerHTML = (rvOut.length ? '<div class="note" style="margin:0 0 10px"><i class="ic i-ban"></i> 이 업체 제외 '
+        + rvOut.length + '명 : ' + esc(rvOut.map(function (p) { return p.name; }).join(' · '))
+        + ' <span class="mono">(글 나눠주기 화면의 「이 업체 글을 안 받을 사람」에서 고칩니다)</span></div>' : '')
+      + (appr.length
       ? '<div class="picklist">' + appr.map(function (p) {
         var n = POSTS.filter(function (x) { return x.blogger_id === p.id && x.status !== 'cancelled'; }).length;
         return '<label class="pickrow"><input type="checkbox" class="pk-rvp" value="' + p.id + '">'
@@ -3807,7 +3815,7 @@
           + '<span class="sub">' + esc(A.commName(p.community_id)) + '</span></span>'
           + '<span class="mono">누적 ' + n + '</span></label>';
       }).join('') + '</div>'
-      : A.empty('리뷰 교육을 마친 사람이 없습니다. 2 리뷰어 교육을 먼저 끝내 주세요.');
+      : A.empty('리뷰 교육을 마친 사람이 없습니다. 2 리뷰어 교육을 먼저 끝내 주세요.'));
   }
   if ($('raOrder')) {
     $('raOrder').onchange = renderRvAssign;
@@ -3901,6 +3909,75 @@
      ⚠️ 예전엔 「검수자·관리자」 한마디로 뭉뚱그렸습니다. 그래서 관리자가 「블로거 병행」을
      켜 놓고도 화면이 그대로 「검수자·관리자」라고 해서, 체크가 안 먹은 줄 알았습니다.
      서버의 blogger_ready(id, track) 와 **같은 순서로** 조건을 따집니다. */
+  /* ── 이 업체 제외 (2026-11-24 · 블로그-1124-1) ──
+     «업체» = 주문의 share_key 입니다. 같은 업체 이름으로 새 주문이 들어와도 share_key 가 같아 그대로 적용됩니다.
+     🔴 서버가 막습니다 — blog_posts 트리거(t_post_company_block) · posts_auto_assign 은 후보에서 뺌.
+        여기 화면은 «미리 보여 주기»일 뿐입니다. */
+  function orderKey(oid) {
+    var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+    return o ? (o.share_key || null) : null;
+  }
+  function liveBlocks(oid) {
+    var k = orderKey(oid);
+    return k ? BLOCKS.filter(function (b) { return b.share_key === k && !b.removed_at; }) : [];
+  }
+  function blockOf(oid, bid) {
+    return liveBlocks(oid).filter(function (b) { return b.blogger_id === bid; })[0] || null;
+  }
+  function personName(bid) {
+    var p = A.PEOPLE.filter(function (x) { return x.id === bid; })[0];
+    return p ? p.name : '?';
+  }
+  function blockLiveCnt(oid, bid) {
+    var k = orderKey(oid);
+    return POSTS.filter(function (q) {
+      return q.blogger_id === bid && ['assigned', 'writing', 'submitted', 'rework', 'approved'].indexOf(q.status) >= 0
+        && orderKey(q.order_id) === k;
+    }).length;
+  }
+  function renderBlockBox(oid) {
+    var box = $('asBlock'); if (!box) return;
+    var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
+    if (!o || !o.share_key) { box.innerHTML = ''; return; }
+    var live = liveBlocks(oid);
+    var gone = BLOCKS.filter(function (b) { return b.share_key === o.share_key && b.removed_at; });
+    var cand = A.PEOPLE.filter(function (p) { return p.status === 'approved' && !blockOf(oid, p.id); })
+      .sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+    var was = box.querySelector('details');
+    var open = was ? was.open : false;
+    box.innerHTML = '<details class="note" style="margin:0 0 12px"' + (open ? ' open' : '') + '>'
+      + '<summary style="cursor:pointer"><b><i class="ic i-ban"></i> 이 업체 글을 안 받을 사람 '
+      + live.length + '명</b>'
+      + (live.length ? ' <span class="mono">' + esc(live.map(function (b) { return personName(b.blogger_id); }).join(' · ')) + '</span>' : '')
+      + '</summary>'
+      + '<div class="mono" style="margin:8px 0 10px">「' + esc(o.academy_name) + '」의 다음 주문에도 그대로 적용됩니다. '
+      + '여기 넣은 사람은 아래 목록에서 고를 수 없고, 서버도 배정을 막습니다. 이미 맡은 글은 그대로 둡니다.</div>'
+      + (live.length ? live.map(function (b) {
+          var n = blockLiveCnt(oid, b.blogger_id);
+          return '<div class="row" style="gap:8px;padding:6px 0;border-top:1px solid var(--line);flex-wrap:wrap">'
+            + '<b>' + esc(personName(b.blogger_id)) + '</b>'
+            + (b.source === 'recall' ? ' <span class="chip c-info">회수하며 넣음</span>' : '')
+            + (n ? ' <span class="chip c-bad" title="이미 맡은 글은 그대로입니다. 회수할지는 진행 현황에서 정해 주세요">배정된 글 ' + n + '편 있음</span>' : '')
+            + '<span class="mono" style="flex:1;min-width:180px">' + esc(b.memo || '메모 없음') + ' · '
+            + A.fdate(b.added_at) + (b.added_by ? ' · ' + esc(staffName(b.added_by)) : '') + '</span>'
+            + '<button class="btn btn-s" data-unblock="' + b.id + '">다시 주기</button></div>';
+        }).join('') : '<div class="mono">아직 아무도 없습니다.</div>')
+      + '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">'
+      + '<select class="inp" id="blkWho" style="width:auto;min-width:160px"><option value="">사람 고르기</option>'
+      + cand.map(function (p) {
+          return '<option value="' + p.id + '">' + esc(p.name) + ' · ' + esc(A.commName(p.community_id)) + '</option>';
+        }).join('') + '</select>'
+      + '<input class="inp" id="blkMemo" placeholder="왜 빼는지 (예: 정치 내용이라 안 쓰기로 함)" style="flex:1;min-width:200px">'
+      + '<button class="btn btn-s btn-p" id="blkAdd" data-blkorder="' + oid + '">넣기</button></div>'
+      + (gone.length ? '<div class="mono" style="margin-top:12px"><b>뺀 기록</b><br>' + gone.map(function (b) {
+          return '· ' + esc(personName(b.blogger_id)) + ' — ' + A.fdate(b.added_at) + ' 넣음'
+            + (b.memo ? ' (' + esc(b.memo) + ')' : '') + ' → ' + A.fdate(b.removed_at) + ' 뺌'
+            + (b.removed_by ? ' · ' + esc(staffName(b.removed_by)) : '')
+            + (b.removed_memo ? ' (' + esc(b.removed_memo) + ')' : '');
+        }).join('<br>') + '</div>' : '')
+      + '</details>';
+  }
+
   function trackOfOrder(oid) {
     var o = A.ORDERS.filter(function (x) { return x.id === oid; })[0];
     return (o && o.track) || 'blog';
@@ -4085,6 +4162,7 @@
 
       /* 지금 나눠주는 글이 얼마짜리인지 — 회원 구분에 따라 지급액이 달라지니 여기서 한 번 더 */
       schPaint();
+      renderBlockBox(oid);
       var mb = $('asMember');
       if (mb) mb.innerHTML = !o ? '' : '<div class="note" style="margin:0 0 12px">'
         + memBadge(o) + ' ' + esc(o.academy_name) + ' 주문은 편당 '
@@ -4100,11 +4178,11 @@
         var wbox = $('asWho'); if (!wbox) return;
         var TK = trackOfOrder(oid);
         var app = A.PEOPLE.filter(function (x) { return x.status === 'approved'; });
-        var ok = app.filter(function (x) { return stat(x.id).ready; });
-        var no = app.filter(function (x) { return !stat(x.id).ready; });
+        var ok = app.filter(function (x) { return stat(x.id).ready && !blockOf(oid, x.id); });
+        var no = app.filter(function (x) { return !stat(x.id).ready || blockOf(oid, x.id); });
         var by = {};
         no.forEach(function (x) {
-          var r = whyNotReady(x, TK);
+          var r = stat(x.id).ready ? '이 업체 제외' : whyNotReady(x, TK);
           (by[r] = by[r] || []).push(x.name);
         });
         var left = POSTS.filter(function (q) {
@@ -4265,7 +4343,8 @@
     var ppl = A.PEOPLE.filter(function (p) { return p.status === 'approved'; })
       .map(function (p) { return { p: p, s: stat(p.id), m: gotThisMonth(p.id) }; })
       .sort(function (a, b) {
-        if (a.s.ready !== b.s.ready) return a.s.ready ? -1 : 1;
+        var ar = a.s.ready && !blockOf(oid, a.p.id), br = b.s.ready && !blockOf(oid, b.p.id);
+        if (ar !== br) return ar ? -1 : 1;
         if (!!a.p.wants_more !== !!b.p.wants_more) return a.p.wants_more ? -1 : 1;
         if (a.m !== b.m) return a.m - b.m;
         return (a.p.name || '').localeCompare(b.p.name || '');
@@ -4274,6 +4353,13 @@
     $('peopleList').innerHTML = ppl.length ? ppl.map(function (x) {
       var p = x.p, s = x.s;
       var here = POSTS.filter(function (y) { return y.order_id === oid && y.blogger_id === p.id; }).length;
+      var bk = blockOf(oid, p.id);
+      if (bk) {
+        return '<label class="pickrow" style="opacity:.55;cursor:not-allowed" title="' + esc(bk.memo || '') + '"><input type="checkbox" disabled>'
+          + '<span><b>' + esc(p.name) + '</b> <span class="chip c-bad"><i class="ic i-ban"></i> 이 업체 제외</span>'
+          + ' <span class="mono">' + esc(A.commName(p.community_id)) + '</span></span>'
+          + '<span class="sub">' + esc(bk.memo || '위 「이 업체 글을 안 받을 사람」에 있습니다') + '</span></label>';
+      }
       if (!s.ready) {
         return '<label class="pickrow" style="opacity:.55;cursor:not-allowed"><input type="checkbox" disabled>'
           + '<span><b>' + esc(p.name) + '</b> <span class="mono">' + esc(A.commName(p.community_id)) + '</span></span>'
@@ -5258,6 +5344,50 @@
      무엇을 돌려보냈는지 봐야 할 때가 있고, 블로거가 다시 올리면 그 위에 덮어씁니다. */
   function backSent(p) {
     return p.status === 'approved' && !!p.published_url;
+  }
+
+  /* 회수 사유 + 「이 업체 글 다시 주지 않기」를 한 창에서 받습니다 (2026-11-24 · 블로그-1124-1).
+     🔴 체크는 기본으로 «꺼짐»입니다. 블로거가 «이런 글은 안 쓰겠다»며 돌려줄 때 켭니다.
+     돌려주는 값 : { why, block } · 그만두면 null */
+  function recallAsk(name, acad, already) {
+    return new Promise(function (done) {
+      var w = document.createElement('div');
+      w.className = 'picwrap on';
+      w.innerHTML = '<div class="picbox" style="max-width:520px;margin:10vh auto 0">'
+        + '<div class="pichead"><b>글 회수 — ' + esc(name) + ' 님</b></div>'
+        + '<div style="padding:16px 18px">'
+        + '<label class="f">왜 회수하는지 한 줄 적어 주세요 <span class="mono">(그대로 ' + esc(name) + ' 님께 갑니다)</span></label>'
+        + '<input class="inp" id="rcWhy" value="같은 업체 글이 한 분께 몰려서 조정합니다.">'
+        + (already
+            ? '<div class="mono" style="margin-top:12px"><i class="ic i-ban"></i> 이미 「' + esc(acad) + '」 글을 안 받을 사람으로 들어 있습니다.</div>'
+            : '<label class="row" style="gap:8px;margin-top:14px;cursor:pointer;align-items:flex-start">'
+              + '<input type="checkbox" id="rcBlock" style="margin-top:3px">'
+              + '<span><b>이 블로거에게 「' + esc(acad) + '」 글 다시 주지 않기</b><br>'
+              + '<span class="mono">체크하면 회수와 함께 「이 업체 글을 안 받을 사람」에 들어가고, 위 사유가 메모로 남습니다. '
+              + '이 업체의 다음 주문에도 적용됩니다. [5 글 나눠주기]에서 다시 뺄 수 있습니다.</span></span></label>')
+        + '<div class="row" style="justify-content:flex-end;gap:8px;margin-top:16px">'
+        + '<button class="btn" id="rcNo">그만두기</button>'
+        + '<button class="btn btn-p" id="rcYes"><i class="ic i-undo-2"></i> 회수하기</button></div>'
+        + '</div></div>';
+      document.body.appendChild(w);
+      var inp = w.querySelector('#rcWhy');
+      function close(v) { document.removeEventListener('keydown', key); w.remove(); done(v); }
+      function yes() {
+        var why = inp.value.trim();
+        if (!why) { A.toast('회수 사유를 적어 주세요. 적은 내용이 블로거에게 그대로 갑니다'); inp.focus(); return; }
+        var cb = w.querySelector('#rcBlock');
+        close({ why: why, block: !!(cb && cb.checked) });
+      }
+      function key(e) {
+        if (e.key === 'Escape') close(null);
+        else if (e.key === 'Enter' && e.target === inp) { e.preventDefault(); yes(); }
+      }
+      document.addEventListener('keydown', key);
+      w.querySelector('#rcNo').onclick = function () { close(null); };
+      w.querySelector('#rcYes').onclick = yes;
+      w.onclick = function (e) { if (e.target === w) close(null); };
+      inp.focus(); inp.select();
+    });
   }
 
   function takeBackBtn(p) {
@@ -6937,6 +7067,39 @@
       PG_VIEW = t.dataset.pgview; pgViewPaint(); return;
     }
 
+    /* ── 🚫 이 업체 글을 안 받을 사람 — 넣기 · 다시 주기 (2026-11-24 · 블로그-1124-1) ── */
+    if ((t = e.target.closest('#blkAdd'))) {
+      var bw = $('blkWho') && $('blkWho').value;
+      if (!bw) { A.toast('넣을 사람을 고르세요'); return; }
+      var bm = ($('blkMemo') && $('blkMemo').value || '').trim();
+      if (!bm) { A.toast('왜 빼는지 메모를 적어 주세요. 나중에 다시 줄지 정할 때 봅니다'); return; }
+      t.disabled = true;
+      try {
+        var ba = await A.rpc('company_block_add', { p_order: t.dataset.blkorder, p_bloggers: [bw], p_memo: bm }) || {};
+        await A.loadAdmin();
+        var busy = (ba.busy || [])[0];
+        A.toast(ba.added ? personName(bw) + ' 님은 이제 「' + (ba.academy || '') + '」 글을 받지 않습니다'
+          : '이미 목록에 있는 분입니다');
+        if (busy) alert(busy.name + ' 님은 이 업체 글을 이미 ' + busy.n + '편 맡고 있습니다.\n\n'
+          + '맡은 글은 그대로 두었습니다. 회수할지는 「진행 현황」에서 정해 주세요.');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+    if ((t = e.target.closest('[data-unblock]'))) {
+      var ub = BLOCKS.filter(function (x) { return x.id === t.dataset.unblock; })[0];
+      if (!ub) return;
+      var um = prompt(personName(ub.blogger_id) + ' 님에게 「' + (ub.academy_name || '') + '」 글을 다시 줄 수 있게 할까요?\n\n'
+        + '왜 다시 주는지 한 줄 적어 주세요. (넣고 뺀 기록은 남습니다)', '');
+      if (um === null) return;
+      t.disabled = true;
+      try {
+        var ur = await A.rpc('company_block_remove', { p_block: ub.id, p_memo: um.trim() || null }) || {};
+        await A.loadAdmin();
+        A.toast((ur.name || '') + ' 님은 다시 이 업체 글을 받을 수 있습니다');
+      } catch (err) { A.toast('실패: ' + err.message); t.disabled = false; }
+      return;
+    }
+
     /* ── ↩ 맡긴 글 회수 ── */
     if ((t = e.target.closest('[data-takeback]'))) {
       var tp = POSTS.filter(function (x) { return x.id === t.dataset.takeback; })[0];
@@ -6980,18 +7143,18 @@
             : '아직 원고를 안 낸 글이라 부담은 적습니다.\n\n')
         + '글은 그대로 남고 맡은 사람만 빠집니다. 다시 나눠 주실 수 있습니다.';
       if (!confirm(msg)) return;
-      var why = prompt('왜 회수하는지 한 줄 적어 주세요.\n(그대로 ' + (tb.name || '본인') + ' 님께 갑니다)',
-        '같은 업체 글이 한 분께 몰려서 조정합니다.');
-      if (why === null) return;
-      if (!why.trim()) { A.toast('회수 사유를 적어 주세요. 적은 내용이 블로거에게 그대로 갑니다'); return; }
+      var ask = await recallAsk(tb.name || '이분', (A.ORDERS.filter(function (x) { return x.id === tp.order_id; })[0] || {}).academy_name || orderName(tp.order_id), !!blockOf(tp.order_id, tp.blogger_id));
+      if (!ask) return;
+      var why = ask.why;
       if (wrote && !confirm('마지막 확인입니다.\n\n'
           + (tb.name || '이분') + ' 님이 낸 원고를 두고 회수합니다. 정말 진행할까요?')) return;
       t.disabled = true;
       try {
-        var tr = await A.rpc('post_unassign',
+        var tr = await A.rpc(ask.block ? 'post_unassign_block' : 'post_unassign',
           { p_post: tp.id, p_reason: why.trim() || null, p_force: wrote }) || {};
         await A.loadAdmin();
         A.toast((tr.blogger || '') + ' 님에게서 회수했습니다'
+          + (tr.blocked ? ' · 이 업체 글은 앞으로 이분께 안 갑니다' : '')
           + (tr.paid_anyway ? ' · 원고료 ' + won(tr.pay_amount || 0) + '원은 정산에 붙습니다'
              : tr.no_pay_rework ? ' · 수정 불응이라 원고료는 없습니다 (제13조⑨ 단서)'
              : tr.wrote ? ' · 이 주문은 약관 시행 전이라 원고료는 없습니다' : '')
