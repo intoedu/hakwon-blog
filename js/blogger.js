@@ -70,12 +70,14 @@
        안 그러면 관리자 눈에는 「이 글에서 다룰 이야기」가 통째로 빠져 보입니다. */
     var r = await A.sb.from('blog_posts')
       .select('*, blog_orders(academy_name,region,info_pack,academy_url,photo_paths,photo_note,'
-        + 'photo_tags,track,map_url,visit_type,tags),'
+        + 'photo_tags,track,map_url,visit_type,tags,is_practice,deadline),'
         + 'blog_topics(title,body,subject,tags)')
       .eq('blogger_id', id).order('due_date');
     ALL_MY = (r.data || []).map(function (x) {
       var o = x.blog_orders || {}; delete x.blog_orders;
       var t = x.blog_topics || {}; delete x.blog_topics;
+      /* my_posts 뷰는 주문 마감을 order_deadline 으로 줍니다 — 미리보기도 같은 이름으로 (2026-11-26 · 블로그-1126-1) */
+      x.order_deadline = o.deadline || null; delete o.deadline;
       Object.assign(x, o);
       x.topic_title = t.title; x.topic_body = t.body;
       x.topic_subject = t.subject; x.topic_tags = t.tags;
@@ -753,10 +755,14 @@
     var head = '<div class="card" style="margin-bottom:16px">'
       + '<div class="row" style="justify-content:space-between;margin-bottom:12px"><div>'
       + '<h3 style="font-size:16.5px">' + esc(p.keyword || '') + '</h3>'
-      + '<div class="mono" style="margin-top:3px">' + esc(p.academy_name)
+      + '<div class="mono" style="margin-top:3px">'
+      + (p.is_practice ? '<span class="chip c-info">연습글</span> ' : '') + esc(p.academy_name)
       + ' · 원고 ' + (p.due_date || '-') + '까지'
       + (p.publish_on ? ' · <b style="color:var(--amber)">' + p.publish_on + ' 발행</b>' : '')
-      + ' · ' + won(p.payout_rate) + '원</div></div>'
+      /* 연습글은 「0원」 대신 까닭을 적습니다 — 할 일 카드와 같은 문구 (매뉴얼 창 10/27 · 블로그-1126-1) */
+      + (p.is_practice ? '' : ' · ' + won(p.payout_rate) + '원') + '</div>'
+      + (p.is_practice ? '<div class="mono" style="margin-top:3px;color:var(--info)">연습글이라 원고료가 없습니다. 교육 뒤 연습으로 올리는 글입니다</div>' : '')
+      + '</div>'
       + A.stChip(p.status) + '</div>'
       + (p.status === 'rework' ? '<div class="note bad" style="margin-bottom:12px"><b>고쳐야 할 것</b><br>'
         + (p.reject_reasons || []).map(function (r) { return '· ' + esc(r); }).join('<br>')
@@ -943,7 +949,7 @@
       + '<select class="inp" id="workPick" style="width:auto;flex:1;min-width:200px">'
       + pick.map(function (x) {
         return '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>'
-          + esc(x.keyword || '') + ' (' + (A.ST[x.status] ? A.ST[x.status][0] : x.status) + ')</option>';
+          + (x.is_practice ? '[연습] ' : '') + esc(x.keyword || '') + ' (' + (A.ST[x.status] ? A.ST[x.status][0] : x.status) + ')</option>';
       }).join('') + '</select></div>' : '';
 
     /* 원고가 통과된 뒤에는 「올린 글 주소 넣기」가 맨 위에 옵니다.
@@ -1350,16 +1356,19 @@
       + '<select class="inp" id="workPick" style="width:auto;flex:1;min-width:200px">'
       + pick.map(function (x) {
         return '<option value="' + x.id + '"' + (x.id === p.id ? ' selected' : '') + '>'
-          + esc((x.academy_name || '') + ' · ' + (x.category || x.keyword || '')) + '</option>';
+          + (x.is_practice ? '[연습] ' : '') + esc((x.academy_name || '') + ' · ' + (x.category || x.keyword || '')) + '</option>';
       }).join('') + '</select></div>' : '';
 
     var head = '<div class="card" style="margin-bottom:16px">'
       + '<div class="row" style="justify-content:space-between;margin-bottom:12px"><div>'
       + '<h3 style="font-size:16.5px">' + esc(p.academy_name || '') + '</h3>'
       + '<div class="mono" style="margin-top:3px">'
+      + (p.is_practice ? '<span class="chip c-info">연습글</span> ' : '')
       + '<b>' + esc(p.category || '리뷰') + '</b>'
       + (p.keyword ? ' · ' + esc(p.keyword) : '')
-      + ' · ' + won(p.payout_rate) + '원</div></div>'
+      + (p.is_practice ? '' : ' · ' + won(p.payout_rate) + '원') + '</div>'
+      + (p.is_practice ? '<div class="mono" style="margin-top:3px;color:var(--info)">연습글이라 원고료가 없습니다. 교육 뒤 연습으로 올리는 글입니다</div>' : '')
+      + '</div>'
       + A.stChip(p.status) + '</div>'
       + '<dl class="kv">'
       + '<dt>언제 올리나요</dt><dd><b style="color:var(--amber)">'
