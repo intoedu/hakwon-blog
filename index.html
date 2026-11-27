@@ -14,7 +14,7 @@
      GitHub Pages 가 cache-control: max-age=600 을 주어서, 이것이 없으면 고친 뒤
      10분 동안 옛 화면이 보입니다. 🔑 js/ 나 app.css 를 고치면 이 번호도 같이 올리세요. -->
 <link rel="stylesheet" href="fonts/pretendard/pretendard.css?v=1.3.9">
-<link rel="stylesheet" href="app.css?v=261126a">
+<link rel="stylesheet" href="app.css?v=261127a">
 </head>
 <body>
 
@@ -347,12 +347,14 @@
           <button data-view-btn="admin" class="on">관리자</button>
           <button data-view-btn="reviewer">검수자</button>
           <button data-view-btn="blogger">블로거</button>
+          <!-- 블로거를 겸하는 검수자(관리자 아님)에게만 보입니다 (2026-11-27 · 블로그-1127-4) -->
+          <button data-view-btn="me" class="hide">내 블로거 화면</button>
         </div>
         <input class="inp hide" id="previewFind" placeholder="이름으로 찾기"
                autocomplete="off" style="margin-top:6px;padding:5px 7px;font-size:11.5px">
         <select class="inp hide" id="previewWho"
                 style="margin-top:4px;padding:5px 7px;font-size:11.5px"></select>
-        <div style="font-size:10.5px;margin-top:5px;line-height:1.5">
+        <div id="vswHint" style="font-size:10.5px;margin-top:5px;line-height:1.5">
           검수자·블로거에게 보이는 화면을 그대로 볼 수 있습니다</div>
       </div>
       <b id="meName">-</b><span id="meRole">-</span>
@@ -367,6 +369,11 @@
     <div class="msg ok hide" id="previewBar" style="margin-bottom:16px">
       <i class="ic i-eye"></i> <b id="previewName"></b> 님에게 보이는 화면입니다. 보기만 할 수 있고 버튼은 눌리지 않습니다.
       원래대로 돌아가시려면 왼쪽 아래에서 [관리자]를 누르세요.
+    </div>
+    <!-- 블로거를 겸하는 검수자 — 검수 화면 위에 «맡은 글 N편» (2026-11-27 · 블로그-1127-4) -->
+    <div class="msg warn hide" id="myBlogBar" style="margin-bottom:16px">
+      내 블로거 화면에 맡은 글이 <b id="myBlogN">0</b>편 있습니다.
+      <button class="btn btn-s" data-openme="1" style="margin-left:6px">내 블로거 화면 열기</button>
     </div>
 
     <!-- 오늘 할 일 -->
@@ -1511,10 +1518,10 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/core.js?v=261126a"></script>
-<script src="js/gate.js?v=261126a"></script>
-<script src="js/admin.js?v=261126a"></script>
-<script src="js/blogger.js?v=261126a"></script>
+<script src="js/core.js?v=261127a"></script>
+<script src="js/gate.js?v=261127a"></script>
+<script src="js/admin.js?v=261127a"></script>
+<script src="js/blogger.js?v=261127a"></script>
 <script>ESC.boot();</script>
 </body>
 </html>

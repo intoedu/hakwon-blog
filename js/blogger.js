@@ -54,7 +54,7 @@
        관리자가 블로거를 병행할 때 자기 글을 실제로 쓰고 낼 수 있어야 하니까요.
        (서버는 my_posts 뷰와 RPC 가 전부 auth.uid() 기준이라 남의 것은 어차피 못 건드립니다) */
     if (A.SESSION && A.SESSION.user && id === A.SESSION.user.id) {
-      A.ME = who; CUR = null;
+      A.ME = who; CUR = null; A.SELF_BLOG = true;
       A.$('previewBar').classList.add('hide');
       A.$('meRole').textContent = '내 블로거 화면';
       await A.loadBlogger();          /* PREVIEW 를 false 로 되돌리고 진짜 내 것을 읽습니다 */

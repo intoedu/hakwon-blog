@@ -377,7 +377,14 @@ window.ESC = (function () {
   };
   /* 어느 얼굴로 들어갈지 — 'admin' 이면 전체, 'reviewer' 면 검수만.
      관리자는 위쪽 전환 버튼으로 검수자 화면을 미리 볼 수 있습니다(서버 권한은 그대로). */
+  /* ── 블로거를 겸하는 «검수자»의 내 블로거 화면 (2026-11-27 · 블로그-1127-4) ──
+     관리자는 [블로거] → 자기 이름으로 들어가지만, 검수자는 그 길이 없었습니다.
+     검수자에게는 [검수] [내 블로거 화면] 두 단추만 줍니다. 남의 화면을 고르는 칸은 주지 않습니다. */
+  A.canMe = function () { return !A.IS_ADMIN && A.IS_REVIEWER && !!A.ME; };
+
   A.applyView = function (mode) {
+    if (mode === 'me') { A.openMyBlogger(); return; }
+    A.SELF_BLOG = false;
     A.VIEW_AS = mode;
     var rev = mode === 'reviewer', blg = mode === 'blogger';
     A.$('navAdmin').classList.toggle('hide', rev || blg);
@@ -389,7 +396,19 @@ window.ESC = (function () {
       : (A.isRv() ? '리뷰 센터 관리자' : '블로그 센터 관리자');
 
     var sw = A.$('viewSwitch');
-    if (sw) sw.classList.toggle('hide', !A.IS_ADMIN);
+    if (sw) sw.classList.toggle('hide', !(A.IS_ADMIN || A.canMe()));
+    /* 검수자(관리자 아님)에게는 [검수] [내 블로거 화면] 만 */
+    document.querySelectorAll('[data-view-btn="admin"],[data-view-btn="blogger"]').forEach(function (b) {
+      b.classList.toggle('hide', !A.IS_ADMIN);
+    });
+    var meB = document.querySelector('[data-view-btn="me"]');
+    if (meB) meB.classList.toggle('hide', !A.canMe());
+    var rvB = document.querySelector('[data-view-btn="reviewer"]');
+    if (rvB) rvB.textContent = A.IS_ADMIN ? '검수자' : '검수';
+    var vh = A.$('vswHint');
+    if (vh) vh.classList.toggle('hide', !A.IS_ADMIN);
+    var mb = A.$('myBlogBar');
+    if (mb) mb.classList.add('hide');
     /* ⚠️ 갈래 고르는 칸은 검수자·블로거 화면을 볼 때도 남겨 둡니다.
        안 그러면 「리뷰어 화면을 보려고 블로거로 바꾸는 순간 갈래를 못 바꾸는」 막다른 길이 됩니다. */
     var tsw = A.$('trackSw');
@@ -402,6 +421,22 @@ window.ESC = (function () {
     document.querySelectorAll('[data-adminonly]').forEach(function (el) {
       el.classList.toggle('hide', rev || blg);
     });
+
+    /* 🔴 관리자가 아닌 검수자는 «자기» 검수 화면으로만 갑니다 — 남의 화면 미리보기를 거치지 않습니다.
+       (예전 그대로 두면 [검수]를 다시 누를 때 검수자 목록 첫 사람 화면이 열릴 수 있었습니다) */
+    if (rev && !A.IS_ADMIN) {
+      ['previewWho', 'previewFind', 'previewBar'].forEach(function (k) {
+        var el = A.$(k); if (el) el.classList.add('hide');
+      });
+      A.PREVIEW_STAFF = null;
+      A.MY_COMMS = A.SELF_COMMS || [];
+      A.$('meName').textContent = A.SELF_NAME
+        || (A.SESSION && A.SESSION.user ? A.SESSION.user.email : '-');
+      if (A.refreshReview) A.refreshReview();
+      A.openApp(A.reviewScreen());
+      A.paintMyBlogBar();
+      return;
+    }
 
     var pw = A.$('previewWho');
     if (pw) pw.classList.toggle('hide', !(rev || blg));
@@ -420,6 +455,63 @@ window.ESC = (function () {
       || (A.SESSION && A.SESSION.user ? A.SESSION.user.email : '-');
     if (A.refreshReview) A.refreshReview();
     A.openApp('dash');
+  };
+
+  /* 검수자의 내 블로거 화면 열기 — 블로거 관문(상태 → 생년월일 → 동의)은 그대로 거칩니다.
+     🔑 잠그지 않습니다. 관리자가 자기 이름을 골랐을 때(loadBloggerPreview 의 «자기 자신»)와 같은 화면입니다.
+        서버는 my_posts 뷰 · RPC 가 전부 auth.uid() 기준이라 남의 것은 어차피 못 건드립니다. */
+  A.openMyBlogger = async function (screen) {
+    var me = A.ME;
+    if (!me) return;
+    if (me.status !== 'approved') {
+      A.toast(me.status === 'paused' ? '지금은 블로거 활동을 쉬는 중이라 내 블로거 화면을 열 수 없습니다'
+        : me.status === 'rejected' ? '블로거 신청이 반려된 계정이라 내 블로거 화면이 없습니다'
+        : '블로거 승인을 기다리는 중입니다. 승인되면 열립니다');
+      return;
+    }
+    function later() { try { sessionStorage.setItem('esc_want_me', screen || 'b-inbox'); } catch (e) {} }
+    if (!me.birth_date) {           /* 저장하면 boot 가 다시 돌고, 아래 esc_want_me 를 보고 이리로 옵니다 */
+      later();
+      A.$('bdWho').textContent = (me.name || '') + ' · ' + (me.email || '');
+      A.gate('g-birth'); return;
+    }
+    if (!me.terms_agreed_at) {
+      later();
+      A.$('agWho').textContent = (me.name || '') + ' · ' + (me.email || '');
+      A.gate('g-agree'); return;
+    }
+    A.VIEW_AS = 'blogger'; A.SELF_BLOG = true; A.PREVIEW_STAFF = null;
+    A.$('navAdmin').classList.add('hide');
+    A.$('navReviewer').classList.add('hide');
+    A.$('navBlogger').classList.remove('hide');
+    ['previewWho', 'previewFind', 'previewBar', 'myBlogBar'].forEach(function (k) {
+      var el = A.$(k); if (el) el.classList.add('hide');
+    });
+    document.querySelectorAll('[data-adminonly]').forEach(function (el) { el.classList.add('hide'); });
+    document.querySelectorAll('[data-view-btn]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.viewBtn === 'me');
+    });
+    A.$('meName').textContent = me.name || '';
+    A.$('meRole').textContent = '내 블로거 화면';
+    /* 지금 갈래 그대로 엽니다 — 저장된 값을 읽으면 같은 브라우저를 쓴 관리자 갈래로 바뀔 수 있습니다 */
+    A.setTrack(A.TRACK || 'blog', false);
+    A.openApp('b-inbox');
+    await A.loadBlogger();
+    if (screen && screen !== 'b-inbox') A.show(screen);
+  };
+
+  /* 검수 화면 위에 «내 블로거 화면에 맡은 글 N편» 한 줄 — 알림톡 링크는 늘 센터 첫 주소라
+     (승인받은 템플릿의 고정 글자) 어느 화면으로 갈지 담을 수 없습니다. 그래서 여기서 알려 줍니다. */
+  A.paintMyBlogBar = async function () {
+    var bar = A.$('myBlogBar');
+    if (!bar || !A.canMe() || !A.ME || A.ME.status !== 'approved') { if (bar) bar.classList.add('hide'); return; }
+    var r = await A.sb.from('my_posts').select('id,status');
+    var n = ((r && r.data) || []).filter(function (p) {
+      return ['assigned', 'writing', 'rework', 'approved'].indexOf(p.status) >= 0;
+    }).length;
+    if (A.VIEW_AS !== 'reviewer') return;       /* 기다리는 사이 화면을 바꿨으면 그대로 둡니다 */
+    var nb = A.$('myBlogN'); if (nb) nb.textContent = n;
+    bar.classList.toggle('hide', !n);
   };
 
   /* 누구 눈으로 볼지 고르기 — 블로거면 블로거 목록, 검수자면 블로그 스태프 목록 */
@@ -731,6 +823,7 @@ window.ESC = (function () {
 
     var vb = e.target.closest('[data-view-btn]');
     if (vb) { A.applyView(vb.dataset.viewBtn); return; }
+    if (e.target.closest('[data-openme]')) { A.openMyBlogger(); return; }
 
     /* 사이드바 메뉴뿐 아니라 화면 안의 「6 검수하기 →」 같은 바로가기 버튼도 여기서 받습니다
        (예전엔 .nav / .fstep 만 받아서 오늘 할 일·알림의 바로가기가 안 눌렸습니다) */
@@ -805,7 +898,7 @@ window.ESC = (function () {
        진짜 블로거에게는 자기 단계가 그대로 보여야 합니다. */
     if (!A.IS_ADMIN && !A.IS_REVIEWER) {
       if (A.ME) A.$('meRole').textContent = A.ME.level + '단계 · ' + A.levelOf(A.ME.level).name;
-    } else if (A.VIEW_AS === 'blogger') A.$('meRole').textContent = w.who + ' 화면 보는 중';
+    } else if (A.VIEW_AS === 'blogger') A.$('meRole').textContent = A.SELF_BLOG ? '내 블로거 화면' : w.who + ' 화면 보는 중';
     else if (A.VIEW_AS === 'reviewer') {
       if (!A.PREVIEW_STAFF) A.$('meRole').textContent = A.isRv() ? '리뷰 확인 담당' : '블로그 원고 검수자';
     } else if (A.IS_ADMIN) {
@@ -959,6 +1052,16 @@ window.ESC = (function () {
       A.$('meName').textContent = A.SESSION.user.email;
       A.applyView('reviewer');
       await A.loadAdmin();
+      /* 블로거를 겸하면 : 생년월일 · 동의를 막 마치고 돌아왔거나(esc_want_me) #b-work 같은 주소로 왔으면
+         바로 내 블로거 화면으로 엽니다 (2026-11-27 · 블로그-1127-4) */
+      if (A.canMe()) {
+        var wantMe = null;
+        try { wantMe = sessionStorage.getItem('esc_want_me'); sessionStorage.removeItem('esc_want_me'); } catch (e) {}
+        var hb = location.hash.replace(/^#/, '');
+        if (!wantMe && /^b-(inbox|edu|work|pay)$/.test(hb)) wantMe = hb;
+        if (wantMe) { await A.openMyBlogger(wantMe); return; }
+        A.paintMyBlogBar();
+      }
       return;
     }
 
@@ -1086,7 +1189,11 @@ window.ESC = (function () {
     }
     if (document.querySelector('.screen[data-screen="' + h + '"]')) A.show(h);
   };
-  window.addEventListener('hashchange', function () { if (A.IS_ADMIN) A.applyHash(); });
+  window.addEventListener('hashchange', function () {
+    if (A.IS_ADMIN) { A.applyHash(); return; }
+    var hb = location.hash.replace(/^#/, '');
+    if (A.canMe() && /^b-(inbox|edu|work|pay)$/.test(hb)) A.openMyBlogger(hb);
+  });
 
   /* 🔴 loadCommsPublic 은 없앴습니다 (10/31).
      신청 화면의 공동체 칸을 «고르는 목록»에서 «적으면 아래에 뜨는» 칸으로 바꿨습니다.
